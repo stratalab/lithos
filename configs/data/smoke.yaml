@@ -1,0 +1,27 @@
+# Lithos smoke corpus: tokenize the synthetic smoke data into training shards.
+# Requires a tokenizer first (e.g. artifacts/tokenizer/smoke/tokenizer.json) and
+# data/smoke/corpus.jsonl from scripts/prepare_smoke_data.py.
+name: lithos-smoke
+version: v0.1
+tokenizer_path: artifacts/tokenizer/smoke/tokenizer.json
+
+sources:
+  - kind: jsonl
+    paths: ["data/smoke/corpus.jsonl"]
+    source_name: smoke
+    language: en
+    license: synthetic
+
+output_dir: data/smoke/corpus-v0.1
+seq_len: 128
+tokens_per_shard: 50000
+add_bos: true
+add_eos: true
+exact_dedup: true
+
+filters:
+  min_chars: 1
+  max_chars: 500000
+
+license_notes:
+  - "Synthetic smoke corpus; contains no real-world data."

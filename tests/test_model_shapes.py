@@ -22,7 +22,8 @@ def test_forward_logits_shape():
 def test_loss_is_scalar_and_backprops():
     model = make_model()
     ids = torch.randint(0, model.cfg.vocab_size, (2, 16))
-    _, loss = model(ids, labels=ids)
+    targets = torch.randint(0, model.cfg.vocab_size, (2, 16))
+    _, loss = model(ids, targets=targets)
     assert loss.shape == ()
     assert torch.isfinite(loss)
     loss.backward()
@@ -41,7 +42,7 @@ def test_loss_ignores_vocab_padding():
     model = make_model(vocab_size=100, pad_vocab_to=128)
     assert model.cfg.padded_vocab_size == 128
     ids = torch.randint(0, 100, (2, 8))
-    logits, loss = model(ids, labels=ids)
+    logits, loss = model(ids, targets=ids)
     pad_min = torch.finfo(logits.dtype).min
     assert torch.all(logits[..., 100:] == pad_min)  # padding never predicted
     assert torch.isfinite(loss)

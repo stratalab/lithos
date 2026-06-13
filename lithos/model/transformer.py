@@ -54,7 +54,7 @@ class LithosForCausalLM(nn.Module):
     def forward(
         self,
         input_ids: torch.Tensor,
-        labels: torch.Tensor | None = None,
+        targets: torch.Tensor | None = None,
         kv_caches: list[KVCache] | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
         _, t = input_ids.shape
@@ -84,11 +84,15 @@ class LithosForCausalLM(nn.Module):
             )
             logits = logits.masked_fill(pad_cols, torch.finfo(logits.dtype).min)
 
+        # ``targets`` are already aligned with ``logits`` (the dataloader yields
+        # pre-shifted (x, y) windows), so no internal shift is applied here.
         loss = None
-        if labels is not None:
-            shift_logits = logits[:, :-1, :].reshape(-1, logits.size(-1))
-            shift_labels = labels[:, 1:].reshape(-1)
-            loss = F.cross_entropy(shift_logits, shift_labels, ignore_index=-100)
+        if targets is not None:
+            loss = F.cross_entropy(
+                logits.reshape(-1, logits.size(-1)),
+                targets.reshape(-1),
+                ignore_index=-100,
+            )
 
         return logits, loss
 
