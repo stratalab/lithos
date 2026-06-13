@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Lithos: large artifacts stay out of Git (PRD §20.9)
+/runs/*
+!/runs/README.md
+/artifacts/
+/data/
+*.bin
+*.idx
+*.npy
+*.safetensors
+*.gguf
+*.zst
+checkpoints/
+wandb/
+
+# Local credentials / env
+.env
