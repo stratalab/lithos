@@ -1,0 +1,24 @@
+# Lithos byte-level BPE tokenizer, 32k vocab (PRD §7, §26.4).
+# Trained on a sample of nvidia/Nemotron-CC-v2 (see §26.2).
+tokenizer:
+  name: lithos-bpe-32k
+  version: v0.1
+  vocab_size: 32000
+  individual_digits: true   # split digits for better arithmetic (§26.4)
+  add_prefix_space: false   # lossless roundtrip
+  min_frequency: 2
+  # special_tokens default to DEFAULT_SPECIAL_TOKENS (pad/bos/eos/system/user/assistant/end)
+
+data:
+  kind: hf
+  dataset: nvidia/Nemotron-CC-v2
+  split: train
+  text_field: text
+  max_documents: 200000
+
+output_dir: artifacts/tokenizer/lithos-bpe-32k-v0.1
+
+report_samples:
+  - "The quick brown fox jumps over the lazy dog."
+  - "def add(a, b):\n    return a + b"
+  - "E = mc^2 and the sum from i=1 to n of i = n(n+1)/2"
