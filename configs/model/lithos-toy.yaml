@@ -1,0 +1,14 @@
+# Lithos Toy — local correctness and debugging (PRD §6.2).
+# ~5M parameters; runs on CPU or the local RTX 4070.
+vocab_size: 32000
+n_layers: 4
+hidden: 128
+n_heads: 4
+n_kv_heads: 4          # == n_heads -> plain MHA for the toy model
+intermediate_size: 512 # ~8/3 * hidden, rounded to a multiple of 256
+seq_len: 256
+rope_theta: 10000.0
+qk_norm: false         # QK-norm defaults on for >=100M; toy keeps it minimal
+tie_embeddings: true
+dropout: 0.0
+attn_backend: sdpa
