@@ -1,0 +1,31 @@
+# Frozen, scale-invariant eval config for Lithos base models (Phase 9 — the measuring stick).
+# Identical shape at 100M -> 1B -> 3B: only tokenizer_path / val_corpus_manifest / the
+# --checkpoint arg change. The benchmark *battery itself* is frozen in code
+# (lithos/evals/benchmarks.py: DEFAULT_TASKS + BATTERY_VERSION) so it can't be silently
+# edited per-run; bumping the version intentionally invalidates cross-version comparison.
+name: lithos-100m
+tokenizer_path: artifacts/tokenizer/fineweb-edu-32k/tokenizer.json
+
+# Held-out, DECONTAMINATED perplexity set. Leave null until a held-out FineWeb-Edu slice
+# exists -- never point this at the training corpus for real numbers (PRD §27, §8.9).
+val_corpus_manifest: null
+eval_batches: 50
+batch_size: 8
+
+prompts:
+  - "The water cycle"
+  - "In 1969, Apollo 11"
+  - "Photosynthesis is the process by which"
+sample_max_new_tokens: 64
+greedy: true
+
+benchmarks:
+  enabled: true
+  num_fewshot: 0
+  limit: null          # set e.g. 50 for a fast smoke; null = the full battery
+  batch_size: auto
+  dtype: bfloat16
+
+output_dir: runs/eval
+scorecard_path: runs/eval/scorecard.jsonl   # append-only ledger; diff recipes/sizes here
+data_recipe: fineweb-edu-100m-v0.1           # provenance key for the scorecard

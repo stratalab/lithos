@@ -80,7 +80,7 @@ Not in the original plan; now a real deliverable. `scripts/`: **`build_corpus.sh
 
 *The strategic pivot: own the data layer as a co-equal foundation, build a rock-solid scale-invariant pipeline at small scale, and let the **gap** between from-scratch and distillation be the deliverable. All of Part II builds locally + on the 100M rig; only Phases 12–13 need secured cloud compute.*
 
-## Phase 9 — Eval harness v1 (the measuring stick)  ·  ◻ NEXT
+## Phase 9 — Eval harness v1 (the measuring stick)  ·  ◑ harness built
 
 **Goal:** a frozen, reproducible, scale-invariant benchmark harness — the yardstick for *all* data and post-training work. Nothing data-centric is measurable without it.
 
@@ -93,6 +93,8 @@ Not in the original plan; now a real deliverable. `scripts/`: **`build_corpus.sh
 **Tests:** lm-eval adapter returns scores on a tiny export; decontam flags a planted contaminant; scorecard diffs two runs.
 
 **Acceptance:** `run_evals.py --config … --checkpoint …` yields perplexity + the full frozen scorecard + samples for any checkpoint, identically at any scale — ready to score the 100M the moment it lands.
+
+**Status (2026-06-14):** harness built + unit-tested — lm-eval wiring (`evals/benchmarks.py`, lazy import, mocked in tests), frozen **v1 battery**, n-gram **decontamination** (`evals/decontam.py`), and a comparable **scorecard** (`evals/scorecard.py`); `configs/eval/lithos-100m.yaml`; `lm-eval` added to the `eval` extra. **Pending:** carve the held-out decontaminated FineWeb-Edu slice for clean perplexity, and the first real `--extra eval` run against the 100M on completion.
 
 ## Phase 10 — Data quality v1 ("every trick")  ·  ◻
 
