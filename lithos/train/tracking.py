@@ -39,8 +39,20 @@ class Reporter:
             self._run = None
 
 
-def init_reporter(cfg: TrainConfig, *, run_id: str, run_dir: str, is_main: bool) -> Reporter:
-    """Build a Reporter; a no-op unless tracking is enabled on the main rank."""
+def init_reporter(
+    cfg: TrainConfig,
+    *,
+    run_id: str,
+    run_dir: str,
+    is_main: bool,
+    runtime: dict[str, Any] | None = None,
+) -> Reporter:
+    """Build a Reporter; a no-op unless tracking is enabled on the main rank.
+
+    ``runtime`` carries resolved facts the static config can't (e.g. the *actual*
+    device after ``auto`` resolution, the GPU name, world size); it is logged
+    under a ``runtime`` key in the W&B config so the real device is unambiguous.
+    """
     wb = cfg.wandb
     if not (wb.enabled and is_main):
         return Reporter(None)
@@ -53,6 +65,9 @@ def init_reporter(cfg: TrainConfig, *, run_id: str, run_dir: str, is_main: bool)
             "(`uv sync --extra tracking` / `pip install 'lithos[tracking]'`) "
             "or set wandb.enabled=false."
         ) from e
+    config = cfg.model_dump(mode="json")
+    if runtime:
+        config["runtime"] = runtime
     run = wandb.init(
         project=wb.project,
         entity=wb.entity,
@@ -62,6 +77,6 @@ def init_reporter(cfg: TrainConfig, *, run_id: str, run_dir: str, is_main: bool)
         notes=wb.notes,
         mode=wb.mode,
         dir=run_dir,
-        config=cfg.model_dump(mode="json"),
+        config=config,
     )
     return Reporter(run)

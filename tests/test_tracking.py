@@ -70,12 +70,22 @@ def test_not_main_rank_never_inits(tmp_path, fake_wandb):
 
 def test_enabled_forwards_to_wandb(tmp_path, fake_wandb):
     cfg = _cfg(enabled=True, project="lithos-test", tags=["a"])
-    r = init_reporter(cfg, run_id="2026_run", run_dir=str(tmp_path), is_main=True)
+    r = init_reporter(
+        cfg,
+        run_id="2026_run",
+        run_dir=str(tmp_path),
+        is_main=True,
+        runtime={"resolved_device": "cuda", "gpu": "RTX 4070 SUPER", "world_size": 1},
+    )
     assert r.enabled
     assert fake_wandb.init_kwargs["project"] == "lithos-test"
     assert fake_wandb.init_kwargs["name"] == "2026_run"
     assert fake_wandb.init_kwargs["group"] == "t"  # group defaults to run_name
-    assert fake_wandb.init_kwargs["config"]["optim"]["lr"] == cfg.optim.lr  # full config logged
+    cfg_logged = fake_wandb.init_kwargs["config"]
+    assert cfg_logged["optim"]["lr"] == cfg.optim.lr  # full static config logged
+    # resolved runtime facts (the *actual* device, not the config's "auto"/"cpu")
+    assert cfg_logged["runtime"]["resolved_device"] == "cuda"
+    assert cfg_logged["runtime"]["gpu"] == "RTX 4070 SUPER"
 
     # step/timestamp are bookkeeping (stripped); real metrics forwarded at the step.
     r.log({"step": 5, "timestamp": "z", "train_loss": 1.5, "grad_norm": 0.3}, 5)

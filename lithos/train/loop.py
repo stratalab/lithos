@@ -195,7 +195,14 @@ def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | None:
         save_resolved_config(cfg, run.resolved_config)
         write_json(run.manifest, _run_manifest(cfg, run, raw_model, dist, corpus_man))
         metrics = JsonlWriter(run.metrics)
-        reporter = init_reporter(cfg, run_id=run.root.name, run_dir=str(run.root), is_main=True)
+        gpu = torch.cuda.get_device_name(0) if device.startswith("cuda") else None
+        reporter = init_reporter(
+            cfg,
+            run_id=run.root.name,
+            run_dir=str(run.root),
+            is_main=True,
+            runtime={"resolved_device": device, "gpu": gpu, "world_size": dist.world_size},
+        )
 
     use_scaler = device.startswith("cuda") and cfg.precision == "fp16"
     scaler = torch.amp.GradScaler("cuda") if use_scaler else None
