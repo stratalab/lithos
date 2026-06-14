@@ -1,0 +1,26 @@
+# Example data-recipe ablation (Phase 10): does stricter edu-quality filtering help?
+# Baseline (FineWeb-Edu default, score >= 3) vs score >= 4.0 — same proxy, same frozen battery.
+#
+# NOTE: this uses the tiny smoke corpus + a small proxy, so it validates that the *loop runs
+# end to end*; benchmarks are near-chance at this scale. A real result needs a larger proxy
+# and ablation corpus (override corpus_config / train_overrides / sources[].limit upward).
+name: quality-threshold
+corpus_config: configs/data/fineweb-edu-smoke.yaml
+train_config: configs/train/proxy.yaml
+eval_config: configs/eval/lithos-100m.yaml
+baseline: baseline
+
+variants:
+  - name: baseline
+    corpus_overrides: []
+  - name: quality-4.0
+    corpus_overrides:
+      - quality.enabled=true
+      - quality.threshold=4.0
+
+# Fast loop: short proxy + a small slice of the battery.
+train_overrides:
+  - schedule.max_steps=300
+eval_overrides:
+  - "benchmarks.limit=100"
+  - "benchmarks.tasks=[arc_easy,piqa]"
