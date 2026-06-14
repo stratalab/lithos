@@ -1,6 +1,6 @@
 # Lithos 100M training config (PRD §6.2, §9).
-# Real-run targets are below; the local 4070 sanity run overrides max_steps /
-# gradient_accumulation_steps for a short stability check before the cloud run.
+# Tuned for the 2xH100 cloud run. A local 4070 sanity run overrides max_steps /
+# gradient_accumulation_steps and grad_checkpointing=true (to fit seq 2048 in 12GB).
 run_name: lithos-100m
 seed: 0
 device: auto
@@ -8,7 +8,7 @@ precision: bf16
 
 micro_batch_size: 8
 gradient_accumulation_steps: 16   # effective batch 128 (262k tokens/step at seq 2048)
-grad_checkpointing: true          # fit seq 2048 in 12GB locally
+grad_checkpointing: false         # 80GB H100s have room; off for speed (smoke used 3.3GB)
 compile: false
 
 log_interval: 10
