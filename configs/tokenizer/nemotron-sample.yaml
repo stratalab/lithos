@@ -1,0 +1,23 @@
+# Byte-level BPE tokenizer trained on a Nemotron pretraining-sample slice.
+tokenizer:
+  name: lithos-bpe-nemotron-sample
+  version: v0.1
+  vocab_size: 16384
+  individual_digits: true
+  add_prefix_space: false
+  min_frequency: 2
+
+data:
+  kind: jsonl
+  paths:
+    - data/nemotron-sample/raw/hq_synthetic.jsonl
+    - data/nemotron-sample/raw/hq.jsonl
+  text_field: text
+  max_documents: 10000
+
+output_dir: artifacts/tokenizer/nemotron-sample
+
+report_samples:
+  - "The mitochondria is the powerhouse of the cell."
+  - "def add(a, b):\n    return a + b"
+  - "The integral of x squared from 0 to 1 equals one third."

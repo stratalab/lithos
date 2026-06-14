@@ -32,7 +32,8 @@ def generate_samples(
     seed: int = 0,
 ) -> list[dict[str, Any]]:
     """Generate a completion per prompt with a repetition score for each."""
-    generator = torch.Generator(device="cpu").manual_seed(seed)
+    # The RNG generator must live on the same device as the sampled probabilities.
+    generator = torch.Generator(device=device).manual_seed(seed)
     results: list[dict[str, Any]] = []
     for prompt in prompts:
         ids = tokenizer.encode(prompt).ids

@@ -1,0 +1,31 @@
+# Tokenize a Nemotron pretraining-sample slice into training shards.
+name: lithos-nemotron-sample
+version: v0.1
+tokenizer_path: artifacts/tokenizer/nemotron-sample/tokenizer.json
+
+sources:
+  - kind: jsonl
+    paths: ["data/nemotron-sample/raw/hq_synthetic.jsonl"]
+    source_name: nemotron-cc-hq-synthetic
+    language: en
+    license: nvidia-open-data
+  - kind: jsonl
+    paths: ["data/nemotron-sample/raw/hq.jsonl"]
+    source_name: nemotron-cc-hq
+    language: en
+    license: nvidia-open-data
+
+output_dir: data/nemotron-sample/corpus-v0.1
+seq_len: 512
+tokens_per_shard: 1000000
+add_bos: true
+add_eos: true
+exact_dedup: true
+
+filters:
+  min_chars: 50
+  max_chars: 100000
+
+license_notes:
+  - "nvidia/Nemotron-Pretraining-Dataset-sample (NVIDIA Open Data License)."
+  - "High-Quality-Synthetic is model-generated (Qwen/DeepSeek terms apply on distribution)."

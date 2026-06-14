@@ -1,0 +1,17 @@
+# Evaluate the Nemotron-sample smoke checkpoint.
+name: nemotron-sample
+tokenizer_path: artifacts/tokenizer/nemotron-sample/tokenizer.json
+val_corpus_manifest: data/nemotron-sample/corpus-v0.1/corpus_manifest.json
+eval_batches: 20
+batch_size: 8
+
+prompts:
+  - "The most important thing about"
+  - "In recent years, researchers have"
+  - "To solve this problem, we first"
+
+sample_max_new_tokens: 48
+greedy: false
+
+output_dir: runs/eval
+export_dir: artifacts/lithos-nemotron-sample
