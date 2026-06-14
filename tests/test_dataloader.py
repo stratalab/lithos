@@ -53,6 +53,22 @@ def test_dataloader_resume_continues_at_position(tmp_path):
         assert torch.equal(ex_y, got_y)
 
 
+def test_rank_sharding_is_disjoint_and_complete(tmp_path):
+    ds = PackedDataset(_make_shards(tmp_path, 400, 200), seq_len=8)
+    # One world_size=1 loader of global batch 4 == two world_size=2 loaders of batch 2.
+    full = PackedDataLoader(ds, batch_size=4, seed=0)
+    rank0 = PackedDataLoader(ds, batch_size=2, seed=0, rank=0, world_size=2)
+    rank1 = PackedDataLoader(ds, batch_size=2, seed=0, rank=1, world_size=2)
+    for _ in range(3):
+        fx, _fy = next(full)
+        x0, _y0 = next(rank0)
+        x1, _y1 = next(rank1)
+        assert torch.equal(fx[:2], x0)  # rank 0 = first half of the global batch
+        assert torch.equal(fx[2:], x1)  # rank 1 = second half (disjoint, complete)
+    # all advanced position in lockstep
+    assert rank0.position == rank1.position == full.position
+
+
 def test_dataloader_reshuffles_each_epoch(tmp_path):
     ds = PackedDataset(_make_shards(tmp_path, 200, 200), seq_len=8)  # 24 sequences
     loader = PackedDataLoader(ds, batch_size=4, seed=0)

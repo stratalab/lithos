@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 """Train a Lithos model from a config (PRD §16, §23).
 
+# single GPU
 python scripts/train_model.py --config configs/train/single-gpu-smoke.yaml
-python scripts/train_model.py --config configs/train/100m.yaml --resume runs/.../checkpoints/step_001000
+
+# multi-GPU (DDP) via torchrun
+torchrun --nproc_per_node=2 scripts/train_model.py --config configs/train/100m.yaml
 """
 
 from __future__ import annotations
@@ -23,7 +26,8 @@ def main() -> None:
 
     cfg = load_and_validate(args.config, TrainConfig, args.override)
     run = train(cfg, resume_from=args.resume)
-    print(f"Run complete -> {run.root}")
+    if run is not None:  # rank 0 (or single process)
+        print(f"Run complete -> {run.root}")
 
 
 if __name__ == "__main__":

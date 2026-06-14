@@ -52,12 +52,23 @@ class PackedDataLoader:
     """Infinite, resumable, shuffled batch iterator over a ``PackedDataset``."""
 
     def __init__(
-        self, dataset: PackedDataset, batch_size: int, *, seed: int = 0, shuffle: bool = True
+        self,
+        dataset: PackedDataset,
+        batch_size: int,
+        *,
+        seed: int = 0,
+        shuffle: bool = True,
+        rank: int = 0,
+        world_size: int = 1,
     ) -> None:
         self.dataset = dataset
         self.batch_size = batch_size
         self.seed = seed
         self.shuffle = shuffle
+        # DDP: all ranks share the permutation and advance ``position`` in lockstep
+        # by world_size*batch_size; each rank reads its own disjoint slice.
+        self.rank = rank
+        self.world_size = world_size
         self.epoch = 0
         self.position = 0
         self._perm = self._make_perm(self.epoch)
@@ -82,14 +93,16 @@ class PackedDataLoader:
 
     def __next__(self) -> tuple[torch.Tensor, torch.Tensor]:
         n = len(self.dataset)
-        if n < self.batch_size:
-            raise RuntimeError(f"dataset has {n} sequences < batch_size {self.batch_size}")
-        if self.position + self.batch_size > n:
+        global_batch = self.batch_size * self.world_size
+        if n < global_batch:
+            raise RuntimeError(f"dataset has {n} sequences < global batch {global_batch}")
+        if self.position + global_batch > n:
             self.epoch += 1
             self.position = 0
             self._perm = self._make_perm(self.epoch)
-        idx = self._perm[self.position : self.position + self.batch_size]
-        self.position += self.batch_size
+        start = self.position + self.rank * self.batch_size
+        idx = self._perm[start : start + self.batch_size]
+        self.position += global_batch
         batch = [self.dataset[int(i)] for i in idx]
         xs = torch.stack([b[0] for b in batch])
         ys = torch.stack([b[1] for b in batch])

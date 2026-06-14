@@ -14,6 +14,6 @@ from lithos.utils.config import load_and_validate
 
 def train_from_config(
     config_path: str, overrides: list[str] | None = None, resume_from: str | None = None
-) -> RunDir:
+) -> RunDir | None:
     cfg = load_and_validate(config_path, TrainConfig, overrides)
     return train(cfg, resume_from=resume_from)

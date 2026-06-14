@@ -14,17 +14,24 @@ import time
 from typing import Any
 
 import torch
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 from lithos.data.dataloader import PackedDataLoader, PackedDataset
 from lithos.data.shard import read_shard_specs
 from lithos.model import LithosForCausalLM
 from lithos.train.checkpoint import load_checkpoint, save_checkpoint
 from lithos.train.config import TrainConfig
+from lithos.train.distributed import (
+    DistInfo,
+    all_reduce_mean,
+    barrier,
+    cleanup_distributed,
+    setup_distributed,
+)
 from lithos.train.logging import JsonlWriter, RunDir, create_run_dir
 from lithos.train.optim import build_optimizer
 from lithos.train.scheduler import cosine_lr, set_lr
 from lithos.utils.config import save_resolved_config
-from lithos.utils.device import resolve_device
 from lithos.utils.io import read_json, write_json
 from lithos.utils.seed import seed_everything
 
@@ -44,10 +51,18 @@ def load_corpus_shards(manifest_path: str) -> tuple[list, dict[str, Any]]:
 
 
 def _build_loader(
-    manifest_path: str, seq_len: int, batch_size: int, seed: int
+    manifest_path: str,
+    seq_len: int,
+    batch_size: int,
+    seed: int,
+    rank: int = 0,
+    world_size: int = 1,
 ) -> tuple[PackedDataLoader, dict[str, Any]]:
     shards, man = load_corpus_shards(manifest_path)
-    return PackedDataLoader(PackedDataset(shards, seq_len), batch_size, seed=seed), man
+    loader = PackedDataLoader(
+        PackedDataset(shards, seq_len), batch_size, seed=seed, rank=rank, world_size=world_size
+    )
+    return loader, man
 
 
 def _autocast(device: str, precision: str) -> Any:
@@ -75,7 +90,11 @@ def evaluate(
 
 
 def _run_manifest(
-    cfg: TrainConfig, run: RunDir, model: LithosForCausalLM, device: str, corpus_man: dict[str, Any]
+    cfg: TrainConfig,
+    run: RunDir,
+    model: LithosForCausalLM,
+    dist: DistInfo,
+    corpus_man: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "run_id": run.root.name,
@@ -87,11 +106,12 @@ def _run_manifest(
         "sequence_length": cfg.data.seq_len,
         "micro_batch_size": cfg.micro_batch_size,
         "gradient_accumulation_steps": cfg.gradient_accumulation_steps,
-        "world_size": 1,
-        "global_batch_size": cfg.global_batch_size,
-        "tokens_per_step": cfg.tokens_per_step,
+        "world_size": dist.world_size,
+        "global_batch_size": cfg.global_batch_size * dist.world_size,
+        "tokens_per_step": cfg.tokens_per_step * dist.world_size,
         "precision": cfg.precision,
-        "device": device,
+        "device": dist.device,
+        "backend": dist.backend,
     }
 
 
@@ -120,24 +140,32 @@ def _save(
     )
 
 
-def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir:
+def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | None:
+    dist = setup_distributed(cfg.device)
+    device = dist.device
     seed_everything(cfg.seed)
-    device = resolve_device(cfg.device)
 
     raw_model = LithosForCausalLM(cfg.model).to(device)
     raw_model.gradient_checkpointing = cfg.grad_checkpointing
-    model: torch.nn.Module = raw_model
-    if cfg.compile:
-        model = torch.compile(raw_model)  # type: ignore[assignment]
-    optimizer = build_optimizer(model, cfg.optim)
+    optimizer = build_optimizer(raw_model, cfg.optim)
 
     loader, corpus_man = _build_loader(
-        cfg.data.corpus_manifest, cfg.data.seq_len, cfg.micro_batch_size, cfg.seed
+        cfg.data.corpus_manifest,
+        cfg.data.seq_len,
+        cfg.micro_batch_size,
+        cfg.seed,
+        rank=dist.rank,
+        world_size=dist.world_size,
     )
     val_loader = None
     if cfg.data.val_corpus_manifest:
         val_loader, _ = _build_loader(
-            cfg.data.val_corpus_manifest, cfg.data.seq_len, cfg.micro_batch_size, cfg.seed + 1
+            cfg.data.val_corpus_manifest,
+            cfg.data.seq_len,
+            cfg.micro_batch_size,
+            cfg.seed + 1,
+            rank=dist.rank,
+            world_size=dist.world_size,
         )
 
     step = 0
@@ -148,17 +176,36 @@ def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir:
         tokens_seen = state["tokens_seen"]
         loader.load_state_dict(state["dataloader"])
 
-    run = create_run_dir(cfg.run_name, base=cfg.runs_dir)
-    save_resolved_config(cfg, run.resolved_config)
-    write_json(run.manifest, _run_manifest(cfg, run, raw_model, device, corpus_man))
-    metrics = JsonlWriter(run.metrics)
+    # Wrap AFTER loading so DDP broadcasts rank-0's (possibly resumed) weights.
+    model: torch.nn.Module = raw_model
+    if dist.is_distributed:
+        device_ids = [dist.local_rank] if device.startswith("cuda") else None
+        model = DDP(raw_model, device_ids=device_ids)
+    elif cfg.compile:
+        model = torch.compile(raw_model)  # type: ignore[assignment]
+
+    tokens_per_step = cfg.tokens_per_step * dist.world_size
+
+    run: RunDir | None = None
+    metrics: JsonlWriter | None = None
+    if dist.is_main:
+        run = create_run_dir(cfg.run_name, base=cfg.runs_dir)
+        save_resolved_config(cfg, run.resolved_config)
+        write_json(run.manifest, _run_manifest(cfg, run, raw_model, dist, corpus_man))
+        metrics = JsonlWriter(run.metrics)
 
     use_scaler = device.startswith("cuda") and cfg.precision == "fp16"
     scaler = torch.amp.GradScaler("cuda") if use_scaler else None
 
+    def write_checkpoint(at_step: int) -> None:
+        if dist.is_main and run is not None:
+            _save(run, raw_model, optimizer, at_step, tokens_seen, loader, cfg, corpus_man)
+        barrier()  # all ranks wait for rank 0 to finish writing
+
     model.train()
     t0 = time.time()
     tokens_at_t0 = tokens_seen
+    accum = cfg.gradient_accumulation_steps
     try:
         while step < cfg.schedule.max_steps:
             lr = cosine_lr(step, cfg.schedule, cfg.optim.lr)
@@ -166,20 +213,28 @@ def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir:
             optimizer.zero_grad(set_to_none=True)
 
             loss_sum = 0.0
-            for _ in range(cfg.gradient_accumulation_steps):
+            for micro in range(accum):
                 x, y = next(loader)
-                with _autocast(device, cfg.precision):
-                    _, loss = model(x.to(device), targets=y.to(device))
-                loss = loss / cfg.gradient_accumulation_steps
-                if scaler is not None:
-                    scaler.scale(loss).backward()
-                else:
-                    loss.backward()
+                # Skip the all-reduce on non-final micro-steps (DDP grad accumulation).
+                last = micro == accum - 1
+                sync = (
+                    contextlib.nullcontext()
+                    if (last or not isinstance(model, DDP))
+                    else model.no_sync()
+                )
+                with sync:
+                    with _autocast(device, cfg.precision):
+                        _, loss = model(x.to(device), targets=y.to(device))
+                    loss = loss / accum
+                    if scaler is not None:
+                        scaler.scale(loss).backward()
+                    else:
+                        loss.backward()
                 loss_sum += loss.item()
 
             if scaler is not None:
                 scaler.unscale_(optimizer)
-            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.optim.grad_clip)
+            grad_norm = torch.nn.utils.clip_grad_norm_(raw_model.parameters(), cfg.optim.grad_clip)
             if scaler is not None:
                 scaler.step(optimizer)
                 scaler.update()
@@ -187,47 +242,56 @@ def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir:
                 optimizer.step()
 
             step += 1
-            tokens_seen += cfg.tokens_per_step
+            tokens_seen += tokens_per_step
 
             if step % cfg.log_interval == 0 or step == cfg.schedule.max_steps:
-                now = time.time()
-                elapsed = now - t0
-                tps = (tokens_seen - tokens_at_t0) / elapsed if elapsed > 0 else 0.0
-                t0, tokens_at_t0 = now, tokens_seen
-                record: dict[str, Any] = {
-                    "step": step,
-                    "tokens_seen": tokens_seen,
-                    "train_loss": loss_sum,
-                    "learning_rate": lr,
-                    "grad_norm": float(grad_norm),
-                    "throughput_tokens_per_sec": tps,
-                    "timestamp": dt.datetime.now(dt.UTC).isoformat(),
-                }
-                if device.startswith("cuda"):
-                    record["gpu_memory_allocated"] = int(torch.cuda.memory_allocated())
-                metrics.write(record)
-
-            if val_loader is not None and cfg.eval_interval and step % cfg.eval_interval == 0:
-                vloss = evaluate(model, val_loader, cfg.eval_steps, device, cfg.precision)
-                metrics.write(
-                    {
+                train_loss = all_reduce_mean(loss_sum, device)
+                if metrics is not None:
+                    now = time.time()
+                    elapsed = now - t0
+                    tps = (tokens_seen - tokens_at_t0) / elapsed if elapsed > 0 else 0.0
+                    t0, tokens_at_t0 = now, tokens_seen
+                    record: dict[str, Any] = {
                         "step": step,
-                        "validation_loss": vloss,
+                        "tokens_seen": tokens_seen,
+                        "train_loss": train_loss,
+                        "learning_rate": lr,
+                        "grad_norm": float(grad_norm),
+                        "throughput_tokens_per_sec": tps,
                         "timestamp": dt.datetime.now(dt.UTC).isoformat(),
                     }
+                    if device.startswith("cuda"):
+                        record["gpu_memory_allocated"] = int(torch.cuda.memory_allocated())
+                    metrics.write(record)
+
+            if val_loader is not None and cfg.eval_interval and step % cfg.eval_interval == 0:
+                vloss = all_reduce_mean(
+                    evaluate(model, val_loader, cfg.eval_steps, device, cfg.precision), device
                 )
+                if metrics is not None:
+                    metrics.write(
+                        {
+                            "step": step,
+                            "validation_loss": vloss,
+                            "timestamp": dt.datetime.now(dt.UTC).isoformat(),
+                        }
+                    )
 
             if (
                 cfg.checkpoint_interval
                 and step % cfg.checkpoint_interval == 0
                 and step < cfg.schedule.max_steps
             ):
-                _save(run, raw_model, optimizer, step, tokens_seen, loader, cfg, corpus_man)
+                write_checkpoint(step)
     except KeyboardInterrupt:
-        _save(run, raw_model, optimizer, step, tokens_seen, loader, cfg, corpus_man)
-        metrics.close()
+        write_checkpoint(step)
+        if metrics is not None:
+            metrics.close()
+        cleanup_distributed()
         raise
 
-    _save(run, raw_model, optimizer, step, tokens_seen, loader, cfg, corpus_man)
-    metrics.close()
+    write_checkpoint(step)
+    if metrics is not None:
+        metrics.close()
+    cleanup_distributed()
     return run
