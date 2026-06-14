@@ -41,3 +41,9 @@ schedule:
   warmup_steps: 500
   max_steps: 57000      # ~15B tokens over-trained (~150 tok/param); cloud target
   min_lr_ratio: 0.1
+
+wandb:                  # live tracking for the cloud run; metrics.jsonl stays canonical
+  enabled: true
+  project: lithos
+  mode: online          # offline -> log locally and `wandb sync` later
+  tags: [lithos-100m, pretrain]

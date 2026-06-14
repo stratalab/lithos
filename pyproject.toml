@@ -32,6 +32,9 @@ eval = ["transformers>=4.51"]
 # Cloud object-store backends for the durable artifact store (PRD §26.5).
 # fsspec ships with the core install (via datasets); these add S3/R2/GCS.
 cloud = ["s3fs>=2024.0", "gcsfs>=2024.0"]
+# Experiment tracking: optional W&B mirror of metrics.jsonl (PRD §15). Lazily
+# imported and disabled by default, so the core install never needs it.
+tracking = ["wandb>=0.18"]
 
 [dependency-groups]
 dev = [

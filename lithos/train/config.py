@@ -39,6 +39,23 @@ class DataConfig(BaseModel):
     val_corpus_manifest: str | None = None
 
 
+class WandbConfig(BaseModel):
+    """Optional Weights & Biases mirror of ``metrics.jsonl`` (rank-0 only).
+
+    Disabled by default; the local JSONL stays the canonical record either way.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    project: str = "lithos"
+    entity: str | None = None  # team/user; None -> wandb default
+    mode: Literal["online", "offline", "disabled"] = "online"
+    group: str | None = None  # None -> run_name (groups resumed segments together)
+    tags: list[str] = Field(default_factory=list)
+    notes: str | None = None
+
+
 class TrainConfig(BaseModel):
     # protected_namespaces=() so a field named ``model`` is allowed.
     model_config = ConfigDict(extra="forbid", protected_namespaces=())
@@ -63,6 +80,7 @@ class TrainConfig(BaseModel):
     data: DataConfig
     optim: OptimConfig = Field(default_factory=OptimConfig)
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
+    wandb: WandbConfig = Field(default_factory=WandbConfig)
 
     @property
     def global_batch_size(self) -> int:

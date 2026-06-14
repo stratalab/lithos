@@ -31,6 +31,7 @@ from lithos.train.distributed import (
 from lithos.train.logging import JsonlWriter, RunDir, create_run_dir
 from lithos.train.optim import build_optimizer
 from lithos.train.scheduler import cosine_lr, set_lr
+from lithos.train.tracking import Reporter, init_reporter
 from lithos.utils.config import save_resolved_config
 from lithos.utils.io import read_json, write_json
 from lithos.utils.seed import seed_everything
@@ -188,17 +189,25 @@ def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | None:
 
     run: RunDir | None = None
     metrics: JsonlWriter | None = None
+    reporter = Reporter(None)  # no-op unless tracking enabled on the main rank
     if dist.is_main:
         run = create_run_dir(cfg.run_name, base=cfg.runs_dir)
         save_resolved_config(cfg, run.resolved_config)
         write_json(run.manifest, _run_manifest(cfg, run, raw_model, dist, corpus_man))
         metrics = JsonlWriter(run.metrics)
+        reporter = init_reporter(cfg, run_id=run.root.name, run_dir=str(run.root), is_main=True)
 
     use_scaler = device.startswith("cuda") and cfg.precision == "fp16"
     scaler = torch.amp.GradScaler("cuda") if use_scaler else None
 
     def write_checkpoint(at_step: int) -> None:
-        if dist.is_main and run is not None:
+        # Idempotent: a step already checkpointed (e.g. a periodic save) holds a
+        # consistent snapshot at that step, so don't re-save it. This also keeps
+        # the KeyboardInterrupt handler from colliding with a just-written
+        # periodic checkpoint (FileExistsError would otherwise mask the interrupt
+        # and skip clean teardown).
+        already_saved = run is not None and (run.checkpoints / f"step_{at_step:06d}").exists()
+        if dist.is_main and run is not None and not already_saved:
             _save(run, raw_model, optimizer, at_step, tokens_seen, loader, cfg, corpus_man)
         barrier()  # all ranks wait for rank 0 to finish writing
 
@@ -263,6 +272,7 @@ def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | None:
                     if device.startswith("cuda"):
                         record["gpu_memory_allocated"] = int(torch.cuda.memory_allocated())
                     metrics.write(record)
+                    reporter.log(record, step)
 
             if val_loader is not None and cfg.eval_interval and step % cfg.eval_interval == 0:
                 vloss = all_reduce_mean(
@@ -276,6 +286,7 @@ def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | None:
                             "timestamp": dt.datetime.now(dt.UTC).isoformat(),
                         }
                     )
+                    reporter.log({"validation_loss": vloss}, step)
 
             if (
                 cfg.checkpoint_interval
@@ -285,12 +296,14 @@ def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | None:
                 write_checkpoint(step)
     except KeyboardInterrupt:
         write_checkpoint(step)
+        reporter.finish()
         if metrics is not None:
             metrics.close()
         cleanup_distributed()
         raise
 
     write_checkpoint(step)
+    reporter.finish()
     if metrics is not None:
         metrics.close()
     cleanup_distributed()
