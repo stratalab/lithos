@@ -12,11 +12,15 @@ sources:
     config_name: sample-10BT
     split: train
     text_field: text
+    quality_field: score      # FineWeb-Edu carries the edu-classifier score (0-5) per doc
     source_name: fineweb-edu
     language: en
     license: odc-by
 
 output_dir: data/fineweb-edu/corpus-100m-v0.1
+# quality:                   # enable to filter stricter than FineWeb-Edu's default (>=3)
+#   enabled: true
+#   threshold: 3.5
 seq_len: 2048
 tokens_per_shard: 100000000   # ~100M tokens/shard (~200MB) for big corpora
 add_bos: true

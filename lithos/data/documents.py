@@ -29,6 +29,7 @@ class DocumentSource(BaseModel):
     config_name: str | None = None
     split: str = "train"
     text_field: str = "text"
+    quality_field: str | None = None  # raw field carrying a precomputed quality score (e.g. "score")
     source_name: str = "unknown"
     subset: str | None = None
     language: str = "en"
@@ -44,12 +45,13 @@ def normalize(
     language: str,
     license: str,
     text_field: str = "text",
+    quality_field: str | None = None,
 ) -> dict[str, Any] | None:
     """Coerce a raw record into the canonical schema; return None if no text."""
     text = record.get(text_field)
     if not isinstance(text, str) or not text:
         return None
-    return {
+    doc = {
         "id": str(record.get("id", "")),
         "text": text,
         "source": record.get("source", source),
@@ -58,6 +60,9 @@ def normalize(
         "license": record.get("license", license),
         "metadata": record.get("metadata", {}),
     }
+    if quality_field is not None:
+        doc["quality_score"] = record.get(quality_field)
+    return doc
 
 
 @contextlib.contextmanager
@@ -116,6 +121,7 @@ def iter_documents(source: DocumentSource) -> Iterator[dict[str, Any]]:
             language=source.language,
             license=source.license,
             text_field=source.text_field,
+            quality_field=source.quality_field,
         )
         if doc is None:
             continue

@@ -18,6 +18,7 @@ from lithos.data.documents import DocumentSource, iter_documents
 from lithos.data.filters import DocumentFilter, FilterConfig
 from lithos.data.manifest import corpus_manifest
 from lithos.data.minhash import MinHashConfig, MinHashDeduper
+from lithos.data.quality import QualityConfig, QualityFilter
 from lithos.data.shard import ShardWriter, dtype_for_vocab
 from lithos.data.tokenize import DocumentTokenizer
 from lithos.tokenizer.inspect_tokenizer import load_tokenizer
@@ -51,6 +52,7 @@ class CorpusBuildConfig(BaseModel):
     near_dedup: bool = False  # MinHash/LSH near-dedup (Phase 10); off by default
     minhash: MinHashConfig = Field(default_factory=MinHashConfig)
     decontam: DecontamConfig = Field(default_factory=DecontamConfig)
+    quality: QualityConfig = Field(default_factory=QualityConfig)
     filters: FilterConfig = Field(default_factory=FilterConfig)
     license_notes: list[str] = Field(default_factory=list)
 
@@ -63,6 +65,7 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
     doctok = DocumentTokenizer.from_tokenizer(tokenizer, add_bos=cfg.add_bos, add_eos=cfg.add_eos)
 
     filt = DocumentFilter(cfg.filters)
+    qual = QualityFilter(cfg.quality) if cfg.quality.enabled else None
     dedup = ExactDocumentDeduper() if cfg.exact_dedup else None
     near = MinHashDeduper(cfg.minhash) if cfg.near_dedup else None
     decon = None
@@ -97,6 +100,8 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
         for doc in iter_documents(source):
             if not filt.keep(doc):
                 continue
+            if qual is not None and not qual.keep(doc):
+                continue
             if dedup is not None and dedup.is_duplicate(doc["text"]):
                 continue
             if near is not None and near.is_duplicate(doc["text"]):
@@ -128,6 +133,7 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
             "exact": dedup.stats() if dedup is not None else {},
             "near": near.stats() if near is not None else {},
             "decontam": decon.stats() if decon is not None else {},
+            "quality": qual.stats() if qual is not None else {},
         },
         shards=shards,
         license_notes=cfg.license_notes,

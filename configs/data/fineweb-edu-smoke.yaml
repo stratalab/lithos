@@ -11,6 +11,7 @@ sources:
     config_name: sample-10BT
     split: train
     text_field: text
+    quality_field: score      # FineWeb-Edu carries the edu-classifier score (0-5) per doc
     source_name: fineweb-edu
     language: en
     license: odc-by
