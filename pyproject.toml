@@ -26,6 +26,9 @@ dependencies = [
 [project.optional-dependencies]
 # Local serving extras (Phase 7); kept out of the core install.
 serve = ["fastapi>=0.110", "uvicorn>=0.30"]
+# Evaluation / HF-export interop: transformers loads our Llama/Qwen3 export and
+# is the backend for lm-evaluation-harness (`--model hf`). See PRD §26.8.
+eval = ["transformers>=4.51"]
 
 [dependency-groups]
 dev = [

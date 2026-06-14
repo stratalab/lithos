@@ -1,0 +1,27 @@
+# EleutherAI lm-evaluation-harness integration (PRD §11.2, §26.8).
+#
+# Lithos checkpoints export to a HuggingFace-loadable Llama/Qwen3 directory, so the
+# harness runs directly via its `hf` backend -- no bespoke adapter needed.
+#
+# 1) Export a checkpoint (run_evals.py writes export_dir):
+#      python scripts/run_evals.py --config configs/eval/base.yaml \
+#        --checkpoint runs/<run>/checkpoints/step_XXXXXX
+#
+# 2) Run the harness against the export:
+#      pip install lm-eval
+#      lm_eval --model hf \
+#        --model_args pretrained=artifacts/lithos-100m-base,dtype=bfloat16 \
+#        --tasks hellaswag,arc_easy,arc_challenge,piqa,winogrande,lambada_openai \
+#        --batch_size auto --output_path runs/eval/lm-eval
+#
+#    The faster vLLM backend works the same way: --model vllm
+#
+# Small models are expected to score near chance on most of these; the point at
+# smoke/100M scale is that the plumbing runs and results are saved.
+tasks:
+  - hellaswag
+  - arc_easy
+  - arc_challenge
+  - piqa
+  - winogrande
+  - lambada_openai

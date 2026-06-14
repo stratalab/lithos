@@ -1,0 +1,18 @@
+# Base-model evaluation: validation perplexity + fixed-prompt samples + HF export.
+# Note: for the smoke this points the "val" set at the training corpus; real runs
+# must use a held-out, decontaminated val set (PRD §27).
+name: base
+tokenizer_path: artifacts/tokenizer/smoke/tokenizer.json
+val_corpus_manifest: data/smoke/corpus-v0.1/corpus_manifest.json
+eval_batches: 20
+batch_size: 8
+
+prompts:
+  - "The model"
+  - "Lithos is"
+
+sample_max_new_tokens: 32
+greedy: true
+
+output_dir: runs/eval
+export_dir: artifacts/lithos-smoke-base
