@@ -12,6 +12,7 @@ import math
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.utils.checkpoint import checkpoint
 
 from lithos.model.attention import KVCache
 from lithos.model.config import ModelConfig
@@ -26,6 +27,7 @@ class LithosForCausalLM(nn.Module):
         self.cfg = cfg
         vocab = cfg.padded_vocab_size
 
+        self.gradient_checkpointing = False
         self.embed_tokens = nn.Embedding(vocab, cfg.hidden)
         self.rope = RotaryEmbedding(cfg.head_dim, cfg.rope_theta)
         self.layers = nn.ModuleList(TransformerBlock(cfg) for _ in range(cfg.n_layers))
@@ -72,7 +74,10 @@ class LithosForCausalLM(nn.Module):
         x = self.embed_tokens(input_ids)
         for i, layer in enumerate(self.layers):
             kv = kv_caches[i] if kv_caches is not None else None
-            x = layer(x, cos, sin, attn_mask, kv)
+            if self.gradient_checkpointing and self.training and kv is None:
+                x = checkpoint(layer, x, cos, sin, attn_mask, kv, use_reentrant=False)
+            else:
+                x = layer(x, cos, sin, attn_mask, kv)
         x = self.norm(x)
         logits = self.lm_head(x)
 

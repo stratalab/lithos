@@ -1,0 +1,39 @@
+# Single-GPU (or CPU) smoke training run on the synthetic smoke corpus.
+# Prereqs: scripts/prepare_smoke_data.py, scripts/train_tokenizer.py (smoke),
+# scripts/tokenize_corpus.py --config configs/data/smoke.yaml.
+run_name: lithos-smoke
+seed: 0
+device: auto          # cpu / cuda / auto
+precision: bf16       # falls back to fp32 on CPU
+
+micro_batch_size: 16
+gradient_accumulation_steps: 1
+grad_checkpointing: false
+compile: false
+
+log_interval: 10
+eval_interval: 0
+checkpoint_interval: 200
+
+model:
+  vocab_size: 2618    # matches the smoke tokenizer; set to 32000 for the real tokenizer
+  n_layers: 4
+  hidden: 256
+  n_heads: 4
+  n_kv_heads: 4
+  seq_len: 128
+  qk_norm: false
+
+data:
+  corpus_manifest: data/smoke/corpus-v0.1/corpus_manifest.json
+  seq_len: 128
+
+optim:
+  lr: 0.001
+  weight_decay: 0.1
+  grad_clip: 1.0
+
+schedule:
+  warmup_steps: 50
+  max_steps: 500
+  min_lr_ratio: 0.1
