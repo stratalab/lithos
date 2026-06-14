@@ -94,7 +94,7 @@ Not in the original plan; now a real deliverable. `scripts/`: **`build_corpus.sh
 
 **Acceptance:** `run_evals.py --config … --checkpoint …` yields perplexity + the full frozen scorecard + samples for any checkpoint, identically at any scale — ready to score the 100M the moment it lands.
 
-**Status (2026-06-14):** harness built + unit-tested — lm-eval wiring (`evals/benchmarks.py`, lazy import, mocked in tests), frozen **v1 battery**, n-gram **decontamination** (`evals/decontam.py`), and a comparable **scorecard** (`evals/scorecard.py`); `configs/eval/lithos-100m.yaml`; `lm-eval` added to the `eval` extra. **Pending:** carve the held-out decontaminated FineWeb-Edu slice for clean perplexity, and the first real `--extra eval` run against the 100M on completion.
+**Status (2026-06-14):** harness built, unit-tested, **and validated end-to-end** — lm-eval wiring (`evals/benchmarks.py`), frozen **v1 battery**, n-gram **decontamination** (`evals/decontam.py`), comparable **scorecard** (`evals/scorecard.py`), `configs/eval/lithos-100m.yaml`. Real-path smoke passed: tiny checkpoint → Qwen3 export → **real `lm_eval` (arc_easy) → scorecard** on transformers 5.12; benchmark scores render in `results.md`. The smoke caught a missing transitive dep — **`accelerate`** added to the `eval` extra. **Pending:** carve the held-out decontaminated FineWeb-Edu slice for clean perplexity, and the first `--extra eval` run against the 100M on completion.
 
 ## Phase 10 — Data quality v1 ("every trick")  ·  ◻
 

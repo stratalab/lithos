@@ -23,6 +23,19 @@ def _render_markdown(name: str, results: dict[str, Any], model_reference: dict[s
             f"- tokens: {ppl['tokens']:,}",
             "",
         ]
+    bench = results.get("benchmarks")
+    if bench and bench.get("tasks"):
+        lines.append(
+            f"## Benchmarks (battery {bench.get('battery_version', '?')}, "
+            f"{bench.get('num_fewshot', 0)}-shot)"
+        )
+        for task, t in sorted(bench["tasks"].items()):
+            value = t.get("value")
+            shown = f"{value:.4f} ({t.get('metric')})" if value is not None else "n/a"
+            lines.append(f"- **{task}**: {shown}")
+        if bench.get("mean") is not None:
+            lines.append(f"- **mean**: {bench['mean']:.4f}")
+        lines.append("")
     samples = results.get("samples")
     if samples:
         lines.append("## Samples")
