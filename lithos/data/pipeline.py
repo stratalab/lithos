@@ -44,6 +44,7 @@ class CorpusBuildConfig(BaseModel):
     output_dir: str
     seq_len: int = 1024
     tokens_per_shard: int = 1_000_000
+    holdout_docs: int = 0  # divert the first N kept docs to a disjoint held-out manifest
     add_bos: bool = True
     add_eos: bool = True
     exact_dedup: bool = True
@@ -69,16 +70,29 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
         if not cfg.decontam.probes_path:
             raise ValueError("decontam.enabled=true requires decontam.probes_path")
         decon = DecontaminationFilter(read_probes(cfg.decontam.probes_path), n=cfg.decontam.n)
+    shard_dtype = dtype_for_vocab(tokenizer.get_vocab_size())
     writer = ShardWriter(
         out / "tokenized",
         tokens_per_shard=cfg.tokens_per_shard,
-        dtype=dtype_for_vocab(tokenizer.get_vocab_size()),
+        dtype=shard_dtype,
         tokenizer_name=tokenizer_name,
         rel_base=out,  # store shard paths relative to the corpus dir (portable)
+    )
+    holdout = (
+        ShardWriter(
+            out / "held_out" / "tokenized",
+            tokens_per_shard=cfg.tokens_per_shard,
+            dtype=shard_dtype,
+            tokenizer_name=tokenizer_name,
+            rel_base=out / "held_out",
+        )
+        if cfg.holdout_docs > 0
+        else None
     )
 
     mixture: Counter[str] = Counter()
     n_docs = 0
+    n_held = 0
     for source in cfg.sources:
         for doc in iter_documents(source):
             if not filt.keep(doc):
@@ -89,9 +103,16 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
                 continue
             if decon is not None and decon.is_contaminated(doc["text"]):
                 continue
-            writer.add(doctok.encode(doc["text"]))
-            mixture[doc["source"]] += 1
-            n_docs += 1
+            ids = doctok.encode(doc["text"])
+            # First N kept (filtered/deduped/decontaminated) docs form the held-out set,
+            # so it is disjoint from training by construction.
+            if holdout is not None and n_held < cfg.holdout_docs:
+                holdout.add(ids)
+                n_held += 1
+            else:
+                writer.add(ids)
+                mixture[doc["source"]] += 1
+                n_docs += 1
     shards = writer.close()
 
     manifest = corpus_manifest(
@@ -113,4 +134,18 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
         now=now,
     )
     write_json(out / "corpus_manifest.json", manifest)
+    if holdout is not None:
+        held_shards = holdout.close()
+        write_json(
+            out / "held_out" / "corpus_manifest.json",
+            {
+                "name": f"{cfg.name}-heldout",
+                "version": cfg.version,
+                "tokenizer": tokenizer_name,
+                "held_out": True,
+                "num_documents": n_held,
+                "num_tokens": holdout.total_tokens,
+                "shards": held_shards,
+            },
+        )
     return manifest
