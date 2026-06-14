@@ -16,6 +16,7 @@ from lithos.data.dedup import ExactDocumentDeduper
 from lithos.data.documents import DocumentSource, iter_documents
 from lithos.data.filters import DocumentFilter, FilterConfig
 from lithos.data.manifest import corpus_manifest
+from lithos.data.minhash import MinHashConfig, MinHashDeduper
 from lithos.data.shard import ShardWriter, dtype_for_vocab
 from lithos.data.tokenize import DocumentTokenizer
 from lithos.tokenizer.inspect_tokenizer import load_tokenizer
@@ -35,6 +36,8 @@ class CorpusBuildConfig(BaseModel):
     add_bos: bool = True
     add_eos: bool = True
     exact_dedup: bool = True
+    near_dedup: bool = False  # MinHash/LSH near-dedup (Phase 10); off by default
+    minhash: MinHashConfig = Field(default_factory=MinHashConfig)
     filters: FilterConfig = Field(default_factory=FilterConfig)
     license_notes: list[str] = Field(default_factory=list)
 
@@ -48,6 +51,7 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
 
     filt = DocumentFilter(cfg.filters)
     dedup = ExactDocumentDeduper() if cfg.exact_dedup else None
+    near = MinHashDeduper(cfg.minhash) if cfg.near_dedup else None
     writer = ShardWriter(
         out / "tokenized",
         tokens_per_shard=cfg.tokens_per_shard,
@@ -64,6 +68,8 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
                 continue
             if dedup is not None and dedup.is_duplicate(doc["text"]):
                 continue
+            if near is not None and near.is_duplicate(doc["text"]):
+                continue
             writer.add(doctok.encode(doc["text"]))
             mixture[doc["source"]] += 1
             n_docs += 1
@@ -78,7 +84,10 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
         sources=[s.source_name for s in cfg.sources],
         mixture=dict(mixture),
         filters={"config": cfg.filters.model_dump(), "stats": filt.stats()},
-        dedup=dedup.stats() if dedup is not None else {},
+        dedup={
+            "exact": dedup.stats() if dedup is not None else {},
+            "near": near.stats() if near is not None else {},
+        },
         shards=shards,
         license_notes=cfg.license_notes,
         now=now,

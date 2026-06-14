@@ -96,7 +96,7 @@ Not in the original plan; now a real deliverable. `scripts/`: **`build_corpus.sh
 
 **Status (2026-06-14):** harness built, unit-tested, **and validated end-to-end** — lm-eval wiring (`evals/benchmarks.py`), frozen **v1 battery**, n-gram **decontamination** (`evals/decontam.py`), comparable **scorecard** (`evals/scorecard.py`), `configs/eval/lithos-100m.yaml`. Real-path smoke passed: tiny checkpoint → Qwen3 export → **real `lm_eval` (arc_easy) → scorecard** on transformers 5.12; benchmark scores render in `results.md`. The smoke caught a missing transitive dep — **`accelerate`** added to the `eval` extra. **Calibrated against ground truth:** Qwen2.5-0.5B/1.5B run through *our* harness reproduce their published 0-shot battery within ~1–2%, score clearly above chance, and are **monotonic** (1.5B > 0.5B on every task) — both committed as reference anchors in `configs/eval/reference_scorecard.jsonl` so every future Lithos model diffs against a known baseline. **Pending:** carve the held-out decontaminated FineWeb-Edu slice for clean perplexity, and the first `--extra eval` run against the 100M on completion.
 
-## Phase 10 — Data quality v1 ("every trick")  ·  ◻
+## Phase 10 — Data quality v1 ("every trick")  ·  ◑ in progress
 
 **Goal:** turn FineWeb-Edu into a best-in-class corpus, and stand up the data-recipe ablation loop. This is the data-layer foundation.
 
@@ -109,6 +109,8 @@ Not in the original plan; now a real deliverable. `scripts/`: **`build_corpus.sh
 - **Ablation harness:** a data intervention → train a small proxy (100M / lean 1B) → score on Phase 9 → keep only winners.
 
 **Acceptance:** a *measured* improvement on the frozen battery from at least one data intervention, ablated on the proxy and recorded in the scorecard.
+
+**Status (2026-06-14):** **MinHash/LSH near-dedup built + tested** — `data/minhash.py` (`MinHashDeduper` drops into the same `is_duplicate(text)` seam as exact dedup, promoting the Phase-3 stub), wired into `build_corpus` behind `near_dedup`, verified end-to-end catching a near-dup that exact dedup missed. **Next:** held-out decontaminated slice → model-based quality classifier → synthetic generation/rewrite → the ablation harness.
 
 ## Phase 11 — Post-training stack (SFT → DPO → distillation)  ·  ◻  *(absorbs old "SFT v0")*
 
