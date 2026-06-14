@@ -5,6 +5,11 @@
 # Secrets never live here or in any committed script: credentials come from a
 # git-ignored .env that you scp to the box. These helpers only *check* it.
 
+# uv installs to ~/.local/bin, which isn't on PATH in a non-interactive SSH shell;
+# put it on PATH so every script that sources this (launch_train, sync_checkpoints,
+# ...) can find uv regardless of how it was invoked.
+export PATH="$HOME/.local/bin:$PATH"
+
 # --- logging (warn/die -> stderr so stdout stays parseable) ------------------
 _c() { printf '\033[%sm' "$1"; }
 log()  { printf '%s[lithos]%s %s\n' "$(_c '1;34')" "$(_c 0)" "$*"; }
