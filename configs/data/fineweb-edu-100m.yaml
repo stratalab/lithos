@@ -1,0 +1,31 @@
+# FineWeb-Edu corpus for the 100M run (seq 2048).
+# sample-10BT (~10B tokens) is a good first real corpus for a 100M model.
+# The full tokenized shard set is large (~20GB) -- build on a cheap CPU box,
+# then `scripts/sync.py push` it to the durable store (configs/storage.yaml).
+name: lithos-fineweb-edu-100m
+version: v0.1
+tokenizer_path: artifacts/tokenizer/fineweb-edu-32k/tokenizer.json
+
+sources:
+  - kind: hf
+    dataset: HuggingFaceFW/fineweb-edu
+    config_name: sample-10BT
+    split: train
+    text_field: text
+    source_name: fineweb-edu
+    language: en
+    license: odc-by
+
+output_dir: data/fineweb-edu/corpus-100m-v0.1
+seq_len: 2048
+tokens_per_shard: 100000000   # ~100M tokens/shard (~200MB) for big corpora
+add_bos: true
+add_eos: true
+exact_dedup: true
+
+filters:
+  min_chars: 200
+  max_chars: 200000
+
+license_notes:
+  - "HuggingFaceFW/fineweb-edu, sample-10BT (ODC-By 1.0)."

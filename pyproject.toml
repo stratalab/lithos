@@ -29,6 +29,9 @@ serve = ["fastapi>=0.110", "uvicorn>=0.30"]
 # Evaluation / HF-export interop: transformers loads our Llama/Qwen3 export and
 # is the backend for lm-evaluation-harness (`--model hf`). See PRD §26.8.
 eval = ["transformers>=4.51"]
+# Cloud object-store backends for the durable artifact store (PRD §26.5).
+# fsspec ships with the core install (via datasets); these add S3/R2/GCS.
+cloud = ["s3fs>=2024.0", "gcsfs>=2024.0"]
 
 [dependency-groups]
 dev = [

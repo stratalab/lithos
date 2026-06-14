@@ -1,0 +1,28 @@
+# 32k byte-level BPE tokenizer trained on a Nemotron pretraining-sample slice
+# (English web + synthetic + math + code). The production 32k tokenizer should
+# train on a larger Nemotron-CC-v2 stream; this is the sample-scale version.
+tokenizer:
+  name: lithos-bpe-32k
+  version: nemotron-sample-v0.1
+  vocab_size: 32000
+  individual_digits: true
+  add_prefix_space: false
+  min_frequency: 2
+
+data:
+  kind: jsonl
+  paths:
+    - data/nemotron-sample/raw/hq_synthetic.jsonl
+    - data/nemotron-sample/raw/hq.jsonl
+    - data/nemotron-sample/raw/diverse_qa.jsonl
+    - data/nemotron-sample/raw/math.jsonl
+    - data/nemotron-sample/raw/synth_code.jsonl
+  text_field: text
+  max_documents: 20000
+
+output_dir: artifacts/tokenizer/nemotron-32k
+
+report_samples:
+  - "The mitochondria is the powerhouse of the cell."
+  - "def add(a, b):\n    return a + b"
+  - "The integral of x^2 from 0 to 1 is 1/3."

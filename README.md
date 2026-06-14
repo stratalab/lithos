@@ -31,11 +31,21 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Create the environment and install dependencies.
 # On Linux with an NVIDIA GPU, the default torch wheel is CUDA-enabled.
-uv sync
+# Use --all-extras for the full dev env (eval = transformers, cloud = s3fs/gcsfs,
+# serve = fastapi). A single --extra installs ONLY that extra and drops the others.
+uv sync --all-extras
 
 # CPU-only environment (CI, or a machine without a GPU):
 UV_TORCH_BACKEND=cpu uv sync
 ```
+
+## Storage & secrets
+
+Durable artifacts (shards, checkpoints, exports) live in an object store
+configured by `configs/storage.yaml` (local by default). For a cloud bucket,
+copy `.env.example` to `.env` (git-ignored) and set the R2/S3 credentials +
+`LITHOS_STORAGE_BASE_URI`; the storage layer loads `.env` automatically. Move
+data with `python scripts/sync.py push|pull <src> <dst>`.
 
 ## Quality gates
 

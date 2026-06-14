@@ -1,0 +1,43 @@
+# Lithos 100M training config (PRD §6.2, §9).
+# Real-run targets are below; the local 4070 sanity run overrides max_steps /
+# gradient_accumulation_steps for a short stability check before the cloud run.
+run_name: lithos-100m
+seed: 0
+device: auto
+precision: bf16
+
+micro_batch_size: 8
+gradient_accumulation_steps: 16   # effective batch 128 (262k tokens/step at seq 2048)
+grad_checkpointing: true          # fit seq 2048 in 12GB locally
+compile: false
+
+log_interval: 10
+eval_interval: 0
+checkpoint_interval: 2000
+
+model:
+  vocab_size: 32000
+  n_layers: 12
+  hidden: 768
+  n_heads: 12
+  n_kv_heads: 12
+  intermediate_size: 2048
+  seq_len: 2048
+  rope_theta: 10000.0
+  qk_norm: true
+  tie_embeddings: true
+
+data:
+  corpus_manifest: data/nemotron-sample/corpus-100m-v0.1/corpus_manifest.json
+  seq_len: 2048
+
+optim:
+  lr: 0.0006
+  betas: [0.9, 0.95]
+  weight_decay: 0.1
+  grad_clip: 1.0
+
+schedule:
+  warmup_steps: 500
+  max_steps: 57000      # ~15B tokens over-trained (~150 tok/param); cloud target
+  min_lr_ratio: 0.1

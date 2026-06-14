@@ -1,0 +1,14 @@
+# Lithos 100M — first real training-dynamics model (PRD §6.2).
+# ~110M params (24.6M embedding + ~84M non-embedding).
+vocab_size: 32000
+n_layers: 12
+hidden: 768
+n_heads: 12
+n_kv_heads: 12          # MHA at 100M; GQA turns on at 300M (PRD §6.2)
+intermediate_size: 2048 # 8/3 * hidden
+seq_len: 2048
+rope_theta: 10000.0
+qk_norm: true           # default-on for >=100M for training stability (PRD §6.1)
+tie_embeddings: true
+dropout: 0.0
+attn_backend: sdpa

@@ -1,0 +1,21 @@
+# Durable artifact storage (PRD §26.5).
+#
+# The single knob: change `base_uri` to move the source-of-truth for shards,
+# checkpoints, and exported models. Local disk is the default; the cloud store is
+# where data lives long-term and is pulled to GPU nodes for training.
+#
+# Default: local disk. The durable bucket is set via LITHOS_STORAGE_BASE_URI in
+# .env (so the committed config stays generic and infra lives with the secrets).
+base_uri: data/store
+
+# --- Cloudflare R2 (recommended: S3-compatible, zero egress) ---
+# Set only base_uri here; put creds + endpoint in .env (see .env.example):
+#   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_ENDPOINT_URL_S3 / AWS_DEFAULT_REGION
+# then: uv sync --extra cloud
+# base_uri: s3://lithos
+#
+# --- AWS S3 ---
+# base_uri: s3://lithos-data   (creds + AWS_DEFAULT_REGION via env / .env)
+#
+# --- Google Cloud Storage ---
+# base_uri: gs://lithos-data   (auth via GOOGLE_APPLICATION_CREDENTIALS)

@@ -16,6 +16,7 @@ from typing import Any
 import torch
 
 from lithos.data.dataloader import PackedDataLoader, PackedDataset
+from lithos.data.shard import read_shard_specs
 from lithos.model import LithosForCausalLM
 from lithos.train.checkpoint import load_checkpoint, save_checkpoint
 from lithos.train.config import TrainConfig
@@ -39,9 +40,7 @@ def _git_commit() -> str | None:
 
 
 def load_corpus_shards(manifest_path: str) -> tuple[list, dict[str, Any]]:
-    man = read_json(manifest_path)
-    shards = [(s["path"], s["num_tokens"], s["dtype"]) for s in man["shards"]]
-    return shards, man
+    return read_shard_specs(manifest_path), read_json(manifest_path)
 
 
 def _build_loader(

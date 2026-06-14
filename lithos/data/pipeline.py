@@ -53,6 +53,7 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
         tokens_per_shard=cfg.tokens_per_shard,
         dtype=dtype_for_vocab(tokenizer.get_vocab_size()),
         tokenizer_name=tokenizer_name,
+        rel_base=out,  # store shard paths relative to the corpus dir (portable)
     )
 
     mixture: Counter[str] = Counter()

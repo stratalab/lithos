@@ -1,0 +1,25 @@
+# 32k byte-level BPE tokenizer trained on a FineWeb-Edu sample (PRD §26.4).
+# FineWeb-Edu (HuggingFaceFW/fineweb-edu) is non-gated, permissive (ODC-By),
+# edu-classifier-filtered web text -- strong for small models.
+tokenizer:
+  name: lithos-bpe-32k
+  version: fineweb-edu-v0.1
+  vocab_size: 32000
+  individual_digits: true
+  add_prefix_space: false
+  min_frequency: 2
+
+data:
+  kind: hf
+  dataset: HuggingFaceFW/fineweb-edu
+  config_name: sample-10BT
+  split: train
+  text_field: text
+  max_documents: 300000   # enough text for a 32k vocab; tokenizer needs far less than training
+
+output_dir: artifacts/tokenizer/fineweb-edu-32k
+
+report_samples:
+  - "The water cycle describes how water moves through the environment."
+  - "Photosynthesis converts sunlight, water, and carbon dioxide into glucose."
+  - "In 1969, Apollo 11 landed the first humans on the Moon."

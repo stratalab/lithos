@@ -8,6 +8,7 @@ from typing import Any
 from safetensors.torch import load_model
 
 from lithos.data.dataloader import PackedDataLoader, PackedDataset
+from lithos.data.shard import read_shard_specs
 from lithos.evals.config import EvalConfig
 from lithos.evals.generate_samples import generate_samples
 from lithos.evals.perplexity import compute_perplexity
@@ -18,12 +19,10 @@ from lithos.tokenizer import DEFAULT_SPECIAL_TOKENS, load_tokenizer, special_tok
 from lithos.train.config import TrainConfig
 from lithos.utils.config import load_and_validate
 from lithos.utils.device import resolve_device
-from lithos.utils.io import read_json
 
 
 def _read_shards(manifest_path: str) -> list:
-    man = read_json(manifest_path)
-    return [(s["path"], s["num_tokens"], s["dtype"]) for s in man["shards"]]
+    return read_shard_specs(manifest_path)
 
 
 def load_model_from_checkpoint(checkpoint_path: str) -> tuple[LithosForCausalLM, TrainConfig]:
