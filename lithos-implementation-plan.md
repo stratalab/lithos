@@ -110,7 +110,7 @@ Not in the original plan; now a real deliverable. `scripts/`: **`build_corpus.sh
 
 **Acceptance:** a *measured* improvement on the frozen battery from at least one data intervention, ablated on the proxy and recorded in the scorecard.
 
-**Status (2026-06-14):** **MinHash/LSH near-dedup built + tested** — `data/minhash.py` (`MinHashDeduper` drops into the same `is_duplicate(text)` seam as exact dedup, promoting the Phase-3 stub), wired into `build_corpus` behind `near_dedup`, verified end-to-end catching a near-dup that exact dedup missed. **Next:** held-out decontaminated slice → model-based quality classifier → synthetic generation/rewrite → the ablation harness.
+**Status (2026-06-14):** ✅ **MinHash/LSH near-dedup** (`data/minhash.py`, drops into the exact-dedup seam, wired behind `near_dedup`). ✅ **Decontamination wiring** — `data/decontam.py` moved from `evals/` (data, not evals, owns it) + `DecontaminationFilter` (per-doc `is_contaminated`) + `load_benchmark_probes` (best-effort battery test-text extraction; 7/8 tasks — piqa's script-based dataset is skipped pending a parquet mirror); wired into `build_corpus` behind `decontam`, verified end-to-end dropping a doc that leaks a benchmark probe. **Next:** held-out holdout (build-time split → clean perplexity set, closes Phase 9) → model-based quality classifier → synthetic generation/rewrite → the ablation harness.
 
 ## Phase 11 — Post-training stack (SFT → DPO → distillation)  ·  ◻  *(absorbs old "SFT v0")*
 

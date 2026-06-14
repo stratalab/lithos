@@ -12,6 +12,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from lithos.data.decontam import DecontaminationFilter, read_probes
 from lithos.data.dedup import ExactDocumentDeduper
 from lithos.data.documents import DocumentSource, iter_documents
 from lithos.data.filters import DocumentFilter, FilterConfig
@@ -21,6 +22,16 @@ from lithos.data.shard import ShardWriter, dtype_for_vocab
 from lithos.data.tokenize import DocumentTokenizer
 from lithos.tokenizer.inspect_tokenizer import load_tokenizer
 from lithos.utils.io import ensure_dir, write_json
+
+
+class DecontamConfig(BaseModel):
+    """Drop training docs that overlap the eval battery's test text (PRD §8.9)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    probes_path: str | None = None  # JSONL of probe texts (see decontam.load_benchmark_probes)
+    n: int = 13
 
 
 class CorpusBuildConfig(BaseModel):
@@ -38,6 +49,7 @@ class CorpusBuildConfig(BaseModel):
     exact_dedup: bool = True
     near_dedup: bool = False  # MinHash/LSH near-dedup (Phase 10); off by default
     minhash: MinHashConfig = Field(default_factory=MinHashConfig)
+    decontam: DecontamConfig = Field(default_factory=DecontamConfig)
     filters: FilterConfig = Field(default_factory=FilterConfig)
     license_notes: list[str] = Field(default_factory=list)
 
@@ -52,6 +64,11 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
     filt = DocumentFilter(cfg.filters)
     dedup = ExactDocumentDeduper() if cfg.exact_dedup else None
     near = MinHashDeduper(cfg.minhash) if cfg.near_dedup else None
+    decon = None
+    if cfg.decontam.enabled:
+        if not cfg.decontam.probes_path:
+            raise ValueError("decontam.enabled=true requires decontam.probes_path")
+        decon = DecontaminationFilter(read_probes(cfg.decontam.probes_path), n=cfg.decontam.n)
     writer = ShardWriter(
         out / "tokenized",
         tokens_per_shard=cfg.tokens_per_shard,
@@ -70,6 +87,8 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
                 continue
             if near is not None and near.is_duplicate(doc["text"]):
                 continue
+            if decon is not None and decon.is_contaminated(doc["text"]):
+                continue
             writer.add(doctok.encode(doc["text"]))
             mixture[doc["source"]] += 1
             n_docs += 1
@@ -87,6 +106,7 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
         dedup={
             "exact": dedup.stats() if dedup is not None else {},
             "near": near.stats() if near is not None else {},
+            "decontam": decon.stats() if decon is not None else {},
         },
         shards=shards,
         license_notes=cfg.license_notes,

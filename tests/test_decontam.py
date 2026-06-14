@@ -1,6 +1,12 @@
 """Tests for n-gram decontamination (PRD §8.9)."""
 
-from lithos.evals.decontam import ngrams, scan_contamination
+from lithos.data.decontam import (
+    DecontaminationFilter,
+    ngrams,
+    read_probes,
+    scan_contamination,
+    write_probes,
+)
 
 
 def test_ngrams_basic():
@@ -38,3 +44,20 @@ def test_no_contamination_on_disjoint_corpus():
     rep = scan_contamination(examples, corpus, n=13)
     assert rep["num_contaminated"] == 0
     assert rep["rate"] == 0.0
+
+
+def test_decontamination_filter_flags_and_passes():
+    probes = ["the mitochondria is the powerhouse of the cell and produces atp for energy use"]
+    f = DecontaminationFilter(probes, n=13)
+    # a training doc containing a benchmark example is contaminated
+    assert f.is_contaminated("preamble " + probes[0] + " postamble") is True
+    # a clean doc passes
+    assert f.is_contaminated("an unrelated document about gardening tools and the weather this weekend ok") is False
+    s = f.stats()
+    assert s["probe_examples"] == 1 and s["contaminated_docs"] == 1 and s["n"] == 13
+
+
+def test_probes_roundtrip(tmp_path):
+    texts = ["first benchmark probe text", "second probe with unicode café"]
+    p = write_probes(tmp_path / "probes.jsonl", texts)
+    assert read_probes(p) == texts
