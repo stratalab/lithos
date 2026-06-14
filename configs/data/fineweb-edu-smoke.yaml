@@ -1,0 +1,31 @@
+# Tiny FineWeb-Edu corpus to validate the build -> push -> pull -> train chain
+# end to end in minutes (used by `SMOKE=1 bash scripts/build_corpus.sh`).
+# Not for real training -- 2k documents is far too little signal.
+name: lithos-fineweb-edu-smoke
+version: v0.1
+tokenizer_path: artifacts/tokenizer/fineweb-edu-32k/tokenizer.json
+
+sources:
+  - kind: hf
+    dataset: HuggingFaceFW/fineweb-edu
+    config_name: sample-10BT
+    split: train
+    text_field: text
+    source_name: fineweb-edu
+    language: en
+    license: odc-by
+    limit: 2000
+
+output_dir: data/fineweb-edu/corpus-smoke-v0.1
+seq_len: 2048
+tokens_per_shard: 2000000
+add_bos: true
+add_eos: true
+exact_dedup: true
+
+filters:
+  min_chars: 200
+  max_chars: 200000
+
+license_notes:
+  - "HuggingFaceFW/fineweb-edu, sample-10BT (ODC-By 1.0). Smoke subset."

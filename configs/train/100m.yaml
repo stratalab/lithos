@@ -28,7 +28,7 @@ model:
   tie_embeddings: true
 
 data:
-  corpus_manifest: data/nemotron-sample/corpus-100m-v0.1/corpus_manifest.json
+  corpus_manifest: data/fineweb-edu/corpus-100m-v0.1/corpus_manifest.json
   seq_len: 2048
 
 optim:
