@@ -23,7 +23,7 @@ while true; do
   fi
   [ "$latest" = "$last" ] && continue   # nothing new since the last push
   log "pushing $latest -> R2:$CKPT_REMOTE/latest"
-  if uv run python scripts/sync.py push "$latest" "$CKPT_REMOTE/latest"; then
+  if $UV python scripts/sync.py push "$latest" "$CKPT_REMOTE/latest"; then
     last="$latest"
     ok "synced $(basename "$latest")"
   else

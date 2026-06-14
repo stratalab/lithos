@@ -49,7 +49,7 @@ ok "uv $(uv --version 2>/dev/null | awk '{print $2}')"
 # -- [3/6] python deps + CUDA check ------------------------------------------
 log "[3/6] Dependencies (uv sync --extra tracking --extra cloud)"
 uv sync --extra tracking --extra cloud
-uv run python - <<'PY'
+$UV python - <<'PY'
 import torch
 assert torch.cuda.is_available(), "torch cannot see CUDA — driver/toolkit mismatch?"
 print(f"torch {torch.__version__}, CUDA {torch.version.cuda}, "
@@ -62,24 +62,24 @@ log "[4/6] Pull corpus + tokenizer from R2"
 if [ -f "$CORPUS_LOCAL/corpus_manifest.json" ]; then
   log "corpus already present at $CORPUS_LOCAL (skip)"
 else
-  uv run python scripts/sync.py pull "$CORPUS_REMOTE" "$CORPUS_LOCAL"
+  $UV python scripts/sync.py pull "$CORPUS_REMOTE" "$CORPUS_LOCAL"
 fi
 [ -f "$CORPUS_LOCAL/corpus_manifest.json" ] \
   || die "corpus manifest missing after pull — did build_corpus.sh push to R2:$CORPUS_REMOTE?"
 [ -d "$TOKENIZER_LOCAL" ] \
-  || uv run python scripts/sync.py pull "$TOKENIZER_REMOTE" "$TOKENIZER_LOCAL" \
+  || $UV python scripts/sync.py pull "$TOKENIZER_REMOTE" "$TOKENIZER_LOCAL" \
   || warn "tokenizer pull failed (only needed for sample generation / eval, not training)"
-ok "corpus ready: $(uv run python -c "import json; m=json.load(open('$CORPUS_LOCAL/corpus_manifest.json')); print(f\"{m['num_tokens']:,} tokens, {len(m['shards'])} shard(s)\")")"
+ok "corpus ready: $($UV python -c "import json; m=json.load(open('$CORPUS_LOCAL/corpus_manifest.json')); print(f\"{m['num_tokens']:,} tokens, {len(m['shards'])} shard(s)\")")"
 
 # -- [5/6] 2-GPU DDP smoke ---------------------------------------------------
 log "[5/6] ${SMOKE_STEPS}-step DDP smoke on $GPUS GPU(s) (verifies DDP + wandb + checkpoint->R2)"
-uv run torchrun --standalone --nproc_per_node="$GPUS" scripts/train_model.py \
+$UV torchrun --standalone --nproc_per_node="$GPUS" scripts/train_model.py \
   --config "$TRAIN_CONFIG" \
   --override run_name=smoke-2gpu "schedule.max_steps=$SMOKE_STEPS" schedule.warmup_steps=5 \
             checkpoint_interval=10 log_interval=1 'wandb.tags=[smoke]'
 smoke_ckpt="$(latest_checkpoint || true)"
 [ -n "$smoke_ckpt" ] || die "smoke produced no checkpoint"
-uv run python scripts/sync.py push "$smoke_ckpt" "smoke/checkpoint-roundtrip/$(basename "$smoke_ckpt")"
+$UV python scripts/sync.py push "$smoke_ckpt" "smoke/checkpoint-roundtrip/$(basename "$smoke_ckpt")"
 ok "smoke passed: DDP ran across $GPUS GPU(s), wandb logged, checkpoint round-tripped to R2"
 
 # -- [6/6] done --------------------------------------------------------------

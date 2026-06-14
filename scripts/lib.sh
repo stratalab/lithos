@@ -55,3 +55,8 @@ latest_checkpoint() {
 : "${CORPUS_LOCAL:=data/fineweb-edu/corpus-100m-v0.1}"
 : "${CORPUS_REMOTE:=corpus/fineweb-edu-100m-v0.1}"
 : "${CKPT_REMOTE:=checkpoints/lithos-100m}"
+
+# Always run through uv WITH the runtime extras the code needs — `tracking`
+# (wandb) and `cloud` (s3fs, required by sync.py for the R2 bucket) — so a plain
+# `uv run` can never sync them away mid-setup. First call bootstraps the env.
+UV="uv run --extra tracking --extra cloud"

@@ -33,7 +33,7 @@ resume_arg=""
 if local_ckpt="$(latest_checkpoint)"; then
   resume_arg="--resume $local_ckpt"
   log "Resuming from local checkpoint: $local_ckpt"
-elif uv run python scripts/sync.py pull "$CKPT_REMOTE/latest" runs/_restored/checkpoints/latest >/dev/null 2>&1; then
+elif $UV python scripts/sync.py pull "$CKPT_REMOTE/latest" runs/_restored/checkpoints/latest >/dev/null 2>&1; then
   resume_arg="--resume runs/_restored/checkpoints/latest"
   log "Resuming from R2 checkpoint: $CKPT_REMOTE/latest"
 else
@@ -41,7 +41,7 @@ else
 fi
 
 mkdir -p runs
-train_cmd="uv run torchrun --standalone --nproc_per_node=$GPUS scripts/train_model.py \
+train_cmd="$UV torchrun --standalone --nproc_per_node=$GPUS scripts/train_model.py \
 --config $TRAIN_CONFIG $resume_arg 2>&1 | tee -a runs/train.log"
 
 tmux new-session -d -s "$SESSION" -n train "$train_cmd"
