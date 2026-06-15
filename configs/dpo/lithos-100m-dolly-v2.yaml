@@ -1,0 +1,54 @@
+# DPO v2 — the *better recipe* after v1 regressed the 100M (Phase 11 — test bench).
+# Two changes vs v1: (1) on-policy TWO-SAMPLE preferences (both responses in-distribution,
+# judged by F1-to-reference minus repetition) instead of human-vs-model; (2) gentler
+# optimization — higher beta (tighter KL leash), fewer steps, lower LR. Goal: sharpen
+# without the coherence collapse v1 showed.
+run_name: lithos-100m-dpo-dolly-v2
+seed: 0
+device: auto
+precision: bf16
+
+init_from: runs/2026-06-15_110713_lithos-100m-sft-dolly/checkpoints/step_001200
+dpo_beta: 0.5                     # was 0.1 — tighter leash to the reference (less drift)
+
+micro_batch_size: 2
+gradient_accumulation_steps: 8    # effective 16 pairs  (PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True)
+grad_checkpointing: false
+compile: false
+
+log_interval: 10
+eval_interval: 30
+checkpoint_interval: 0
+
+model:
+  vocab_size: 32000
+  n_layers: 12
+  hidden: 768
+  n_heads: 12
+  n_kv_heads: 12
+  intermediate_size: 2048
+  seq_len: 2048
+  rope_theta: 10000.0
+  qk_norm: true
+  tie_embeddings: true
+
+data:
+  kind: dpo
+  tokenizer_path: artifacts/tokenizer/fineweb-edu-32k/tokenizer.json
+  corpus_manifest: data/dpo/dolly_twosample/train.jsonl    # on-policy two-sample prefs
+  val_corpus_manifest: data/dpo/dolly_twosample/val.jsonl
+  seq_len: 1024
+
+optim:
+  lr: 0.000003                    # 3e-6 — lower than v1 (5e-6); gentler
+  betas: [0.9, 0.95]
+  weight_decay: 0.0
+  grad_clip: 1.0
+
+schedule:
+  warmup_steps: 10
+  max_steps: 120                  # ~1 epoch (was 300 / ~2.5 epochs) — less over-optimization
+  min_lr_ratio: 0.1
+
+wandb:
+  enabled: false
