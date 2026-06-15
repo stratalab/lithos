@@ -28,16 +28,10 @@ from pathlib import Path
 import torch
 from tokenizers import Tokenizer
 
-from lithos.model import LithosForCausalLM
-from lithos.model.config import ModelConfig
 from lithos.model.generation import generate
 from lithos.posttrain.chat_template import render_prompt, special_ids
-from lithos.train.checkpoint import load_model_weights
+from lithos.train.checkpoint import load_model_from_checkpoint
 
-MODEL_100M = ModelConfig(
-    vocab_size=32000, n_layers=12, hidden=768, n_heads=12, n_kv_heads=12,
-    intermediate_size=2048, seq_len=2048, rope_theta=10000.0, qk_norm=True, tie_embeddings=True,
-)
 TOKENIZER = "artifacts/tokenizer/fineweb-edu-32k/tokenizer.json"
 _REP_WEIGHT = 0.3   # how much looping is penalised
 _MIN_MARGIN = 0.05  # keep a pair only if the judge clearly separates the two samples
@@ -87,8 +81,7 @@ def main() -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     tok = Tokenizer.from_file(TOKENIZER)
     end_id = special_ids(tok)["<|end|>"]
-    model = LithosForCausalLM(MODEL_100M).to(device).eval()
-    load_model_weights(args.sft, model)
+    model = load_model_from_checkpoint(args.sft, device)  # arch read from the checkpoint
     g = torch.Generator(device=device).manual_seed(args.seed)
 
     def sample(prompt: str) -> str:

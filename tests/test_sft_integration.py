@@ -4,7 +4,11 @@ import pytest
 import torch
 from lithos.model import LithosForCausalLM
 from lithos.model.config import ModelConfig
-from lithos.train.checkpoint import load_model_weights
+from lithos.train.checkpoint import (
+    load_model_from_checkpoint,
+    load_model_weights,
+    save_checkpoint,
+)
 from lithos.train.config import DataConfig
 from safetensors.torch import save_model
 
@@ -46,3 +50,20 @@ def test_load_model_weights_roundtrip(tmp_path):
 
     load_model_weights(ckpt, dst)  # loads weights only — no optimizer/RNG/data state
     assert all(torch.equal(a, b) for a, b in zip(src.parameters(), dst.parameters()))
+
+
+def test_checkpoint_embeds_arch_and_loads_size_agnostic(tmp_path):
+    import json
+
+    src = LithosForCausalLM(_tiny_model_cfg())
+    opt = torch.optim.AdamW(src.parameters(), lr=1e-3)
+    ckpt = tmp_path / "step_000001"
+    save_checkpoint(ckpt, model=src, optimizer=opt, step=1, tokens_seen=0, dataloader_state={}, meta={})
+
+    # the architecture is embedded in meta.json (self-describing checkpoint)
+    meta = json.loads((ckpt / "meta.json").read_text())
+    assert meta["model"]["n_layers"] == 2 and meta["model"]["hidden"] == 32
+
+    # the loader rebuilds the right model + weights WITHOUT being told the shape
+    loaded = load_model_from_checkpoint(ckpt)
+    assert all(torch.equal(a, b) for a, b in zip(src.parameters(), loaded.parameters()))

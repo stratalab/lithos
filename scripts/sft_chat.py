@@ -17,17 +17,10 @@ import argparse
 import torch
 from tokenizers import Tokenizer
 
-from lithos.model import LithosForCausalLM
-from lithos.model.config import ModelConfig
 from lithos.model.generation import generate
 from lithos.posttrain.chat_template import render_prompt, special_ids
-from lithos.train.checkpoint import load_model_weights
+from lithos.train.checkpoint import load_model_from_checkpoint
 
-# Architecture of the lithos-100m base (must match to load its weights).
-MODEL_100M = ModelConfig(
-    vocab_size=32000, n_layers=12, hidden=768, n_heads=12, n_kv_heads=12,
-    intermediate_size=2048, seq_len=2048, rope_theta=10000.0, qk_norm=True, tie_embeddings=True,
-)
 TOKENIZER = "artifacts/tokenizer/fineweb-edu-32k/tokenizer.json"
 PROMPTS = [
     "What is the capital of France?",
@@ -37,10 +30,8 @@ PROMPTS = [
 ]
 
 
-def _load(ckpt: str, device: str) -> LithosForCausalLM:
-    model = LithosForCausalLM(MODEL_100M).to(device).eval()
-    load_model_weights(ckpt, model)
-    return model
+def _load(ckpt: str, device: str):
+    return load_model_from_checkpoint(ckpt, device)  # arch read from the checkpoint
 
 
 def main() -> None:
