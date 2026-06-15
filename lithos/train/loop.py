@@ -19,7 +19,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from lithos.data.dataloader import PackedDataLoader, PackedDataset
 from lithos.data.shard import read_shard_specs
 from lithos.model import LithosForCausalLM
-from lithos.train.checkpoint import load_checkpoint, save_checkpoint
+from lithos.train.checkpoint import load_checkpoint, load_model_weights, save_checkpoint
 from lithos.train.config import TrainConfig
 from lithos.train.distributed import (
     DistInfo,
@@ -64,6 +64,30 @@ def _build_loader(
         PackedDataset(shards, seq_len), batch_size, seed=seed, rank=rank, world_size=world_size
     )
     return loader, man
+
+
+def _build_sft_loader(
+    cfg: TrainConfig, path: str, seed: int, rank: int = 0, world_size: int = 1
+) -> tuple[PackedDataLoader, dict[str, Any]]:
+    """Build a loader over a messages-JSONL SFT file. The ``SFTDataset`` duck-types
+    the ``PackedDataset`` interface, so the same ``PackedDataLoader`` + loop drive it.
+    """
+    from tokenizers import Tokenizer
+
+    from lithos.posttrain.sft_dataset import SFTDataset
+
+    if not cfg.data.tokenizer_path:
+        raise ValueError("data.tokenizer_path is required for data.kind='sft'")
+    tok = Tokenizer.from_file(cfg.data.tokenizer_path)
+    dataset = SFTDataset(path, tok, cfg.data.seq_len)
+    loader = PackedDataLoader(
+        dataset,  # type: ignore[arg-type]  # duck-types PackedDataset (len + __getitem__)
+        cfg.micro_batch_size,
+        seed=seed,
+        rank=rank,
+        world_size=world_size,
+    )
+    return loader, {"tokenizer": cfg.data.tokenizer_path, "corpus": path, "sft": dataset.stats()}
 
 
 def _autocast(device: str, precision: str) -> Any:
@@ -148,26 +172,40 @@ def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | None:
 
     raw_model = LithosForCausalLM(cfg.model).to(device)
     raw_model.gradient_checkpointing = cfg.grad_checkpointing
+    # Fine-tune/SFT: start from base weights with a fresh optimizer (resume_from, by
+    # contrast, restores optimizer + data position to continue the *same* run).
+    if cfg.init_from and not resume_from:
+        load_model_weights(cfg.init_from, raw_model)
     optimizer = build_optimizer(raw_model, cfg.optim)
 
-    loader, corpus_man = _build_loader(
-        cfg.data.corpus_manifest,
-        cfg.data.seq_len,
-        cfg.micro_batch_size,
-        cfg.seed,
-        rank=dist.rank,
-        world_size=dist.world_size,
-    )
-    val_loader = None
-    if cfg.data.val_corpus_manifest:
-        val_loader, _ = _build_loader(
-            cfg.data.val_corpus_manifest,
+    if cfg.data.kind == "sft":
+        loader, corpus_man = _build_sft_loader(
+            cfg, cfg.data.corpus_manifest, cfg.seed, dist.rank, dist.world_size
+        )
+    else:
+        loader, corpus_man = _build_loader(
+            cfg.data.corpus_manifest,
             cfg.data.seq_len,
             cfg.micro_batch_size,
-            cfg.seed + 1,
+            cfg.seed,
             rank=dist.rank,
             world_size=dist.world_size,
         )
+    val_loader = None
+    if cfg.data.val_corpus_manifest:
+        if cfg.data.kind == "sft":
+            val_loader, _ = _build_sft_loader(
+                cfg, cfg.data.val_corpus_manifest, cfg.seed + 1, dist.rank, dist.world_size
+            )
+        else:
+            val_loader, _ = _build_loader(
+                cfg.data.val_corpus_manifest,
+                cfg.data.seq_len,
+                cfg.micro_batch_size,
+                cfg.seed + 1,
+                rank=dist.rank,
+                world_size=dist.world_size,
+            )
 
     step = 0
     tokens_seen = 0

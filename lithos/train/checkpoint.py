@@ -72,6 +72,15 @@ def load_checkpoint(
     return state
 
 
+def load_model_weights(ckpt_dir: str | Path, model: nn.Module) -> None:
+    """Load ONLY model weights from a checkpoint (for fine-tune/SFT init).
+
+    Unlike ``load_checkpoint``, this ignores optimizer/RNG/dataloader state — the
+    fine-tune run starts a fresh optimizer and schedule from step 0.
+    """
+    load_model(model, str(Path(ckpt_dir) / "model.safetensors"))
+
+
 def find_latest_checkpoint(run_root: str | Path) -> Path | None:
     ckpts = sorted(Path(run_root, "checkpoints").glob("step_*"))
     return ckpts[-1] if ckpts else None

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from lithos.model.config import ModelConfig
 
@@ -34,9 +34,19 @@ class ScheduleConfig(BaseModel):
 class DataConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # "packed": corpus_manifest is a tokenized-shard manifest (pretraining).
+    # "sft":    corpus_manifest is a messages-JSONL file, rendered at load time.
+    kind: Literal["packed", "sft"] = "packed"
     corpus_manifest: str
     seq_len: int
     val_corpus_manifest: str | None = None
+    tokenizer_path: str | None = None  # required for kind="sft" (renders messages)
+
+    @model_validator(mode="after")
+    def _require_tokenizer_for_sft(self) -> DataConfig:
+        if self.kind == "sft" and not self.tokenizer_path:
+            raise ValueError("data.tokenizer_path is required when data.kind='sft'")
+        return self
 
 
 class WandbConfig(BaseModel):
@@ -65,6 +75,9 @@ class TrainConfig(BaseModel):
     seed: int = 0
     device: str = "auto"
     precision: Literal["fp32", "bf16", "fp16"] = "bf16"
+    # Weight-only init from a checkpoint dir (fine-tuning/SFT): loads model weights,
+    # then starts fresh optimizer + schedule from step 0 (distinct from resume_from).
+    init_from: str | None = None
 
     micro_batch_size: int = 8
     gradient_accumulation_steps: int = 1

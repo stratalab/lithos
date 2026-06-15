@@ -38,3 +38,4 @@ wandb/
 
 # Local credentials / env
 .env
+models/

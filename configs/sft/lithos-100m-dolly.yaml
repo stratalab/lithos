@@ -1,0 +1,54 @@
+# SFT of the Lithos 100M base on Dolly-15k (Phase 11 — test bench).
+# Proves the SFT pipeline end to end: base (completes text) -> follows instructions.
+# The model section MUST match the 100M base (we load its weights via init_from).
+run_name: lithos-100m-sft-dolly
+seed: 0
+device: auto
+precision: bf16
+
+# Weight-only init from the base checkpoint (pulled from R2), then a fresh
+# optimizer/schedule from step 0 — NOT a resume.
+init_from: models/lithos-100m-v0.1/checkpoint
+
+micro_batch_size: 4
+gradient_accumulation_steps: 8    # effective batch 32
+grad_checkpointing: false
+compile: false
+
+log_interval: 10
+eval_interval: 200                # watch val loss fall
+eval_steps: 20
+checkpoint_interval: 0            # final checkpoint only
+
+model:                            # identical architecture to lithos-100m
+  vocab_size: 32000
+  n_layers: 12
+  hidden: 768
+  n_heads: 12
+  n_kv_heads: 12
+  intermediate_size: 2048
+  seq_len: 2048
+  rope_theta: 10000.0
+  qk_norm: true
+  tie_embeddings: true
+
+data:
+  kind: sft
+  tokenizer_path: artifacts/tokenizer/fineweb-edu-32k/tokenizer.json
+  corpus_manifest: data/sft/dolly/train.jsonl   # for kind=sft: the messages-JSONL
+  val_corpus_manifest: data/sft/dolly/val.jsonl
+  seq_len: 1024                   # <= base context (2048); keeps ~98% of Dolly
+
+optim:
+  lr: 0.00002                     # 2e-5 — ~30x below pretrain; SFT is a light touch
+  betas: [0.9, 0.95]
+  weight_decay: 0.0               # SFT typically uses little/no weight decay
+  grad_clip: 1.0
+
+schedule:
+  warmup_steps: 50
+  max_steps: 1200                 # ~2.6 epochs over ~14.5k examples at effective batch 32
+  min_lr_ratio: 0.1
+
+wandb:
+  enabled: false
