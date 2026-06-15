@@ -36,16 +36,16 @@ class DataConfig(BaseModel):
 
     # "packed": corpus_manifest is a tokenized-shard manifest (pretraining).
     # "sft":    corpus_manifest is a messages-JSONL file, rendered at load time.
-    kind: Literal["packed", "sft"] = "packed"
+    kind: Literal["packed", "sft", "dpo"] = "packed"
     corpus_manifest: str
     seq_len: int
     val_corpus_manifest: str | None = None
     tokenizer_path: str | None = None  # required for kind="sft" (renders messages)
 
     @model_validator(mode="after")
-    def _require_tokenizer_for_sft(self) -> DataConfig:
-        if self.kind == "sft" and not self.tokenizer_path:
-            raise ValueError("data.tokenizer_path is required when data.kind='sft'")
+    def _require_tokenizer_for_rendered(self) -> DataConfig:
+        if self.kind in ("sft", "dpo") and not self.tokenizer_path:
+            raise ValueError(f"data.tokenizer_path is required when data.kind={self.kind!r}")
         return self
 
 
@@ -78,6 +78,7 @@ class TrainConfig(BaseModel):
     # Weight-only init from a checkpoint dir (fine-tuning/SFT): loads model weights,
     # then starts fresh optimizer + schedule from step 0 (distinct from resume_from).
     init_from: str | None = None
+    dpo_beta: float = 0.1  # DPO reference-deviation strength (only the DPO trainer reads this)
 
     micro_batch_size: int = 8
     gradient_accumulation_steps: int = 1

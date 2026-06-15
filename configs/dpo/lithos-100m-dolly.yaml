@@ -1,0 +1,52 @@
+# DPO of the SFT'd Lithos 100M on on-policy Dolly preferences (Phase 11 — test bench).
+# Starts from the SFT checkpoint (policy + frozen reference); proves the DPO loop and
+# that reward-accuracy climbs. init_from points at the SFT run output (override as needed).
+run_name: lithos-100m-dpo-dolly
+seed: 0
+device: auto
+precision: bf16
+
+init_from: runs/2026-06-15_110713_lithos-100m-sft-dolly/checkpoints/step_001200
+dpo_beta: 0.1
+
+micro_batch_size: 2               # pairs/micro-step (forwards 2x: chosen+rejected); fits the 4070
+gradient_accumulation_steps: 8    # effective 16 pairs   (run with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True)
+grad_checkpointing: false
+compile: false
+
+log_interval: 10
+eval_interval: 50                 # watch val reward-accuracy climb
+checkpoint_interval: 0
+
+model:                            # identical architecture to the SFT/base 100M
+  vocab_size: 32000
+  n_layers: 12
+  hidden: 768
+  n_heads: 12
+  n_kv_heads: 12
+  intermediate_size: 2048
+  seq_len: 2048
+  rope_theta: 10000.0
+  qk_norm: true
+  tie_embeddings: true
+
+data:
+  kind: dpo
+  tokenizer_path: artifacts/tokenizer/fineweb-edu-32k/tokenizer.json
+  corpus_manifest: data/dpo/dolly_onpolicy/train.jsonl   # for kind=dpo: the preferences-JSONL
+  val_corpus_manifest: data/dpo/dolly_onpolicy/val.jsonl
+  seq_len: 1024
+
+optim:
+  lr: 0.000005                    # 5e-6 — DPO runs even lower than SFT
+  betas: [0.9, 0.95]
+  weight_decay: 0.0
+  grad_clip: 1.0
+
+schedule:
+  warmup_steps: 20
+  max_steps: 300                  # ~2.5 epochs over ~1.9k pairs at effective batch 16
+  min_lr_ratio: 0.1
+
+wandb:
+  enabled: false

@@ -22,6 +22,36 @@ from lithos.posttrain.chat_template import TokenizerLike, render_conversation, s
 IGNORE_INDEX = -100  # matches F.cross_entropy(ignore_index=...) in the model
 
 
+def build_xy(
+    messages: list[dict[str, str]],
+    tokenizer: TokenizerLike,
+    seq_len: int,
+    pad_id: int,
+    *,
+    add_bos: bool = True,
+) -> tuple[list[int], list[int]] | None:
+    """Render a conversation to a padded ``(x, y)`` training pair.
+
+    Returns ``None`` if the example doesn't fit (overlong — dropped, never
+    right-truncated, since that loses the reply) or has no assistant tokens to
+    learn. Shared by SFT and DPO (chosen/rejected) so masking is identical.
+    """
+    r = render_conversation(messages, tokenizer, add_bos=add_bos)
+    ids, m = r.input_ids, r.loss_mask
+    if len(ids) < 2:
+        return None
+    x = ids[:-1]
+    y = [ids[i + 1] if m[i + 1] else IGNORE_INDEX for i in range(len(ids) - 1)]
+    if len(x) > seq_len:
+        return None
+    if all(t == IGNORE_INDEX for t in y):
+        return None
+    if (pad := seq_len - len(x)) > 0:  # right-pad; causal attn + masked loss keep it safe
+        x = x + [pad_id] * pad
+        y = y + [IGNORE_INDEX] * pad
+    return x, y
+
+
 class SFTDataset:
     """Indexable view of tokenized SFT examples (one conversation per sequence)."""
 
@@ -41,23 +71,11 @@ class SFTDataset:
         read = dropped = loss_tokens = 0
         for messages in _read_messages(path):
             read += 1
-            r = render_conversation(messages, tokenizer, add_bos=add_bos)
-            ids, m = r.input_ids, r.loss_mask
-            if len(ids) < 2:  # need at least one (input, label) pair
+            pair = build_xy(messages, tokenizer, seq_len, self.pad_id, add_bos=add_bos)
+            if pair is None:
                 dropped += 1
                 continue
-            # shift: x[i] = ids[i]; label[i] = ids[i+1] if it's an assistant token else IGNORE
-            x = ids[:-1]
-            y = [ids[i + 1] if m[i + 1] else IGNORE_INDEX for i in range(len(ids) - 1)]
-            if len(x) > seq_len:  # drop, don't truncate — a right-cut loses the reply
-                dropped += 1
-                continue
-            if all(t == IGNORE_INDEX for t in y):  # nothing to learn (e.g. empty reply)
-                dropped += 1
-                continue
-            if (pad := seq_len - len(x)) > 0:  # right-pad; causal attn + masked loss keep it safe
-                x = x + [self.pad_id] * pad
-                y = y + [IGNORE_INDEX] * pad
+            x, y = pair
             xs.append(x)
             ys.append(y)
             loss_tokens += sum(1 for t in y if t != IGNORE_INDEX)
