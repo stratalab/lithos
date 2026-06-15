@@ -20,21 +20,23 @@ import torch.nn.functional as F
 from lithos.posttrain.sft_dataset import IGNORE_INDEX
 
 
-def sequence_logprobs(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-    """Sum log p(token) over the non-masked (response) positions of each sequence.
+def token_logprobs(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    """Per-token log p(label), 0 at ``IGNORE_INDEX`` positions. Shape (B, T).
 
-    ``logits``: (B, T, V), aligned with ``labels`` (B, T); ``labels`` use
-    ``IGNORE_INDEX`` on prompt/padding positions (same convention as SFT).
-    Returns (B,) total response log-prob per sequence.
+    Fused cross-entropy: never materialises the full (B,T,V) log-softmax (memory),
+    and under autocast computes in fp32 (stability); reduction="none" returns 0 at
+    ignore_index positions. Used by DPO (summed) and GRPO (per-token, for the KL).
     """
     b, t, v = logits.shape
-    # Fused cross-entropy: never materialises the full (B,T,V) log-softmax (memory),
-    # and under autocast computes in fp32 (stability). reduction="none" yields 0 at
-    # ignore_index positions, so -CE summed over T is the response log-prob.
     nll = F.cross_entropy(
         logits.reshape(-1, v), labels.reshape(-1), ignore_index=IGNORE_INDEX, reduction="none"
     )
-    return (-nll).reshape(b, t).sum(dim=-1)
+    return (-nll).reshape(b, t)
+
+
+def sequence_logprobs(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    """Sum of per-token response log-probs (ignore-masked). Shape (B,)."""
+    return token_logprobs(logits, labels).sum(dim=-1)
 
 
 def dpo_loss(

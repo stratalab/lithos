@@ -36,7 +36,7 @@ class DataConfig(BaseModel):
 
     # "packed": corpus_manifest is a tokenized-shard manifest (pretraining).
     # "sft":    corpus_manifest is a messages-JSONL file, rendered at load time.
-    kind: Literal["packed", "sft", "dpo"] = "packed"
+    kind: Literal["packed", "sft", "dpo", "grpo"] = "packed"
     corpus_manifest: str
     seq_len: int
     val_corpus_manifest: str | None = None
@@ -44,7 +44,7 @@ class DataConfig(BaseModel):
 
     @model_validator(mode="after")
     def _require_tokenizer_for_rendered(self) -> DataConfig:
-        if self.kind in ("sft", "dpo") and not self.tokenizer_path:
+        if self.kind in ("sft", "dpo", "grpo") and not self.tokenizer_path:
             raise ValueError(f"data.tokenizer_path is required when data.kind={self.kind!r}")
         return self
 
@@ -79,6 +79,11 @@ class TrainConfig(BaseModel):
     # then starts fresh optimizer + schedule from step 0 (distinct from resume_from).
     init_from: str | None = None
     dpo_beta: float = 0.1  # DPO reference-deviation strength (only the DPO trainer reads this)
+    # GRPO (RLVR) — only the GRPO trainer reads these.
+    grpo_group_size: int = 8        # rollouts sampled per prompt (group baseline)
+    grpo_max_new: int = 16          # max new tokens per rollout
+    grpo_temperature: float = 1.0   # rollout sampling temperature (diversity)
+    grpo_kl_coef: float = 0.05      # KL leash to the reference
 
     micro_batch_size: int = 8
     gradient_accumulation_steps: int = 1

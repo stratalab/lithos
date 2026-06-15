@@ -1,0 +1,51 @@
+# GRPO/RLVR of the SFT'd Lithos 100M on procedural arithmetic (Phase 11 — test bench).
+# Proves the RL loop + verifier: sample rollouts -> verify -> group-relative advantage
+# -> policy gradient + KL leash. A 110M is weak at arithmetic, so we watch mean reward
+# AND accuracy rise modestly (the payoff is the flagship, where the model can do the task).
+run_name: lithos-100m-grpo-arith
+seed: 0
+device: auto
+precision: bf16
+
+init_from: runs/2026-06-15_110713_lithos-100m-sft-dolly/checkpoints/step_001200
+
+micro_batch_size: 8         # prompts per step
+grpo_group_size: 8          # rollouts per prompt (the group baseline)
+grpo_max_new: 16
+grpo_temperature: 1.0       # rollout diversity -> reward variance
+grpo_kl_coef: 0.05          # leash to the reference
+
+log_interval: 10
+checkpoint_interval: 0
+
+model:                      # identical architecture to the SFT/base 100M
+  vocab_size: 32000
+  n_layers: 12
+  hidden: 768
+  n_heads: 12
+  n_kv_heads: 12
+  intermediate_size: 2048
+  seq_len: 2048
+  rope_theta: 10000.0
+  qk_norm: true
+  tie_embeddings: true
+
+data:
+  kind: grpo
+  tokenizer_path: artifacts/tokenizer/fineweb-edu-32k/tokenizer.json
+  corpus_manifest: arithmetic   # procedural tasks (gen_arithmetic); not a file
+  seq_len: 64                   # unused by the GRPO trainer (it pads to actual length)
+
+optim:
+  lr: 0.000001                  # 1e-6 — RL is sensitive
+  betas: [0.9, 0.95]
+  weight_decay: 0.0
+  grad_clip: 1.0
+
+schedule:
+  warmup_steps: 10
+  max_steps: 200
+  min_lr_ratio: 0.5             # short RL run — keep lr from decaying too far
+
+wandb:
+  enabled: false
