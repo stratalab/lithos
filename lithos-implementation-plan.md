@@ -6,6 +6,8 @@ Companion to `lithos-prd.md`. This turns the PRD (esp. §19 milestones, §21 bui
 
 > **Domain pivot 2026-06-14** — the flagship's target is now a **compact cross-domain STEM reasoner** (code + math + physics + engineering) for **edge deployment**, the niche StrataDB already serves. At ≤1B params the budget is spent on *technical reasoning that transfers across domains* (the Musk-archetype STEM generalist), not general-web breadth — an underserved role precisely because it is nobody's benchmark target. The corpus is **painstakingly constructed** from open technical sources, and the data mix is chosen *empirically* by sweeping slice-splits on the cheap 100M rig (measured by per-domain bits-per-byte, since the STEM benchmarks are at chance below ~500M), then scaling the winning recipe 100M → 500M → 1B → 3B.
 
+> **Strategy pivot 2026-06-15 — open-base family + tool-integrated reasoning.** The *capable* tier is now built by **continued-pretraining an open Apache base** (Qwen3-4B — trained on ~**36T tokens**, i.e. ~$633k of pretraining we get for *free*) rather than pretraining 3B+ from scratch. Decisive insight: **a 36T base already *has* the STEM knowledge — the differentiation is in *deployment* (reasoning + tools), not knowledge injection.** So continued-pretrain stays **light** (re-weight to STEM + inject *verified-synthetic / reasoning* data + a high-quality anneal; ~100–300B tokens, **not** 1T of re-shown public data), and the budget goes to the differentiator: **RLVR reasoning + tool-integrated reasoning (TIR)**. (Proof: DeepSeek-R1-Zero — *pure RL on a base*, no continued-pretrain — became a world-class reasoner.) The product is a **family**: *from-scratch* small models (500M/1B — fully owned, 32k STEM tokenizer) + *continued-pretrained* capable models (4B/8B from Qwen3 — Apache-derived, 151k vocab), unified by **one owned deployment recipe**. **MVP = one of each** (a from-scratch 500M + the **4B hero**); 8B + the full family deferred. **Defining capability:** a compact STEM *reasoner* that drives **two verifiable tools — Python (SymPy/NumPy/SciPy) and MATLAB-syntax/Octave** — reasoning for judgment, tools for exact computation, running next to StrataDB on the edge. Cost model in §Economics.
+
 ## Guiding strategy
 
 1. **Walking skeleton first.** Get the entire §23 command sequence working end-to-end at *toy/smoke* scale (Phases 0–6) before the first real training run. Correctness and reproducibility before scale (PRD §3.8, §20).
@@ -19,14 +21,16 @@ Companion to `lithos-prd.md`. This turns the PRD (esp. §19 milestones, §21 bui
 
 ## Locked decisions (reconciled from PRD §26 + this session)
 
-- **Compute:** local **RTX 4070 Super (12GB)** for dev/smoke + cloud for scale — rented **2×H100 (~$8/hr)** for the 100M; **8×B200** for the big runs. A 5090 (32GB) is the candidate local-iteration upgrade (full-FT 1B, LoRA 3B/7B locally); Pro 6000 (96GB) deferred until justified.
+- **Compute:** local **RTX 4070 Super (12GB)** for dev/smoke + cloud for scale — rented **2×H100 (~$8/hr)** for the 100M; **8×B200** for the big runs, **pre-emptible/spot (~$19/hr quoted)** — *acceptable*, because the pipeline is already preemption-ready (durable R2 checkpoints + bitwise-exact resume + single-node). The one add for spot: a **SIGTERM-checkpoint handler + auto-resume supervisor** (small; do before the first real cloud run). A 5090 (32GB) is the candidate local-iteration upgrade (full-FT 1B, LoRA 4B/7B locally); Pro 6000 (96GB) deferred. **Post-training stays local through ~3B** (≈0.1% of pretraining compute). **Cost anchor:** ~**$733 per 10²¹ FLOPs** ($19/hr, 40% MFU, 8×B200) — training FLOPs = 6·params·tokens.
 - **Corpus → constructed STEM corpus.** The current 100M runs on **FineWeb-Edu** (`HuggingFaceFW/fineweb-edu`, sample-10BT, ODC-By, non-gated) — the pipeline-shakedown corpus. The *flagship* corpus is **purpose-built for code + math + physics + engineering**, assembled from open, mostly-permissive sources as **separate, mixable per-domain manifests**: *code* (The Stack v2, GitHub issues/PRs, notebooks), *math* (FineMath, OpenWebMath, Proof-Pile-2 / AlgebraicStack, arXiv math), *physics + engineering* (arXiv physics/cond-mat/eng, **Stack Exchange** Q&A, OpenStax / LibreTexts, USPTO patents), *verified synthetic* (generated-and-checked solutions / reasoning traces), and a ~15% *general-English glue* slice (FineWeb-Edu) so the model can explain, not just emit. The **intersections** (physics-via-code, math-as-proof-and-program — Jupyter notebooks, papers-with-code, scientific-computing repos) are over-weighted on purpose: that's where transfer is taught. `nvidia/Nemotron-CC-v2` deferred (gated). Over-train (~1,000–1,500 tok/param at 500M). Byte-level BPE — **retrained on the STEM corpus** (indentation, LaTeX, symbols).
 - **Distributed: DDP, not FSDP.** 80GB H100 / 192GB B200 fit the whole model + optimizer ≤~7B per GPU, so plain data-parallel suffices and is far simpler. FSDP deferred until a single model exceeds one GPU's memory.
 - **Storage:** durable artifacts in **Cloudflare R2** (`lithos-data-fineweb-edu`) via a config-driven `Storage` abstraction + `LITHOS_STORAGE_BASE_URI`; HF Hub for published models. `uv` for envs.
 - **Tracking:** optional **W&B** (rank-0, lazy-imported, disabled by default) mirroring the canonical local `metrics.jsonl`.
 - **Determinism scoped:** bitwise CPU, best-effort GPU.
 - **Architecture:** modernized Llama — GQA-native, optional QK-norm, configurable RoPE theta, SDPA backend, KV cache, depth-scaled init; MoE/MLA/sliding-window deferred behind seams (§6.1). Export targets the **Qwen3 envelope**.
-- **Model ladder: 100M (mix-sweep rig) → 500M (STEM flagship, first keeper) → 1B → 3B.** Successive 100M runs sweep the data mix; the winning recipe scales up. (The 300M milestone is folded into the proxy role; the **two-track distillation comparison** — owned-from-scratch vs distill Qwen-72B — becomes an experiment *within* the 1B step, not the headline.)
+- **Model family (mixed lineage), not a from-scratch ladder.** *From-scratch* tier — **500M / 1B**, fully owned, **32k STEM tokenizer** (small models want small vocabs — a 151k vocab wastes ~30% of a 500M's params on embeddings), the sovereignty/craft statement. *Continued-pretrained* tier — **4B / 8B from Qwen3-4B/8B** (Apache; stuck with Qwen's **151k** tokenizer — you can't swap a pretrained model's tokenizer). Unified by **one owned deployment recipe** (SFT → RLVR-TIR → DPO), not by architecture/tokenizer. **MVP = one from-scratch (500M) + the 4B hero**; 8B + full family deferred. The 100M is the mix-sweep rig. Purity gradient stated in the model cards (500M = ours; 4B = "continued-pretrained from Qwen3-4B").
+- **Open base + light continued-pretrain (the capital-efficient core).** Start the capable tier from an **open Apache base** (Qwen3-4B/8B). The base's 36T-token pretraining is a foundation we can't afford to replicate (~$633k-equivalent for the 4B) and don't need to — it already holds the knowledge. Continued-pretrain is **light** (~100–300B of *verified-synthetic + reasoning data + STEM re-weight + a high-quality anneal*), **not** a heavy re-pretrain on public data the base already saw (that's re-weighting, not knowledge — poor ROI). Heavy continued-pretrain (≥500B) demoted to a *documented fallback*. Catastrophic forgetting is a non-issue at this scale (≤1% of the base's tokens) with a light general-replay mix.
+- **Tool-integrated reasoning (TIR) — the defining capability.** Two **verifiable** tools: **Python (SymPy symbolic + NumPy/SciPy numerical)** and **MATLAB-syntax → GNU Octave** (open/free runtime; MATLAB syntax = market reality, Octave = sovereign + shippable; toolboxes/Simulink out of scope). *No plotting* (matplotlib dropped — image output has no clean verifiable reward). Both tools return *gradeable values* → the execution **sandbox doubles as the RLVR verifier** (run the call, check value: numeric tolerance / symbolic equivalence). Tools turn a small model's computational weakness into a non-issue — the model supplies *judgment*, tools supply *exactness*. Edge stack: **Lithos + Python/Octave + StrataDB** = an open, on-device technical agent.
 
 **Inference (§26.8):** build & own the in-repo PyTorch generator; export checkpoints **HF/Qwen3-compatible** as the single hub feeding eval, vLLM (documented cloud serving, not built), and **llama.cpp/GGUF — now a priority** export target, since on-device/edge is the flagship's deployment niche (the model runs *next to* StrataDB on the device). Local FastAPI `/generate` only — no hosted product (§3.7).
 
@@ -163,33 +167,55 @@ Not in the original plan; now a real deliverable. `scripts/`: **`build_corpus.sh
 - **Distillation** ✅ (open teacher, synthetic-data) transfers *style* not *substance* on a 110M — a flagship move (needs a capable student), not a test-bench win; more data beat it at equal scale (`a2eb9b4`).
 - Checkpoints made **self-describing** for size-agnostic reload, closing the one real scale-invariance gap (`7a3c4c0`).
 
-The **keeper** post-training lands on the 500M/1B flagship; the cheap ladder de-risked it by catching every failure mode here for free. **Still flagship-only (deferred):** RLVR rollout throughput (batched/vLLM), LoRA/QLoRA (memory at 3B / smaller cards), multi-GPU DPO/RLVR, and the executable STEM verifiers (the arithmetic verifier is the interface; GSM8K/code are the real ones).
+The **keeper** post-training lands on the flagship (the **4B hero** + the from-scratch **500M**); the cheap ladder de-risked it by catching every failure mode here for free. **Still flagship-only (deferred → built in P12):** RLVR rollout throughput (batched/vLLM), LoRA/QLoRA (memory / smaller cards), multi-GPU DPO/RLVR, and the **executable tool-sandbox verifier** (the arithmetic `MathVerifier` is the interface; SymPy/Octave execution is the real one).
 
-## Phase 12 — Lithos STEM flagship: 100M mix-sweep → 500M → 1B  ·  ◻  *(reframes old "two-track 1B")*
+## Phase 12 — Lithos family + the deployment recipe (TIR)  ·  ◻  *(reshapes "STEM flagship")*
 
-**Goal:** find the best STEM data recipe on the cheap rig, then scale it into the first **keeper** — a compact cross-domain STEM reasoner for the edge.
+**Goal:** the **MVP family** — one *from-scratch* sovereign small model (**500M**) + one *continued-pretrained* capable **hero (4B ← Qwen3-4B)** — both turned into compact STEM **reasoners that drive tools**. The differentiation is the deployment recipe, not the pretraining.
 
-**Stage 1 — 100M mix-sweep (cheap, many).** Successive 100M runs over a **smart directional sweep** of slice-splits (anchor mix + more-code / more-math / more-physics / more-general perturbations — ~5–6 runs, *not* a 2ⁿ grid), each a *shorter* fixed token budget (enough for the per-domain loss curves to separate, not a full over-train). **Decide on per-domain bpb**; the benchmark battery is a secondary read (mostly floor at this scale). Hold proxy architecture + token budget fixed across runs; vary *only* the mix; identical decontam everywhere. Output: the winning recipe + the **bpb tradeoff surface** ("+10% code costs X bpb on prose, buys Y on code"). ~hours and low-hundreds of $ per run.
+**The deployment recipe (identical for both — the family's identity):**
+base/pretrain → **light continued-pretrain** *(capable tier only)* → **SFT** (instructions + reasoning-trace format + **tool-use demos**) → **RLVR-TIR** *(the main event)* → **DPO** polish. Reasoning is the *path* to STEM excellence, not an add-on: SFT → competent assistant; **RLVR → reasoner**.
 
-**Stage 2 — 500M flagship (first keeper).** Scale the winning recipe to **500M on ~500–750B tokens** (~1,000–1,500 tok/param) → SFT → DPO (Phase 11). Carry the **top-2** recipes up — *don't* blind-inherit the 100M winner; let scale break the tie. STEM benchmarks now register; the **executable + transfer** evals become the real yardstick. **~$3–6k clean run; ~$8–15k all-in** incl. reruns + ablation R&D. This is the model the whole stack is for: edge-deployable (GGUF), runs next to StrataDB.
+**Track S — from-scratch 500M (sovereign tier).** Mix-sweep on the 100M rig (directional ~5–6 runs, decided on per-domain **bpb** — STEM benchmarks flat-line below ~500M) → train the 500M on the winning STEM recipe (~600B tok, 32k STEM tokenizer) → the shared deployment recipe. Fully owned. ~$1.3k pretrain.
 
-**Stage 3 — 1B + the two-track comparison.** Scale to 1B; *within* this step run the controlled experiment — **Track A** (owned from-scratch + post-train) vs **Track B** (distill open **Qwen-72B** into an identical 1B). Hold architecture / tokenizer / budget / eval constant; **the gap is a deliverable** — but now a side-experiment, not the headline.
+**Track C — continued-pretrained 4B hero (capable tier).** Qwen3-4B-base → **light** continued-pretrain (mostly *verified-synthetic + reasoning + STEM anneal*, general-replay mixed in; ~100–300B — **not** re-showing public data the base already has) → the shared deployment recipe. The hero — capable enough to *actually reason*; edge-deployable (GGUF/4-bit), runs next to StrataDB. **~$15–20k all-in**, most of it RLVR + synthetic, *not* continued-pretrain.
 
-**Acceptance:** the 500M flagship is best-in-its-class on the **STEM** battery (code/math executed, **transfer** measured), edge-deployable; the winning mix + bpb surface + scaling-law points recorded; the 1B two-track gap quantified. Each scale-up is a **re-validated config flip**, not a rewrite.
+**The tool sandbox + verifier (shared infra — the concrete new build).** A sandboxed executor for **Python (SymPy/NumPy/SciPy)** + **Octave** — *both* the inference-time tool runtime *and* the **RLVR verifier** (run the call → check value by numeric tolerance / symbolic equivalence). Plus **verified-synthetic TIR data**: generate problems + reason→call-tool→use-result→answer traces, **keep only what the sandbox runs correctly** (the genuinely-additive data the 36T base lacks). This *extends* the Phase-11 `MathVerifier`/GRPO to **execute**, not just extract — the executable STEM verifier, now concrete.
 
-## Phase 13 — Lithos 3B (the keeper)  ·  ◻
+**Acceptance:** the 4B hero is best-in-class-for-its-size on the **executable STEM + transfer battery** with **tool-integrated reasoning** (it reasons, calls SymPy/Octave, the sandbox verifies correctness), edge-deployable; the from-scratch 500M is the owned/sovereign counterpart; **the deployment recipe is identical across both** (proving it's a *family*). Winning mix + bpb surface recorded.
 
-**Goal:** the scale-invariant **config flip** on secured compute — the payoff of building everything small first.
+## Phase 13 — Family scale-out + fallbacks  ·  ◻  *(deferred until the MVP proves the recipe)*
 
-- 3B model config; reuse the **data recipe, post-training, eval, export** unchanged; hyperparameters **μP-transferred** from the small runs. **Target ~2–3T tokens-seen** (~700–1,000 tok/param — SOTA-style over-training), reached as **~600B–1T unique STEM corpus repeated ~3–4 epochs** (data-constrained-scaling, Muennighoff et al.: repeats ≈ fresh up to ~4 epochs) — so we need *quality*, not multi-T *unique* tokens.
-- **Scale threshold (new at 2–3T):** cost is FLOPs-bound — **~$26–40k on $19/hr B200 spot**, ≈invariant to node count (nodes trade wall-clock for complexity, not $). One 8×B200 node = ~2–3 *months* (impractical + huge spot exposure), so the 3B needs **multi-node** (~48–64 B200s → ~2–3 weeks): a genuinely new infra dimension — cross-node DDP/FSDP + **elastic/fault-tolerant training for spot**. (Single-node DDP was right for ≤7B *memory*; multi-node is about *throughput* at multi-T tokens.) Compute acquired ad hoc ("beg/borrow/barter").
-- Pretrain → post-train → eval → HF export → R2 → model card.
+Once the MVP (500M + 4B hero) lands, expanding the family is mostly **config + compute** on the proven, scale-invariant pipeline — not new engineering:
+- **8B ← Qwen3-8B** — same light-continued-pretrain + deployment recipe. ~$13k incremental. The "high-end edge" tier.
+- **1B from-scratch** — the second sovereign model, *if* the 500M proves the from-scratch tier worth extending.
+- **Documented fallbacks** (only if the open-base path disappoints on quality): heavy continued-pretrain (≥500B), or a **from-scratch 3B @ 2–3T** (~$26–40k; ~600B–1T unique STEM repeated ~3–4 epochs per data-constrained-scaling; needs **multi-node + elastic-for-spot** training — a new infra dimension, deferred until justified).
 
-**Acceptance:** the 3B runs as a **config change** on the proven recipe — the only new *code* is the one-time **multi-node/elastic training harness** — inheriting the **locked STEM recipe** + the ladder's scaling-law-predicted budget; best-in-class-for-its-size on the **STEM** battery (its niche), edge-deployable (GGUF). Confirmation run, not the experiment loop.
+**Acceptance:** each new family member ships through the **unchanged** recipe (continued-pretrain/pretrain → SFT → RLVR-TIR → DPO → eval → GGUF export → R2 → model card), best-in-class-for-its-size on the STEM + TIR battery. Confirmation runs, not the experiment loop.
+
+## Economics (cost model, $19/hr 8×B200 spot · 40% MFU · ~$733/10²¹ FLOPs)
+
+The decisive lever is **continued-pretrain depth** (the rest is roughly fixed). Per-model training cost ≈ 6·params·tokens × $733/10²¹:
+
+| component | basis | cost |
+|---|---|---|
+| **Open base pretraining** (Qwen3-4B's 36T) | inherited | **$0** *(≈$633k to replicate — the gift)* |
+| From-scratch 500M @ 600B | 1.8e21 | ~$1.3k |
+| 4B continued-pretrain — **light** @ 100–300B | 2.4–7.2e21 | ~$1.8–5.3k |
+| &nbsp;&nbsp;*(heavy fallback @ 1T)* | 2.4e22 | *~$17.6k* |
+| Synthetic generation (verified TIR/reasoning — *the additive data*) | teacher inference | ~$2–4k |
+| Reasoning RL (RLVR-TIR) — **the differentiator** | rollout-heavy | ~$2–4k/model |
+| Mix-sweeps + ablations (100M rig) | ~6 runs | ~$1.5k |
+| Contingency (reruns ~30–40%) + eval + R2 | — | ~$3–5k |
+
+- **MVP (500M + 4B hero, *light* continued-pretrain):** **≈ $20–26k** all-in. *(Heavy-continued fallback pushes it to ~$38k.)*
+- **Hero-first staging:** land the 4B (~$15–20k), then the 500M is a ~$2.4k add; 8B later ~$13k.
+- **Sensitivities:** continued-pretrain depth (biggest), RLVR depth, synthetic volume, MFU/spot price (on-demand ~doubles training), reruns. Labor isn't priced — it's the solo+AI time.
 
 ## Cross-cutting (Part II)
 
-- **Scale-invariance:** μP/μTransfer (tune LR/init on the 100M, transfer to 3B with no re-tuning) + scaling-law fits (read token budget/batch off the small runs). Goal: 100M → 3B is config-only.
+- **Scale-invariance & the shared recipe:** μP/μTransfer + scaling-law fits make the *from-scratch* tier (100M → 500M → 1B) config-only; and the **deployment recipe (SFT → RLVR-TIR → DPO) is identical across the whole family** — from-scratch *and* continued-pretrained. That shared recipe is what *makes* it a family and what makes scale-out cheap (config + compute, not re-engineering).
+- **Tool sandbox / TIR (Phase 12):** the sandboxed **Python(SymPy/NumPy/SciPy) + Octave** executor is shared infra — inference-time tool runtime, RLVR verifier, *and* the generate-then-check for verified-synthetic TIR data. **Sandbox security (isolation, timeouts, resource limits) is the real engineering.** Edge target: the executor + StrataDB ship *on-device* alongside the model.
 - **Data-construction toolkit (Phase 10):** the reusable ingestion engine — any source → a verified, canonical dataset. Agents at the meta level only (never the per-doc hot path); **StrataDB is the catalog dogfood target**. An owned foundation in its own right; built emergently from two real adapters, not designed upfront.
 - **Docs / model cards / reproducibility / quality gates** — as in Part I; synthetic-data + teacher-provenance disclosures mandatory.
 
@@ -200,13 +226,13 @@ The **keeper** post-training lands on the 500M/1B flagship; the cheap ladder de-
 ```
 Part I (built):  P0–P5 ─▶ [SKELETON ✅] ─▶ P6 100M (running) ─▶ P7 export ✅ / P8 DDP ✅
                                                    │
-Part II:   P9 eval-harness-v1 ─┬─▶ P10 STEM corpus + mix machinery ──┐
-                               └─▶ P11 post-training ────────────────┴─▶ P12 100M mix-sweep ─▶ 500M flagship ─▶ 1B ─▶ P13 3B
+Part II:   P9 eval + TIR-verifier ─┬─▶ P10 STEM corpus + mix machinery ──┐
+                                   └─▶ P11 post-training ✅ ──────────────┴─▶ P12 family MVP (from-scratch 500M + 4B hero ← Qwen3-4B + TIR) ─▶ P13 scale-out (8B/1B)
 ```
-- **P9 (eval harness) gates all of Part II** — the measuring stick; build first. Domain pivot adds the executable STEM battery + transfer probe + per-domain bpb.
-- **P10 (STEM corpus + data quality)** and **P11 (post-training)** run in parallel once P9 is green. P10's real build is the **per-domain sub-corpora + mix machinery**.
-- **P12** = the **mix-sweep on the 100M rig → 500M flagship (first keeper) → 1B** (two-track distillation folded in here). **P13 (3B)** is the scale-up of the locked recipe.
-- Part II builds at small/cheap scale (local 4070/5090 + the 100M rig); only **P12/P13 need secured cloud compute**.
+- **P9 (eval harness) gates all of Part II** — the measuring stick; build first. Domain pivot adds the executable STEM + transfer battery + per-domain bpb; the executable **verifier becomes the RLVR/TIR sandbox** (shared with P12).
+- **P10 (STEM corpus)** and **P11 (post-training ✅ on the test bench)** ran in parallel once P9 was green. P10's real build is the **per-domain sub-corpora + mix machinery + verified-synthetic TIR data**.
+- **P12 = the MVP family** — from-scratch **500M** (Track S) + the **4B hero** continued-pretrained from Qwen3-4B (Track C) + the **tool sandbox/verifier**, both finished with the shared **SFT → RLVR-TIR → DPO** recipe. **P13** = family scale-out (8B, 1B) + fallbacks.
+- Part II builds at small/cheap scale (local 4070/5090 + the 100M rig); only **P12/P13 need secured (spot) cloud compute**.
 
 ## Top risks & mitigations
 
@@ -222,8 +248,13 @@ Part II:   P9 eval-harness-v1 ─┬─▶ P10 STEM corpus + mix machinery ─�
 | **STEM domain over-reach at 500M** (four domains, one small budget) | Target the **transfer** role, not per-domain SOTA; over-weight the intersections; keep a ~15% general-English glue slice so it can explain; sequence (code+math first) if the bpb surface says capacity is binding. |
 | Distributed complexity too early | DDP (not FSDP), introduced only after the 100M trains single-process. |
 | Modern refinements break engine compat | Export targets the **Qwen3 envelope**; MLA/sliding-window are a conscious, documented cost. |
+| **Open base already saw our STEM data** (36T base) | Continued-pretrain on public data = *re-weighting, not new knowledge* → keep it **light**; spend on **verified-synthetic + RLVR-TIR** (the additive, deployment-teaching parts the base lacks). |
+| **Tool-sandbox security** (executing model-written code) | Hard **isolation + timeouts + resource/network limits**; the sandbox is *both* runtime *and* RLVR verifier, so it must be airtight before any TIR run. |
+| **Reasoning won't emerge at small scale** | Emerges with capacity (~4B is near the floor); rely on **distillation from an open reasoning teacher + RLVR**. The from-scratch 500M won't reason — **tools compensate** (it calls SymPy/Octave instead of computing). |
+| **Open-base lineage / license** | Qwen3 = **Apache-2.0** (derivatives + commercial OK with attribution; open weights can't be revoked once downloaded). Disclose lineage in the model card. |
+| **Spot preemption loses progress** | Durable R2 checkpoints + exact resume already; add the **SIGTERM-checkpoint handler + auto-resume supervisor** before the first spot run → ~zero lost work. |
 
 ## Definition of done
 
 - **v0 — Part I (✅ essentially complete):** clone+install · toy trains locally · tokenizer trains from FineWeb-Edu · corpus tokenizes to shards in R2 · 100M trains on 2×H100 (DDP) · metrics logged (JSONL + W&B) · checkpoints resume from R2 · perplexity/export/generation work · provisioning scripts bring up a box one-shot · tests pass · docs explain the workflow.
-- **v1 — Part II (the data-centric, STEM-domain era):** a frozen, decontaminated eval harness *with an executable STEM + transfer battery* · a painstakingly **constructed STEM corpus** (code/math/physics/eng as mixable per-domain slices) with an **empirically-swept** mix · a scale-invariant post-training pipeline (SFT + DPO + distillation) · a **500M STEM flagship** that is best-for-its-size on the executable STEM + transfer battery and **edge-deployable** (runs next to StrataDB) · the two-track 1B comparison quantified · a **3B keeper** produced as a **config flip** — every layer (data, pretrain, post-train, eval, export) owned end to end.
+- **v1 — Part II (the STEM-reasoning era):** a frozen, decontaminated eval harness *with an executable STEM + transfer + TIR battery* · a **constructed STEM corpus** (mixable per-domain slices, empirically-swept) + **verified-synthetic TIR/reasoning data** · the **post-training stack — SFT → RLVR-TIR → DPO — built & validated** (✅ test-bench, Phase 11) · a **tool sandbox** (Python SymPy/NumPy/SciPy + Octave) that is *both* runtime *and* RLVR verifier · the **MVP family**: a *from-scratch* **500M** (fully owned, 32k) + a *continued-pretrained* **4B hero** (← Qwen3-4B, Apache) — both compact STEM **reasoners that drive SymPy/Octave**, best-for-size on the STEM+TIR battery, **edge-deployable** next to StrataDB — produced by **one shared deployment recipe**. Every *deployment* layer owned end to end; the capable tier's general-knowledge base is open (Apache, disclosed).
