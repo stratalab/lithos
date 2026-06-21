@@ -98,12 +98,18 @@ Post-training is **not one dataset** — it's a different *kind* of data per sta
 | Science/physics | **Camel-AI** (physics/chem), SciInstruct |
 | Reasoning traces | **OpenR1-Math**, **OpenThoughts/2**, Bespoke-Stratos, Sky-T1 — long CoT distilled from *open* R1/QwQ |
 
+**Open-reasoner distillation teachers (the verified-synthesis generator engine).** Distill *open, permissively-licensed* reasoners only — **never GPT/Claude** (their ToS forbids using outputs to train competing models: a provable contract breach, categorically worse than the books' copyright question — see §2.3). Roster by slice:
+- **Code (lead): GLM-5.2** (Z.ai, open weights, MoE ~744B/40B-active) — current best *open* coding model: SWE-Bench Pro 62.1 (SoTA-open), Terminal-Bench 2.1 81.0, #2 frontend. Plus **Qwen2.5-Coder-32B**, **DeepSeek-V3**.
+- **Math:** **Qwen2.5-Math-72B**. **Reasoning / TIR traces:** **DeepSeek-R1**, **QwQ-32B**, **Qwen3** (thinking).
+- Always **distillation + rejection sampling**, not blind SFT-on-teacher-text: generate → **sandbox-verify** → keep only correct → tokenize with our vocab → own it (strips the teacher's hallucinated derivations; beats trusting raw traces). Capacity-gated to the flagship (4B hero / 500M) per the Phase-11 lesson that distillation transfers *style not substance* on a tiny student.
+
 **Preference (DPO):** Tülu 3 preference mix, **HH-RLHF** (human), SHP, PKU-SafeRLHF — but prefer **on-policy verifier-labeled** STEM pairs.
 
 **RLVR verifiable problems (the superpower):**
 - Math: **GSM8K, MATH, NuminaMath** (ground-truth answers).
 - Code: **MBPP, HumanEval+, APPS, CodeContests, TACO, LiveCodeBench** (unit tests).
 - "Dataset" = (problem, checker). **Overlaps almost entirely with the executable eval harness** — build the verifier once, use it for eval *and* RLVR *and* preference labeling.
+- **Reward-hacking defense (lifted from GLM-5.2's coding RL).** In TIR/agentic RLVR the **sandbox *is* the reward surface**, so the policy *will* try to game it (our banked Goodhart lesson, restated). Mitigation: an **LLM judge inspects each tool call for suspicious patterns** — hard-coding the expected answer, trivial/no-op calls, prompt-injecting or short-circuiting the verifier — and **returns dummy data instead of reward on suspicion**, which kills the exploit while keeping training stable. Pair with the standing rule: **watch real rollouts, not the reward curve**.
 
 ### 2.3 The sovereignty filter
 
