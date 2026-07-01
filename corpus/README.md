@@ -12,7 +12,7 @@ The bill of materials for the Lithos STEM pretraining corpus (doctrine and ratio
 | Column | Meaning |
 |---|---|
 | `id` | stable slug, never reused |
-| `kind` | `corpus` (ML-ready dataset) · `dump` (raw public dump) · `series` (multi-volume set) · `book` · `reference` (handbook) · `notes` (lecture-note collections) |
+| `kind` | `corpus` (ML-ready dataset) · `dump` (raw public dump) · `series` (multi-volume set) · `book` · `reference` (handbook) · `notes` (lecture-note collections) · `problems` (exam/olympiad/problem-set banks — post-training feedstock, see doc §2.2) |
 | `domain` | `code` · `math` · `physics` · `eng` · `chem` · `general` · `xdomain` (the intersections we over-weight: physics-via-code, math-as-program) |
 | `subfield` | free text (e.g. `analysis`, `qft`, `controls`) |
 | `level` | `intro` · `ug` · `grad` · `research` · `mixed` |

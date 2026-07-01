@@ -187,3 +187,19 @@ mcquarrie-pchem,book,chem,physical-chemistry,grad,"Physical Chemistry: A Molecul
 clayden-organic,book,chem,organic,ug,"Organic Chemistry",Clayden/Greeves/Warren,isbn:TBD,grey,,0.6M,P1,4,lawful-copy,indexed
 housecroft-inorganic,book,chem,inorganic,ug,"Inorganic Chemistry",Housecroft & Sharpe,isbn:TBD,grey,,0.5M,P2,4,lawful-copy,indexed
 szabo-ostlund,book,chem,quantum-chemistry,grad,"Modern Quantum Chemistry",Szabo & Ostlund,isbn:TBD,grey,Dover reprint,0.3M,P1,4,lawful-copy,indexed
+ap-frq-archive,problems,xdomain,exams,intro,"AP free-response archives + scoring guidelines (Calc/Physics/Chem/CS)",College Board,https://apcentral.collegeboard.org,grey,official-free FRQs; MC not released,3M,P0,4,free-web,indexed
+alevel-past-papers,problems,xdomain,exams,intro,"UK A-level past papers + mark schemes (AQA/OCR/Edexcel/CIE)",UK exam boards,TBD,grey,official-free on board sites,5M,P0,4,free-web,indexed
+ib-past-papers,problems,xdomain,exams,intro,"IB Diploma past papers (Math/Physics/Chem)",IBO,isbn:TBD,grey,sold not freely published,2M,P1,4,lawful-copy,indexed
+regents-exams,problems,xdomain,exams,intro,"NY Regents exam archive (math/physics/chem)",NYSED,https://www.nysedregents.org,green,state-published public record,2M,P1,-,free-web,indexed
+jee-papers,problems,xdomain,exams,ug,"JEE Main/Advanced past papers + answer keys",NTA/IITs,https://jeeadv.ac.in,grey,official-free; excellent difficulty band,2M,P1,4,free-web,indexed
+imo-shortlists,problems,math,olympiad,ug,"IMO problems + shortlists with solutions",IMO,https://www.imo-official.org,grey,official-free,1M,P0,4,free-web,indexed
+putnam-archive,problems,math,olympiad,ug,"Putnam exam archive with solutions",MAA/Kedlaya,https://kskedlaya.org/putnam-archive/,grey,official-free,0.5M,P0,4,free-web,indexed
+ipho-archive,problems,physics,olympiad,ug,"IPhO/APhO past problems + solutions",IPhO,https://www.ipho-new.org,grey,official-free,1M,P0,4,free-web,indexed
+icho-archive,problems,chem,olympiad,ug,"IChO past problems + solutions",IChO,TBD,grey,official-free,0.5M,P2,4,free-web,indexed
+ioi-archive,problems,code,olympiad,ug,"IOI tasks + official test data",IOI,https://ioinformatics.org,green,tasks + test data publicly released,0.5M,P2,-,free-web,indexed
+physics-quals,problems,physics,qualifying-exams,grad,"Physics PhD qualifying exam archives (dept-published)",various universities,TBD,grey,official-free dept archives,2M,P0,4,free-web,indexed
+math-quals,problems,math,qualifying-exams,grad,"Math PhD qualifying exam archives (dept-published)",various universities,TBD,grey,official-free dept archives,1.5M,P0,4,free-web,indexed
+fe-pe-prep,problems,eng,licensure,ug,"FE/PE exam prep + NCEES reference handbook",NCEES/various,isbn:TBD,grey,handbook free; prep books via lawful-copy,1.5M,P1,4,lawful-copy,indexed
+aops-forums,problems,math,olympiad,mixed,"AoPS community forums (raw)",AoPS,https://artofproblemsolving.com,grey,prefer laundered CC releases (NuminaMath/OpenMathReasoning),50M,P2,4,scrape,indexed
+irodov-problems,book,physics,problem-book,ug,"Problems in General Physics",Irodov,isbn:TBD,grey,problem-book canon,0.3M,P1,4,lawful-copy,indexed
+engel-problem-solving,book,math,problem-book,grad,"Problem-Solving Strategies",Engel,isbn:TBD,grey,olympiad training canon,0.3M,P2,4,lawful-copy,indexed

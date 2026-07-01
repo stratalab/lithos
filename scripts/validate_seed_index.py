@@ -21,7 +21,7 @@ COLUMNS = [
     "canonical_id", "tier", "license_note", "est_tokens", "priority",
     "epoch_cap", "route", "status",
 ]
-KINDS = {"corpus", "dump", "series", "book", "reference", "notes"}
+KINDS = {"corpus", "dump", "series", "book", "reference", "notes", "problems"}
 DOMAINS = {"code", "math", "physics", "eng", "chem", "general", "xdomain"}
 LEVELS = {"intro", "ug", "grad", "research", "mixed"}
 TIERS = {"green", "grey", "mixed"}
@@ -77,7 +77,7 @@ def main() -> int:
                 row["_tokens"] = 0.0  # type: ignore[assignment]
             # Doctrine invariants: grey books/series/references/notes are
             # epoch-capped; nothing sourced from a non-public route.
-            if row["tier"] == "grey" and row["kind"] in {"book", "series", "reference", "notes"}:
+            if row["tier"] == "grey" and row["kind"] in {"book", "series", "reference", "notes", "problems"}:
                 if row["epoch_cap"] in ("", "-"):
                     errors.append(f"{where}: grey {row['kind']} needs an epoch_cap")
             if row["epoch_cap"] not in ("", "-"):
