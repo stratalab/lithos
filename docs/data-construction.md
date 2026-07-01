@@ -110,6 +110,13 @@ Four outputs, in value order:
 | General glue (~15%) | FineWeb-Edu | green (ODC-By) |
 | Verified synthetic | generated-and-checked solutions / reasoning traces (open teacher) | green (self-owned, teacher disclosed) |
 
+**Engineering slice targeting (SETTLED).** Disciplines are picked by three criteria: **verifiability** (can the sandbox check it — RLVR's precondition), **cross-domain transfer** (does it sit on our physics/math/code spine), and **the edge audience** (who runs a compact model on-device). The slice's identity: *applied physics that computes*.
+- **Tier 1a — the EE stack** (electrical + electronics + computer eng as one stack): fully verifiable (node equations, `scipy.signal`), bridges physics (E&M) ↔ code (embedded/digital), best data supply (electronics.SE, **manufacturer datasheets + app notes** — freely published, enormous, top-tier applied prose), and the edge audience *is* this population (firmware/robotics/hardware).
+- **Tier 1b — the shared engineering-science core via mechanical** (statics/dynamics, thermo, fluids, heat transfer, materials): disciplines aren't silos — all build on this ~8-subject core, and the core *is* applied physics, i.e. where physics→eng transfer happens. More verifiable than it looks (property lookups + correlations; CoolProp in the sandbox).
+- **Over-weight controls + signals** (the crown jewel): deepest math content, cross-cutting, the language of robotics, and the most TIR-friendly subject in engineering — `python-control`/`scipy.signal` make essentially every textbook problem executable, so verified synthetic is nearly free here.
+- **Tier 2 (rides along nearly free):** aerospace (~80% mechanics+fluids+controls; keep the canon + orbital mechanics, don't over-invest), chemical (transport phenomena = applied PDE).
+- **Tier 3 (index the canon, don't target):** civil/structural (center of gravity = jurisdiction-specific design codes + liability, thin public data), industrial/ops (it's optimization + statistics — the math slice covers it from the other side).
+
 ### 1.9 What we've built vs net-new
 
 - **Built:** heuristic-filter seam, MinHash near-dedup, 13-gram decontam, quality-score thresholding, held-out holdout, ablation harness, manifests, general 32k tokenizer, packing, sharding, R2 storage.
@@ -184,6 +191,8 @@ Post-training is **not one dataset** — it's a different *kind* of data per sta
 ### 2.5 The self-generation engine (most sovereign, domain-perfect)
 
 In a verifiable domain we can **generate most of our own post-training data**: problems → solutions/traces → **keep only what the checker passes** (rejection sampling on correctness). Same generate-then-verify machinery as pretraining synthetic; fully sovereign (no proprietary teacher in provenance); reuses the eval verifier. **The open datasets are the seed and the eval; our own verified generation is the engine.**
+
+**The engine's clearest mandate: engineering TIR traces** (Phase 12 notes). Math TIR traces exist and are harvested (§2.2); engineering ones **don't exist anywhere** — nobody has published teacher-solves-thermo-with-CoolProp. Problem banks (kind=problems) → open teacher solves *with tools in our sandbox* (SciPy/CoolProp/python-control) → verify by **value + units** (`pint` — dimensional analysis is engineering's "the code runs") → keep. A corpus nobody else has.
 
 ---
 

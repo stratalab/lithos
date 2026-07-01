@@ -203,3 +203,11 @@ fe-pe-prep,problems,eng,licensure,ug,"FE/PE exam prep + NCEES reference handbook
 aops-forums,problems,math,olympiad,mixed,"AoPS community forums (raw)",AoPS,https://artofproblemsolving.com,grey,prefer laundered CC releases (NuminaMath/OpenMathReasoning),50M,P2,4,scrape,indexed
 irodov-problems,book,physics,problem-book,ug,"Problems in General Physics",Irodov,isbn:TBD,grey,problem-book canon,0.3M,P1,4,lawful-copy,indexed
 engel-problem-solving,book,math,problem-book,grad,"Problem-Solving Strategies",Engel,isbn:TBD,grey,olympiad training canon,0.3M,P2,4,lawful-copy,indexed
+datasheets-appnotes,dump,eng,electronics,mixed,"Manufacturer datasheets + application notes (TI/ADI/ST/NXP/Microchip)",various,TBD,grey,freely published; app notes = top applied-eng prose,8B,P0,-,scrape,indexed
+ros-docs,dump,xdomain,robotics,mixed,"ROS/ROS2 documentation + tutorials + wiki",Open Robotics,https://docs.ros.org,green,CC-BY,100M,P1,-,scrape,indexed
+lynch-modern-robotics,book,eng,robotics,ug,"Modern Robotics: Mechanics Planning and Control",Lynch & Park,http://modernrobotics.org,grey,official-free-pdf,0.35M,P0,4,free-web,indexed
+craig-robotics,book,eng,robotics,ug,"Introduction to Robotics: Mechanics and Control",Craig,isbn:TBD,grey,,0.35M,P1,4,lawful-copy,indexed
+thrun-probabilistic-robotics,book,xdomain,robotics,grad,"Probabilistic Robotics",Thrun/Burgard/Fox,isbn:TBD,grey,robotics-ML bridge,0.4M,P1,4,lawful-copy,indexed
+curtis-orbital,book,eng,aerospace,ug,"Orbital Mechanics for Engineering Students",Curtis,isbn:TBD,grey,,0.4M,P1,4,lawful-copy,indexed
+bate-astrodynamics,book,eng,aerospace,ug,"Fundamentals of Astrodynamics",Bate/Mueller/White,isbn:TBD,grey,Dover reprint,0.3M,P2,4,lawful-copy,indexed
+yiu-cortex-m,book,eng,embedded,ug,"The Definitive Guide to ARM Cortex-M3 and Cortex-M4",Yiu,isbn:TBD,grey,embedded canon,0.3M,P2,4,lawful-copy,indexed
