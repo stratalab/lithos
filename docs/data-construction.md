@@ -2,7 +2,7 @@
 
 Consolidates the data strategy (pre- **and** post-training) for the STEM-domain flagship. Companion to `lithos-implementation-plan.md` (Phases 9–12).
 
-> **Scope / status.** This is a *living working reference*, grounded in the open recipes named in §1.4 and §2 — it captures the consolidated knowledge and a roadmap, not yet the deep per-report extraction (concrete thresholds, exact mixes). That deeper digest — reading each report and pulling its specific filter constants and ablation results — is the future deepening flagged at the end. **All dataset names below need a per-dataset license + provenance check before they touch a keeper run**; sizes are approximate. Sovereignty rule throughout: **open-teacher / human / self-generated only — nothing with proprietary-model provenance in the chain.**
+> **Scope / status.** This is a *living working reference*, grounded in the open recipes named in §1.4 and §2 — it captures the consolidated knowledge and a roadmap, not yet the deep per-report extraction (concrete thresholds, exact mixes). That deeper digest — reading each report and pulling its specific filter constants and ablation results — is the future deepening flagged at the end. **All dataset names below need a per-dataset license + provenance check before they touch a keeper run**; sizes are approximate. Two provenance rules, at different layers: **raw pretraining text follows the §1.5 sourcing doctrine** (publicly available = ingestible; leaked/private = never); **generated data is open-teacher / human / self-generated only — nothing with proprietary-model provenance in the chain.**
 
 ## 0. Principles (the meta-lessons)
 
@@ -10,7 +10,7 @@ Consolidates the data strategy (pre- **and** post-training) for the STEM-domain 
 2. **Everything is validated by ablation** on the 100M rig, decided on **per-domain bits-per-byte** (benchmarks flat-line below ~500M). No filter or mix ships unmeasured (the FineWeb methodology — hundreds of small-proxy ablations).
 3. **Decontaminate before trusting any eval.** N-gram match training text vs the *frozen* battery; drop leaks.
 4. **Provenance obsessively.** Every artifact gets a manifest: source, filters, dedup stats, mix weights, tokenizer version → reproducible + auditable, or it isn't an asset.
-5. **Sovereignty.** Open-teacher / human / self-generated data only. The moat is *owning* the chain end to end (same bet as StrataDB).
+5. **Sovereignty.** The moat is *owning* the chain end to end (same bet as StrataDB). Concretely: for **generated** data, open-teacher / human / self-generated only — no proprietary-model provenance. For **raw** text, ownership means provenance manifests + the §1.5 doctrine, not a self-imposed license handicap the incumbents ignore.
 6. **Verifiability is the unlock.** In code/math/physics, code runs, math checks, units balance — which makes quality filtering *executable*, synthetic *safe-and-checkable*, evals *trustworthy*, and RLVR *possible*. This single property re-pays across the whole pipeline.
 
 ---
@@ -55,20 +55,54 @@ Consolidates the data strategy (pre- **and** post-training) for the STEM-domain 
 - **Nemotron-CC** (NVIDIA) — classifier ensemble + synthetic rephrasing at scale.
 - **STEM**: OpenWebMath, Proof-Pile-2 (Llemma), FineMath, MathPile, DeepSeekMath, Qwen2.5-Coder/Math data sections.
 
-### 1.5 Source inventory — the five mixable slices
+### 1.5 Sourcing doctrine (SETTLED)
 
-| Slice | Candidate sources | License posture |
+The decided policy, replacing the earlier permissive-only posture. Rationale: STEM knowledge is humanity's commons; the incumbents ingested everything and we will not run with a self-imposed handicap they ignore. The trade we accept: **enjoinment/legal risk in exchange for sovereignty** — a copyright claim against a training *use* is contested territory; a contract breach or possession of stolen material is not. Principled sourcing is enforced **per-document, not per-source** (the index, §1.7, is the enforcement surface).
+
+**Solid lines (never cross):**
+- **Leaked / proprietary / private / hacked material** — anything not made available to the public by its owner. No exceptions.
+- **GPT/Claude outputs as training data** — a *provable contract breach* (ToS with a direct counterparty, logged API calls), categorically worse than copyright exposure. We also lose nothing: open reasoners are frontier-class at STEM (§2.2).
+
+**Grey (ingest, with caveats):**
+- **Copyrighted-but-published books & papers** (incl. paywalled). The idea/expression dichotomy is the legal spine: we train on the *knowledge*, we must not *reproduce the expression*. Caveats that make this real: aggressive **dedup**, **epoch caps** on any single copyrighted work, and a **regurgitation eval** (prompt with book prefixes, measure verbatim continuation) in the frozen battery.
+- **Closed models as build tools** (labeling, judging, curation assistance) — fine, so long as their outputs never become training targets.
+
+**Green (unrestricted):**
+- Public domain, open-licensed (CC, ODC-By, permissive code), government/patent text.
+- **Distillation of open-weights models** (Apache-2.0 Qwen, MIT DeepSeek/GLM) — the license *invites* it.
+
+**Universal regardless of tier:** secret-scanning (an API key in a repo is private data even if the repo is public), PII redaction, provenance manifests, decontamination.
+
+### 1.6 Supply assessment — sized for 7–13B
+
+We size the corpus as if training a 7–13B model (a few trillion tokens-seen), so the 500M/1B/4B rungs are never data-starved and the ambition has a ceiling we've measured.
+
+- **World supply of high-quality unique STEM text: roughly 1.5–3T tokens reachable**, of which ~1T survives serious quality filtering. By slice: **code** is the largest (The Stack v2 scale — high hundreds of B after filtering); **papers** (arXiv + the published literature) a few hundred B; the **book canon** low hundreds of B; **math is the scarce slice: ~100–200B unique** — the binding constraint.
+- **Data-constrained scaling** (Muennighoff et al.): up to **~4 epochs ≈ fresh data**. So ~1T unique high-quality tokens honestly supports ~4T tokens-seen — enough for a 7–13B over-trained run.
+- **Consequences:** (a) there *is* enough raw STEM in the world for the full ladder; (b) the scarce-math gap is closed by **verified synthetic** (generate-then-check multiplies the slice that verifiability makes safe to multiply); (c) epoch accounting becomes a first-class manifest column, since we will deliberately multi-epoch the best slices (and epoch-cap the grey ones, §1.5).
+
+### 1.7 Index-first curation — the catalog of intent
+
+**Build the index before acquiring a single byte.** The corpus starts as a *bill of materials*: a table of every work we intend to ingest, so coverage, gaps, licensing, and cost are measurable before acquisition spend — and so per-document sourcing decisions (§1.5) are auditable rather than vibes.
+
+- **Schema (one row per work):** canonical ID (ISBN / DOI / arXiv ID) · title · domain · subfield · level (intro / UG / grad / research) · license tier (green / grey per §1.5) · est. tokens · priority · acquisition route · status.
+- **Harvest existing curation instead of curating from scratch:** university syllabi, qualifying-exam reading lists, the per-field "bibles", award lists, review-article bibliographies. Humanity already ranked its STEM canon; we transcribe the ranking.
+- **The index is also the enforcement surface:** license tier and epoch cap live as columns, so the §1.5 doctrine is applied mechanically at ingestion, and the regurgitation eval knows exactly which works to probe.
+
+### 1.8 Source inventory — the five mixable slices
+
+| Slice | Candidate sources | Doctrine tier (§1.5) |
 |---|---|---|
-| Code | The Stack v2, GitHub issues/PRs, notebooks | permissive-only, opt-outs honored, secret-scanned |
-| Math | FineMath, OpenWebMath, Proof-Pile-2/AlgebraicStack, arXiv math | mostly open; check arXiv terms |
-| Physics + Eng | arXiv physics/cond-mat/eng, **Stack Exchange** Q&A (CC-BY-SA), OpenStax/LibreTexts (CC), USPTO patents (public domain) | mostly CC / public domain |
-| General glue (~15%) | FineWeb-Edu | ODC-By |
-| Verified synthetic | generated-and-checked solutions / reasoning traces (open teacher) | self-owned, teacher disclosed |
+| Code | The Stack v2, GitHub issues/PRs, notebooks | green + grey (public repos regardless of license); secret-scanned always |
+| Math | FineMath, OpenWebMath, Proof-Pile-2/AlgebraicStack, arXiv math, **the math book canon** | green + grey (published books epoch-capped) |
+| Physics + Eng | arXiv physics/cond-mat/eng, **Stack Exchange** Q&A (CC-BY-SA), OpenStax/LibreTexts (CC), USPTO patents (public domain), **the physics/eng book canon** | green + grey (published books epoch-capped) |
+| General glue (~15%) | FineWeb-Edu | green (ODC-By) |
+| Verified synthetic | generated-and-checked solutions / reasoning traces (open teacher) | green (self-owned, teacher disclosed) |
 
-### 1.6 What we've built vs net-new
+### 1.9 What we've built vs net-new
 
 - **Built:** heuristic-filter seam, MinHash near-dedup, 13-gram decontam, quality-score thresholding, held-out holdout, ablation harness, manifests, general 32k tokenizer, packing, sharding, R2 storage.
-- **Net-new:** multi-source ingestion + LaTeX/PDF/code extraction, domain tagging, self-trained quality classifier, weighted-mix spec, per-domain bpb sets, verified synthetic, annealing set, STEM tokenizer retrain.
+- **Net-new:** **seed index / catalog of intent (§1.7 — the next artifact)**, multi-source ingestion + LaTeX/PDF/code extraction, domain tagging, self-trained quality classifier, weighted-mix spec, per-domain bpb sets, verified synthetic, annealing set, STEM tokenizer retrain, **regurgitation eval + epoch-cap accounting (§1.5)**.
 
 ---
 
@@ -131,7 +165,7 @@ In a verifiable domain we can **generate most of our own post-training data**: p
 
 ## Part 3 — Eval data (cross-ref Phase 9)
 
-- Frozen versioned battery (general) + **executable STEM battery** (HumanEval/MBPP/GSM8K/MATH) + **cross-domain transfer probe** (derive-then-implement).
+- Frozen versioned battery (general) + **executable STEM battery** (HumanEval/MBPP/GSM8K/MATH) + **cross-domain transfer probe** (derive-then-implement) + **regurgitation eval** (verbatim-continuation probe over indexed grey-tier works — the §1.5 caveat, made measurable).
 - **Per-domain bpb held-out sets** (code/math/physics/eng/general) — the mix-sweep's decision metric.
 - Decontamination against all of the above; Qwen-0.5B/1.5B reference anchors committed.
 
