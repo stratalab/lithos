@@ -1,0 +1,189 @@
+id,kind,domain,subfield,level,title,creator,canonical_id,tier,license_note,est_tokens,priority,epoch_cap,route,status
+stack-v2-dedup,corpus,code,repos,mixed,"The Stack v2 (dedup)",BigCode,hf:bigcode/the-stack-v2-dedup,mixed,permissive core; full set usable under doctrine,800B,P0,-,hf,indexed
+github-issues-prs,corpus,code,dev-discussion,mixed,"GitHub Issues & PRs (StarCoder2 pipeline)",BigCode,hf:bigcode/the-stack-github-issues,grey,public platform text,15B,P1,-,hf,indexed
+jupyter-notebooks,corpus,xdomain,sci-computing,mixed,"Jupyter/Kaggle notebook slice (Stack v2 subset)",BigCode,hf:bigcode/the-stack-v2-dedup,mixed,code+prose+math interleaved,20B,P0,-,hf,indexed
+scicomp-repo-slice,corpus,xdomain,sci-computing,mixed,"Scientific-computing repo slice (SciPy/SymPy/Astropy/FEniCS/papers-with-code)",tagged subset,hf:bigcode/the-stack-v2-dedup,green,mostly permissive; the transfer-teaching intersection,30B,P0,-,hf,indexed
+fineweb-edu,corpus,general,web,mixed,"FineWeb-Edu",HuggingFace,hf:HuggingFaceFW/fineweb-edu,green,ODC-By,1300B,P0,-,hf,indexed
+dclm-baseline,corpus,general,web,mixed,"DCLM-Baseline (alt glue)",MLFoundations,hf:mlfoundations/dclm-baseline-1.0,green,CC-BY,3800B,P2,-,hf,indexed
+finemath,corpus,math,web-math,mixed,"FineMath (3+/4+)",HuggingFace,hf:HuggingFaceTB/finemath,green,ODC-By,34B,P0,-,hf,indexed
+openwebmath,corpus,math,web-math,mixed,"OpenWebMath",Paster et al.,hf:open-web-math/open-web-math,green,ODC-By,15B,P0,-,hf,indexed
+proof-pile-2,corpus,math,mixed,mixed,"Proof-Pile-2 (AlgebraicStack + arXiv + OWM)",EleutherAI,hf:EleutherAI/proof-pile-2,mixed,per-subset licenses,55B,P0,-,hf,indexed
+mathpile,corpus,math,mixed,mixed,"MathPile",GAIR,hf:GAIR/MathPile,mixed,research license; overlap w/ OWM,9.5B,P1,-,hf,indexed
+nemotron-cc-math,corpus,math,web-math,mixed,"Nemotron-CC-Math-v1 (3plus 133B / 4plus 52B)",NVIDIA,hf:nvidia/Nemotron-CC-Math-v1,green,NVIDIA Open Data License; Phi-4-cleaned; equation-preserving; overlaps OWM/FineMath,133B,P0,-,hf,indexed
+nemotron-pretraining-code-v2,corpus,code,repos-synthetic,mixed,"Nemotron-Pretraining-Code-v2 (GitHub + grounded synthetic)",NVIDIA,hf:nvidia/Nemotron-Pretraining-Code-v2,green,NVIDIA Data Access Agreement; open teachers Qwen3-32B/Mixtral,340B,P1,-,hf,indexed
+nemotron-cc-code,corpus,code,web-code,mixed,"Nemotron-CC-Code-v1",NVIDIA,hf:nvidia/Nemotron-CC-Code-v1,green,NVIDIA open data license,20B,P2,-,hf,indexed
+arxiv-bulk-src,dump,xdomain,papers,research,"arXiv full LaTeX source (math/physics/cs/eess/cond-mat)",arXiv,https://info.arxiv.org/help/bulk_data_s3.html,grey,per-paper author licenses; source beats PDF OCR,30B,P0,-,arxiv-src,indexed
+pes2o,corpus,xdomain,papers,research,"peS2o (S2ORC open-access papers)",AI2,hf:allenai/peS2o,green,OA subset,42B,P1,-,hf,indexed
+pmc-oa,dump,general,papers-biomed,research,"PubMed Central OA subset",NIH,https://ftp.ncbi.nlm.nih.gov/pub/pmc/,green,OA licenses; bio-med leaning,90B,P2,-,dump,indexed
+stackoverflow,dump,code,qa,mixed,"Stack Overflow data dump",Stack Exchange,https://archive.org/details/stackexchange,green,CC-BY-SA,20B,P0,-,dump,indexed
+math-se-mo,dump,math,qa,mixed,"Math StackExchange + MathOverflow dumps",Stack Exchange,https://archive.org/details/stackexchange,green,CC-BY-SA,4B,P0,-,dump,indexed
+physics-se,dump,physics,qa,mixed,"Physics StackExchange dump",Stack Exchange,https://archive.org/details/stackexchange,green,CC-BY-SA,1.5B,P0,-,dump,indexed
+electronics-se,dump,eng,qa,mixed,"Electronics StackExchange dump",Stack Exchange,https://archive.org/details/stackexchange,green,CC-BY-SA,1B,P1,-,dump,indexed
+scicomp-stats-se,dump,xdomain,qa,mixed,"CrossValidated + SciComp + CS-Theory SE dumps",Stack Exchange,https://archive.org/details/stackexchange,green,CC-BY-SA,1B,P1,-,dump,indexed
+wikipedia-stem,dump,general,encyclopedia,mixed,"Wikipedia STEM slice (graph-selected via topic-graph job)",Wikimedia,https://dumps.wikimedia.org,green,CC-BY-SA; selection = PPR over link graph per doc S1.7,1.5B,P0,-,dump,indexed
+uspto-patents,dump,eng,patents,research,"USPTO patent full text (filtered STEM slice)",USPTO,https://bulkdata.uspto.gov,green,public domain,50B,P1,-,dump,indexed
+openstax,dump,xdomain,textbooks,ug,"OpenStax full catalog (~60 textbooks)",OpenStax,https://openstax.org,green,CC-BY; prime annealing-set material,25M,P0,-,scrape,indexed
+libretexts,dump,xdomain,textbooks,ug,"LibreTexts STEM libraries",LibreTexts,https://libretexts.org,green,CC mostly,150M,P1,-,scrape,indexed
+mit-ocw,dump,xdomain,lecture-notes,mixed,"MIT OpenCourseWare notes + problem sets",MIT,https://ocw.mit.edu,green,CC-BY-NC-SA,200M,P1,-,scrape,indexed
+david-tong-notes,notes,physics,lecture-notes,mixed,"David Tong lecture notes (full set)",Tong,http://www.damtp.cam.ac.uk/user/tong/teaching.html,grey,official-free; superb quality,3M,P0,4,free-web,indexed
+proofwiki,dump,math,proofs,mixed,"ProofWiki",community,https://proofwiki.org,green,CC-BY-SA,50M,P1,-,scrape,indexed
+nlab,dump,math,research-wiki,research,"nLab",community,https://ncatlab.org,green,CC-BY-SA,40M,P1,-,scrape,indexed
+gutenberg-stem,dump,general,classics,mixed,"Project Gutenberg STEM classics (Euclid/Newton/Maxwell/Faraday)",various,https://www.gutenberg.org,green,public domain,100M,P2,-,pd,indexed
+doab-otl,dump,xdomain,textbooks,ug,"DOAB + Open Textbook Library",various,https://open.umn.edu/opentextbooks,green,open licenses,200M,P1,-,scrape,indexed
+devdocs-readthedocs,dump,code,docs,mixed,"Language/library documentation (ReadTheDocs/DevDocs slice)",various,https://devdocs.io,mixed,mostly open,5B,P1,-,scrape,indexed
+cosmopedia,corpus,general,synthetic,mixed,"Cosmopedia (synthetic textbook style seed)",HuggingFace,hf:HuggingFaceTB/cosmopedia,green,open-teacher synthetic,25B,P2,-,hf,indexed
+standards-slice,dump,eng,standards,research,"Engineering standards slice (IEEE/ISO abstracts + public specs)",various,TBD,grey,mostly paywalled-published,1B,P2,4,lawful-copy,indexed
+feynman-lectures,series,physics,general-physics,ug,"The Feynman Lectures on Physics (3 vols)",Feynman/Leighton/Sands,https://www.feynmanlectures.caltech.edu,grey,official-free online,1M,P0,4,free-web,indexed
+landau-lifshitz,series,physics,theoretical-physics,grad,"Course of Theoretical Physics (10 vols)",Landau & Lifshitz,isbn:TBD,grey,,4M,P0,4,lawful-copy,indexed
+springer-gtm,series,math,graduate-texts,grad,"Springer Graduate Texts in Mathematics (~180 vols)",various,isbn:TBD,grey,,60M,P1,4,lawful-copy,indexed
+schaums-stem,series,xdomain,problems-solutions,ug,"Schaum's Outlines STEM set (~40 vols)",various,isbn:TBD,grey,worked problems + solutions,8M,P1,4,lawful-copy,indexed
+stein-shakarchi,series,math,analysis,grad,"Princeton Lectures in Analysis (4 vols)",Stein & Shakarchi,isbn:TBD,grey,,1.2M,P1,4,lawful-copy,indexed
+taocp,series,code,algorithms,grad,"The Art of Computer Programming (vols 1-4B)",Knuth,isbn:TBD,grey,,2M,P0,4,lawful-copy,indexed
+weinberg-qft,series,physics,qft,grad,"The Quantum Theory of Fields (3 vols)",Weinberg,isbn:TBD,grey,,1.2M,P1,4,lawful-copy,indexed
+cohen-tannoudji-qm,series,physics,quantum,grad,"Quantum Mechanics (3 vols)",Cohen-Tannoudji et al.,isbn:TBD,grey,,1.2M,P1,4,lawful-copy,indexed
+kardar-statphys,series,physics,stat-mech,grad,"Statistical Physics of Particles + Fields (2 vols)",Kardar,isbn:TBD,grey,,0.7M,P1,4,lawful-copy,indexed
+spivak-calculus,book,math,analysis,ug,"Calculus",Spivak,isbn:TBD,grey,,0.4M,P0,4,lawful-copy,indexed
+apostol-calculus,book,math,analysis,ug,"Calculus I-II",Apostol,isbn:TBD,grey,,0.8M,P1,4,lawful-copy,indexed
+stewart-calculus,book,math,calculus,intro,"Calculus: Early Transcendentals",Stewart,isbn:TBD,grey,,0.6M,P1,4,lawful-copy,indexed
+strang-linear-algebra,book,math,linear-algebra,ug,"Introduction to Linear Algebra",Strang,isbn:TBD,grey,,0.35M,P0,4,lawful-copy,indexed
+axler-ladr,book,math,linear-algebra,ug,"Linear Algebra Done Right",Axler,isbn:TBD,grey,4th ed. is open access,0.25M,P0,4,free-web,indexed
+hoffman-kunze,book,math,linear-algebra,ug,"Linear Algebra",Hoffman & Kunze,isbn:TBD,grey,,0.3M,P1,4,lawful-copy,indexed
+abbott-analysis,book,math,analysis,ug,"Understanding Analysis",Abbott,isbn:TBD,grey,,0.25M,P1,4,lawful-copy,indexed
+rudin-pma,book,math,analysis,ug,"Principles of Mathematical Analysis",Rudin,isbn:TBD,grey,,0.25M,P0,4,lawful-copy,indexed
+rudin-rca,book,math,analysis,grad,"Real and Complex Analysis",Rudin,isbn:TBD,grey,,0.3M,P1,4,lawful-copy,indexed
+folland-real-analysis,book,math,analysis,grad,"Real Analysis: Modern Techniques",Folland,isbn:TBD,grey,,0.3M,P1,4,lawful-copy,indexed
+dummit-foote,book,math,algebra,ug,"Abstract Algebra",Dummit & Foote,isbn:TBD,grey,,0.55M,P0,4,lawful-copy,indexed
+artin-algebra,book,math,algebra,ug,"Algebra",Artin,isbn:TBD,grey,,0.35M,P1,4,lawful-copy,indexed
+lang-algebra,book,math,algebra,grad,"Algebra",Lang,isbn:TBD,grey,,0.5M,P2,4,lawful-copy,indexed
+atiyah-macdonald,book,math,commutative-algebra,grad,"Introduction to Commutative Algebra",Atiyah & Macdonald,isbn:TBD,grey,,0.1M,P1,4,lawful-copy,indexed
+hartshorne-ag,book,math,algebraic-geometry,grad,"Algebraic Geometry",Hartshorne,isbn:TBD,grey,,0.35M,P2,4,lawful-copy,indexed
+vakil-rising-sea,book,math,algebraic-geometry,grad,"The Rising Sea: Foundations of Algebraic Geometry",Vakil,https://math.stanford.edu/~vakil/216blog/,green,free by author,0.5M,P1,-,free-web,indexed
+munkres-topology,book,math,topology,ug,"Topology",Munkres,isbn:TBD,grey,,0.35M,P0,4,lawful-copy,indexed
+hatcher-at,book,math,topology,grad,"Algebraic Topology",Hatcher,https://pi.math.cornell.edu/~hatcher/AT/ATpage.html,green,free by author,0.4M,P0,-,free-web,indexed
+lee-smooth-manifolds,book,math,differential-geometry,grad,"Introduction to Smooth Manifolds",Lee,isbn:TBD,grey,,0.5M,P1,4,lawful-copy,indexed
+docarmo-curves-surfaces,book,math,differential-geometry,ug,"Differential Geometry of Curves and Surfaces",do Carmo,isbn:TBD,grey,,0.3M,P1,4,lawful-copy,indexed
+needham-vca,book,math,complex-analysis,ug,"Visual Complex Analysis",Needham,isbn:TBD,grey,,0.35M,P1,4,lawful-copy,indexed
+boyce-diprima-ode,book,math,differential-equations,ug,"Elementary Differential Equations and BVPs",Boyce & DiPrima,isbn:TBD,grey,,0.4M,P1,4,lawful-copy,indexed
+evans-pde,book,math,pde,grad,"Partial Differential Equations",Evans,isbn:TBD,grey,,0.45M,P0,4,lawful-copy,indexed
+strogatz-nonlinear,book,math,dynamical-systems,ug,"Nonlinear Dynamics and Chaos",Strogatz,isbn:TBD,grey,,0.35M,P0,4,lawful-copy,indexed
+kreyszig-aem,book,xdomain,eng-math,ug,"Advanced Engineering Mathematics",Kreyszig,isbn:TBD,grey,,0.6M,P0,4,lawful-copy,indexed
+boas-math-methods,book,xdomain,physics-math,ug,"Mathematical Methods in the Physical Sciences",Boas,isbn:TBD,grey,,0.45M,P0,4,lawful-copy,indexed
+arfken-weber,book,xdomain,physics-math,grad,"Mathematical Methods for Physicists",Arfken & Weber,isbn:TBD,grey,,0.7M,P1,4,lawful-copy,indexed
+rosen-discrete,book,math,discrete,ug,"Discrete Mathematics and Its Applications",Rosen,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+concrete-mathematics,book,math,discrete,grad,"Concrete Mathematics",Graham/Knuth/Patashnik,isbn:TBD,grey,,0.4M,P0,4,lawful-copy,indexed
+generatingfunctionology,book,math,combinatorics,grad,"generatingfunctionology",Wilf,https://www2.math.upenn.edu/~wilf/DownldGF.html,green,free by author,0.15M,P2,-,free-web,indexed
+ross-probability,book,math,probability,ug,"A First Course in Probability",Ross,isbn:TBD,grey,,0.35M,P1,4,lawful-copy,indexed
+blitzstein-hwang,book,math,probability,ug,"Introduction to Probability",Blitzstein & Hwang,isbn:TBD,grey,official-free online,0.35M,P1,4,free-web,indexed
+casella-berger,book,math,statistics,grad,"Statistical Inference",Casella & Berger,isbn:TBD,grey,,0.4M,P0,4,lawful-copy,indexed
+wasserman-all-stats,book,math,statistics,grad,"All of Statistics",Wasserman,isbn:TBD,grey,,0.3M,P1,4,lawful-copy,indexed
+billingsley-prob-measure,book,math,probability,grad,"Probability and Measure",Billingsley,isbn:TBD,grey,,0.35M,P2,4,lawful-copy,indexed
+durrett-probability,book,math,probability,grad,"Probability: Theory and Examples",Durrett,isbn:TBD,grey,official-free-pdf,0.35M,P1,4,free-web,indexed
+oksendal-sde,book,math,stochastics,grad,"Stochastic Differential Equations",Øksendal,isbn:TBD,grey,,0.25M,P2,4,lawful-copy,indexed
+boyd-convex,book,math,optimization,grad,"Convex Optimization",Boyd & Vandenberghe,https://web.stanford.edu/~boyd/cvxbook/,green,free by authors,0.35M,P0,-,free-web,indexed
+nocedal-wright,book,math,optimization,grad,"Numerical Optimization",Nocedal & Wright,isbn:TBD,grey,,0.35M,P1,4,lawful-copy,indexed
+trefethen-bau,book,math,numerical,grad,"Numerical Linear Algebra",Trefethen & Bau,isbn:TBD,grey,,0.25M,P0,4,lawful-copy,indexed
+golub-vanloan,book,math,numerical,grad,"Matrix Computations",Golub & Van Loan,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+cover-thomas,book,math,information-theory,grad,"Elements of Information Theory",Cover & Thomas,isbn:TBD,grey,,0.35M,P0,4,lawful-copy,indexed
+mackay-itila,book,math,information-theory,grad,"Information Theory Inference and Learning Algorithms",MacKay,https://www.inference.org.uk/mackay/itila/,green,free by author,0.4M,P0,-,free-web,indexed
+kleppner-kolenkow,book,physics,mechanics,ug,"An Introduction to Mechanics",Kleppner & Kolenkow,isbn:TBD,grey,,0.3M,P0,4,lawful-copy,indexed
+morin-mechanics,book,physics,mechanics,ug,"Introduction to Classical Mechanics",Morin,isbn:TBD,grey,problems w/ solutions,0.4M,P1,4,lawful-copy,indexed
+taylor-mechanics,book,physics,mechanics,ug,"Classical Mechanics",Taylor,isbn:TBD,grey,,0.4M,P0,4,lawful-copy,indexed
+goldstein-mechanics,book,physics,mechanics,grad,"Classical Mechanics",Goldstein/Poole/Safko,isbn:TBD,grey,,0.4M,P0,4,lawful-copy,indexed
+purcell-morin-em,book,physics,electromagnetism,ug,"Electricity and Magnetism",Purcell & Morin,isbn:TBD,grey,,0.35M,P1,4,lawful-copy,indexed
+griffiths-em,book,physics,electromagnetism,ug,"Introduction to Electrodynamics",Griffiths,isbn:TBD,grey,,0.35M,P0,4,lawful-copy,indexed
+jackson-electrodynamics,book,physics,electromagnetism,grad,"Classical Electrodynamics",Jackson,isbn:TBD,grey,,0.45M,P0,4,lawful-copy,indexed
+griffiths-qm,book,physics,quantum,ug,"Introduction to Quantum Mechanics",Griffiths & Schroeter,isbn:TBD,grey,,0.3M,P0,4,lawful-copy,indexed
+shankar-qm,book,physics,quantum,grad,"Principles of Quantum Mechanics",Shankar,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+sakurai-qm,book,physics,quantum,grad,"Modern Quantum Mechanics",Sakurai & Napolitano,isbn:TBD,grey,,0.3M,P0,4,lawful-copy,indexed
+griffiths-particles,book,physics,particle-physics,ug,"Introduction to Elementary Particles",Griffiths,isbn:TBD,grey,,0.3M,P1,4,lawful-copy,indexed
+schroeder-thermal,book,physics,thermodynamics,ug,"An Introduction to Thermal Physics",Schroeder,isbn:TBD,grey,,0.25M,P0,4,lawful-copy,indexed
+blundell-thermal,book,physics,thermodynamics,ug,"Concepts in Thermal Physics",Blundell & Blundell,isbn:TBD,grey,,0.3M,P2,4,lawful-copy,indexed
+pathria-statmech,book,physics,stat-mech,grad,"Statistical Mechanics",Pathria & Beale,isbn:TBD,grey,,0.4M,P1,4,lawful-copy,indexed
+sethna-statmech,book,physics,stat-mech,grad,"Entropy Order Parameters and Complexity",Sethna,https://sethna.lassp.cornell.edu/StatMech/,green,free by author,0.3M,P1,-,free-web,indexed
+kittel-solid-state,book,physics,condensed-matter,ug,"Introduction to Solid State Physics",Kittel,isbn:TBD,grey,,0.3M,P1,4,lawful-copy,indexed
+ashcroft-mermin,book,physics,condensed-matter,grad,"Solid State Physics",Ashcroft & Mermin,isbn:TBD,grey,,0.5M,P0,4,lawful-copy,indexed
+altland-simons,book,physics,condensed-matter,grad,"Condensed Matter Field Theory",Altland & Simons,isbn:TBD,grey,,0.45M,P2,4,lawful-copy,indexed
+peskin-schroeder,book,physics,qft,grad,"An Introduction to Quantum Field Theory",Peskin & Schroeder,isbn:TBD,grey,,0.5M,P0,4,lawful-copy,indexed
+schwartz-qft,book,physics,qft,grad,"Quantum Field Theory and the Standard Model",Schwartz,isbn:TBD,grey,,0.55M,P1,4,lawful-copy,indexed
+zee-qft,book,physics,qft,grad,"Quantum Field Theory in a Nutshell",Zee,isbn:TBD,grey,,0.35M,P2,4,lawful-copy,indexed
+srednicki-qft,book,physics,qft,grad,"Quantum Field Theory",Srednicki,isbn:TBD,grey,free draft online,0.4M,P2,4,free-web,indexed
+carroll-gr,book,physics,relativity,grad,"Spacetime and Geometry",Carroll,isbn:TBD,grey,free notes precursor,0.35M,P0,4,lawful-copy,indexed
+wald-gr,book,physics,relativity,grad,"General Relativity",Wald,isbn:TBD,grey,,0.35M,P2,4,lawful-copy,indexed
+mtw-gravitation,book,physics,relativity,grad,"Gravitation",Misner/Thorne/Wheeler,isbn:TBD,grey,,0.9M,P2,4,lawful-copy,indexed
+hecht-optics,book,physics,optics,ug,"Optics",Hecht,isbn:TBD,grey,,0.4M,P1,4,lawful-copy,indexed
+french-vibrations,book,physics,waves,ug,"Vibrations and Waves",French,isbn:TBD,grey,,0.2M,P2,4,lawful-copy,indexed
+dodelson-cosmology,book,physics,cosmology,grad,"Modern Cosmology",Dodelson & Schmidt,isbn:TBD,grey,,0.3M,P2,4,lawful-copy,indexed
+thorne-blandford,book,xdomain,classical-physics,grad,"Modern Classical Physics",Thorne & Blandford,isbn:TBD,grey,physics+eng+applied-math bridge,1M,P0,4,lawful-copy,indexed
+halliday-resnick,book,physics,general-physics,intro,"Fundamentals of Physics",Halliday/Resnick/Walker,isbn:TBD,grey,,0.6M,P1,4,lawful-copy,indexed
+sussman-wisdom-sicm,book,xdomain,physics-via-code,grad,"Structure and Interpretation of Classical Mechanics",Sussman & Wisdom,https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/9579/sicm_edition_2.zip,green,CC-BY-SA; physics-as-program exemplar,0.3M,P0,-,free-web,indexed
+newman-comp-physics,book,xdomain,physics-via-code,ug,"Computational Physics",Newman,isbn:TBD,grey,,0.3M,P1,4,lawful-copy,indexed
+clrs,book,code,algorithms,ug,"Introduction to Algorithms",Cormen/Leiserson/Rivest/Stein,isbn:TBD,grey,,0.6M,P0,4,lawful-copy,indexed
+sedgewick-algorithms,book,code,algorithms,ug,"Algorithms",Sedgewick & Wayne,isbn:TBD,grey,,0.4M,P1,4,lawful-copy,indexed
+skiena-adm,book,code,algorithms,ug,"The Algorithm Design Manual",Skiena,isbn:TBD,grey,,0.3M,P1,4,lawful-copy,indexed
+kleinberg-tardos,book,code,algorithms,ug,"Algorithm Design",Kleinberg & Tardos,isbn:TBD,grey,,0.35M,P1,4,lawful-copy,indexed
+sipser-toc,book,code,theory,ug,"Introduction to the Theory of Computation",Sipser,isbn:TBD,grey,,0.25M,P0,4,lawful-copy,indexed
+arora-barak,book,code,complexity,grad,"Computational Complexity: A Modern Approach",Arora & Barak,isbn:TBD,grey,free draft online,0.4M,P2,4,free-web,indexed
+sicp,book,code,programming,ug,"Structure and Interpretation of Computer Programs",Abelson & Sussman,https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip,green,CC-BY-SA,0.3M,P0,-,free-web,indexed
+kr-c,book,code,programming,ug,"The C Programming Language",Kernighan & Ritchie,isbn:TBD,grey,,0.15M,P0,4,lawful-copy,indexed
+dragon-book,book,code,compilers,grad,"Compilers: Principles Techniques and Tools",Aho/Lam/Sethi/Ullman,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+crafting-interpreters,book,code,compilers,ug,"Crafting Interpreters",Nystrom,https://craftinginterpreters.com,green,free online,0.3M,P0,-,free-web,indexed
+ostep,book,code,os,ug,"Operating Systems: Three Easy Pieces",Arpaci-Dusseau,https://pages.cs.wisc.edu/~remzi/OSTEP/,green,free by authors,0.35M,P0,-,free-web,indexed
+tanenbaum-os,book,code,os,ug,"Modern Operating Systems",Tanenbaum & Bos,isbn:TBD,grey,,0.5M,P2,4,lawful-copy,indexed
+csapp,book,code,systems,ug,"Computer Systems: A Programmer's Perspective",Bryant & O'Hallaron,isbn:TBD,grey,,0.5M,P0,4,lawful-copy,indexed
+hennessy-patterson-arch,book,code,architecture,grad,"Computer Architecture: A Quantitative Approach",Hennessy & Patterson,isbn:TBD,grey,,0.5M,P1,4,lawful-copy,indexed
+patterson-hennessy-org,book,code,architecture,ug,"Computer Organization and Design",Patterson & Hennessy,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+harris-ddca,book,xdomain,digital-design,ug,"Digital Design and Computer Architecture",Harris & Harris,isbn:TBD,grey,eng-CS bridge,0.35M,P1,4,lawful-copy,indexed
+kurose-ross,book,code,networking,ug,"Computer Networking: A Top-Down Approach",Kurose & Ross,isbn:TBD,grey,,0.4M,P1,4,lawful-copy,indexed
+silberschatz-db,book,code,databases,ug,"Database System Concepts",Silberschatz/Korth/Sudarshan,isbn:TBD,grey,,0.4M,P2,4,lawful-copy,indexed
+ddia,book,code,systems,mixed,"Designing Data-Intensive Applications",Kleppmann,isbn:TBD,grey,,0.3M,P0,4,lawful-copy,indexed
+pro-git,book,code,tools,ug,"Pro Git",Chacon & Straub,https://git-scm.com/book,green,CC-BY-NC-SA,0.15M,P1,-,free-web,indexed
+fluent-python,book,code,programming,ug,"Fluent Python",Ramalho,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+effective-modern-cpp,book,code,programming,ug,"Effective Modern C++",Meyers,isbn:TBD,grey,,0.15M,P2,4,lawful-copy,indexed
+stroustrup-cpp,book,code,programming,ug,"The C++ Programming Language",Stroustrup,isbn:TBD,grey,,0.6M,P2,4,lawful-copy,indexed
+rust-book,book,code,programming,ug,"The Rust Programming Language",Klabnik & Nichols,https://doc.rust-lang.org/book/,green,MIT/Apache,0.25M,P0,-,free-web,indexed
+gof-patterns,book,code,design,ug,"Design Patterns",Gamma/Helm/Johnson/Vlissides,isbn:TBD,grey,,0.25M,P2,4,lawful-copy,indexed
+sre-book,book,code,operations,mixed,"Site Reliability Engineering",Google,https://sre.google/books/,green,free online,0.3M,P2,-,free-web,indexed
+aima,book,code,ai,ug,"Artificial Intelligence: A Modern Approach",Russell & Norvig,isbn:TBD,grey,,0.6M,P0,4,lawful-copy,indexed
+goodfellow-dl,book,code,ml,grad,"Deep Learning",Goodfellow/Bengio/Courville,https://www.deeplearningbook.org,grey,official-free online,0.4M,P0,4,free-web,indexed
+bishop-prml,book,code,ml,grad,"Pattern Recognition and Machine Learning",Bishop,isbn:TBD,grey,official-free-pdf,0.4M,P0,4,free-web,indexed
+esl-hastie,book,code,ml,grad,"The Elements of Statistical Learning",Hastie/Tibshirani/Friedman,https://hastie.su.domains/ElemStatLearn/,grey,official-free-pdf,0.4M,P0,4,free-web,indexed
+murphy-pml,book,code,ml,grad,"Probabilistic Machine Learning (2 vols)",Murphy,https://probml.github.io/pml-book/,grey,official free drafts,0.6M,P1,4,free-web,indexed
+sutton-barto-rl,book,code,ml,grad,"Reinforcement Learning: An Introduction",Sutton & Barto,http://incompleteideas.net/book/the-book.html,grey,official-free,0.35M,P0,4,free-web,indexed
+jurafsky-martin-slp,book,code,nlp,grad,"Speech and Language Processing",Jurafsky & Martin,https://web.stanford.edu/~jurafsky/slp3/,grey,official free draft,0.5M,P0,4,free-web,indexed
+koller-friedman-pgm,book,code,ml,grad,"Probabilistic Graphical Models",Koller & Friedman,isbn:TBD,grey,,0.6M,P2,4,lawful-copy,indexed
+numerical-recipes,book,xdomain,numerical,grad,"Numerical Recipes",Press et al.,isbn:TBD,grey,math-as-program exemplar,0.6M,P1,4,lawful-copy,indexed
+oppenheim-signals,book,eng,signals,ug,"Signals and Systems",Oppenheim & Willsky,isbn:TBD,grey,,0.4M,P0,4,lawful-copy,indexed
+oppenheim-dsp,book,eng,signals,grad,"Discrete-Time Signal Processing",Oppenheim & Schafer,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+proakis-comm,book,eng,communications,grad,"Digital Communications",Proakis & Salehi,isbn:TBD,grey,,0.4M,P2,4,lawful-copy,indexed
+sedra-smith,book,eng,electronics,ug,"Microelectronic Circuits",Sedra & Smith,isbn:TBD,grey,,0.55M,P0,4,lawful-copy,indexed
+razavi-analog,book,eng,electronics,grad,"Design of Analog CMOS Integrated Circuits",Razavi,isbn:TBD,grey,,0.4M,P1,4,lawful-copy,indexed
+horowitz-hill-aoe,book,eng,electronics,mixed,"The Art of Electronics",Horowitz & Hill,isbn:TBD,grey,,0.6M,P0,4,lawful-copy,indexed
+pozar-microwave,book,eng,rf,grad,"Microwave Engineering",Pozar,isbn:TBD,grey,,0.4M,P1,4,lawful-copy,indexed
+sze-semiconductor,book,eng,semiconductors,grad,"Physics of Semiconductor Devices",Sze & Ng,isbn:TBD,grey,,0.35M,P1,4,lawful-copy,indexed
+rabaey-digital-ic,book,eng,vlsi,grad,"Digital Integrated Circuits",Rabaey et al.,isbn:TBD,grey,,0.35M,P2,4,lawful-copy,indexed
+weste-harris-cmos,book,eng,vlsi,grad,"CMOS VLSI Design",Weste & Harris,isbn:TBD,grey,,0.4M,P2,4,lawful-copy,indexed
+nise-control,book,eng,controls,ug,"Control Systems Engineering",Nise,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+ogata-control,book,eng,controls,ug,"Modern Control Engineering",Ogata,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+astrom-murray,book,eng,controls,mixed,"Feedback Systems",Åström & Murray,https://fbswiki.org,green,free by authors,0.3M,P0,-,free-web,indexed
+beer-johnston-mechanics,book,eng,mechanics,ug,"Vector Mechanics for Engineers (Statics + Dynamics)",Beer & Johnston,isbn:TBD,grey,,0.6M,P1,4,lawful-copy,indexed
+hibbeler-mom,book,eng,mechanics,ug,"Mechanics of Materials",Hibbeler,isbn:TBD,grey,,0.4M,P1,4,lawful-copy,indexed
+shigley-design,book,eng,mechanical-design,ug,"Shigley's Mechanical Engineering Design",Budynas & Nisbett,isbn:TBD,grey,,0.5M,P0,4,lawful-copy,indexed
+cengel-thermo,book,eng,thermodynamics,ug,"Thermodynamics: An Engineering Approach",Cengel & Boles,isbn:TBD,grey,,0.5M,P0,4,lawful-copy,indexed
+incropera-heat,book,eng,heat-transfer,ug,"Fundamentals of Heat and Mass Transfer",Incropera et al.,isbn:TBD,grey,,0.5M,P0,4,lawful-copy,indexed
+white-fluids,book,eng,fluids,ug,"Fluid Mechanics",White,isbn:TBD,grey,,0.45M,P0,4,lawful-copy,indexed
+munson-fluids,book,eng,fluids,ug,"Fundamentals of Fluid Mechanics",Munson et al.,isbn:TBD,grey,,0.45M,P2,4,lawful-copy,indexed
+anderson-aero,book,eng,aerospace,ug,"Fundamentals of Aerodynamics",Anderson,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+anderson-flight,book,eng,aerospace,intro,"Introduction to Flight",Anderson,isbn:TBD,grey,,0.4M,P2,4,lawful-copy,indexed
+callister-materials,book,eng,materials,ug,"Materials Science and Engineering: An Introduction",Callister & Rethwisch,isbn:TBD,grey,,0.45M,P0,4,lawful-copy,indexed
+ashby-materials,book,eng,materials,grad,"Materials Selection in Mechanical Design",Ashby,isbn:TBD,grey,,0.35M,P1,4,lawful-copy,indexed
+bsl-transport,book,eng,transport,grad,"Transport Phenomena",Bird/Stewart/Lightfoot,isbn:TBD,grey,,0.45M,P0,4,lawful-copy,indexed
+fogler-reactions,book,eng,chemical-eng,ug,"Elements of Chemical Reaction Engineering",Fogler,isbn:TBD,grey,,0.45M,P1,4,lawful-copy,indexed
+perrys-handbook,reference,eng,chemical-eng,research,"Perry's Chemical Engineers' Handbook",Green & Southard,isbn:TBD,grey,,2.5M,P1,4,lawful-copy,indexed
+marks-handbook,reference,eng,mechanical,research,"Marks' Standard Handbook for Mechanical Engineers",Avallone et al.,isbn:TBD,grey,,2M,P2,4,lawful-copy,indexed
+roarks-formulas,reference,eng,structures,research,"Roark's Formulas for Stress and Strain",Young & Budynas,isbn:TBD,grey,,0.8M,P2,4,lawful-copy,indexed
+crc-handbook,reference,xdomain,data-tables,research,"CRC Handbook of Chemistry and Physics",Rumble (ed.),isbn:TBD,grey,,3M,P0,4,lawful-copy,indexed
+atkins-pchem,book,chem,physical-chemistry,ug,"Atkins' Physical Chemistry",Atkins/de Paula/Keeler,isbn:TBD,grey,,0.5M,P0,4,lawful-copy,indexed
+mcquarrie-pchem,book,chem,physical-chemistry,grad,"Physical Chemistry: A Molecular Approach",McQuarrie & Simon,isbn:TBD,grey,,0.5M,P1,4,lawful-copy,indexed
+clayden-organic,book,chem,organic,ug,"Organic Chemistry",Clayden/Greeves/Warren,isbn:TBD,grey,,0.6M,P1,4,lawful-copy,indexed
+housecroft-inorganic,book,chem,inorganic,ug,"Inorganic Chemistry",Housecroft & Sharpe,isbn:TBD,grey,,0.5M,P2,4,lawful-copy,indexed
+szabo-ostlund,book,chem,quantum-chemistry,grad,"Modern Quantum Chemistry",Szabo & Ostlund,isbn:TBD,grey,Dover reprint,0.3M,P1,4,lawful-copy,indexed

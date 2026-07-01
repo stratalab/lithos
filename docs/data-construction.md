@@ -33,7 +33,7 @@ Consolidates the data strategy (pre- **and** post-training) for the STEM-domain 
 | 5. Dedup | remove duplicates | exact (hash) + **near (MinHash/LSH)**. Scope matters: FineWeb dedups *per-snapshot*, not globally (global can hurt) | MinHash ✅ (`data/minhash.py`) |
 | 6. Decontaminate | strip benchmark leaks | 13-gram match vs frozen battery | ✅ (`data/decontam.py`) |
 | 7. PII / license | redact secrets, license-comply | secret-scanning (critical for **code** — API keys); permissive-only, honor opt-outs | **net-new** for code/STEM |
-| 8. Domain tag + mix | control the blend | tag by domain; choose mix weights (DoReMi / data-mixing-laws / empirical sweep) | **net-new**: weighted-mix spec + tagging |
+| 8. Domain tag + mix | control the blend | tag by domain; choose mix weights (DoReMi / data-mixing-laws / empirical sweep); tagger vocabulary from the Wikipedia topic-graph job (§1.7) | **net-new**: weighted-mix spec + tagging |
 | 9. Curriculum / anneal | order matters | bulk mix → **final cooldown phase on a small, very-high-quality set** as LR→0 (Llama-3, OLMo-2, MiniCPM) — cheap, high-impact | **net-new**: annealing set |
 | 10. Synthetic | multiply quality tokens | rephrase (WRAP), textbook-gen (Cosmopedia/Phi); **STEM: generate-then-verify** | **net-new**: verified synthetic (un-deferred) |
 | 11. Tokenize/pack/shard | finalize | train tokenizer, pack sequences, shard + manifest | ✅ (general 32k); **net-new**: STEM tokenizer retrain |
@@ -83,18 +83,29 @@ We size the corpus as if training a 7–13B model (a few trillion tokens-seen), 
 
 ### 1.7 Index-first curation — the catalog of intent
 
-**Build the index before acquiring a single byte.** The corpus starts as a *bill of materials*: a table of every work we intend to ingest, so coverage, gaps, licensing, and cost are measurable before acquisition spend — and so per-document sourcing decisions (§1.5) are auditable rather than vibes.
+**Build the index before acquiring a single byte.** Lives at **`corpus/seed_index.csv`** (validated + coverage-reported by `scripts/validate_seed_index.py`; schema doc in `corpus/README.md`). The corpus starts as a *bill of materials*: a table of every work we intend to ingest, so coverage, gaps, licensing, and cost are measurable before acquisition spend — and so per-document sourcing decisions (§1.5) are auditable rather than vibes.
 
 - **Schema (one row per work):** canonical ID (ISBN / DOI / arXiv ID) · title · domain · subfield · level (intro / UG / grad / research) · license tier (green / grey per §1.5) · est. tokens · priority · acquisition route · status.
 - **Harvest existing curation instead of curating from scratch:** university syllabi, qualifying-exam reading lists, the per-field "bibles", award lists, review-article bibliographies. Humanity already ranked its STEM canon; we transcribe the ranking.
 - **The index is also the enforcement surface:** license tier and epoch cap live as columns, so the §1.5 doctrine is applied mechanically at ingestion, and the regurgitation eval knows exactly which works to probe.
+
+**The Wikipedia topic-graph job (index infrastructure, one offline pass).** Wikipedia's *link graph* — not its token count — is the tool: a computed knowledge graph that curates everything else. One job, entirely from dumps (`pagelinks` + redirects + wikitext; no scraping):
+
+1. **Seed** with pre-made curation: "Outline of X" pages, Vital Articles STEM levels, "List of important publications in mathematics/physics/…", category roots for our domains.
+2. **Expand** by personalized PageRank over the full link graph (backlinks *and* outlinks), threshold by score → the **topic family** per domain/subfield. Graph proximity beats the category tree (messy, gappy) and beats raw one-hop backlinks (biographies, pop-culture noise).
+
+Four outputs, in value order:
+- **(a) Citation-ranked canon candidates** — aggregate the References sections across each topic family; the most-cited books/papers per subfield ≈ the field's *consensus canon*, computed not hand-picked. This is how `corpus/seed_index.csv` grows from the ~155 hand-seeded works toward full coverage, with an objective priority signal.
+- **(b) The stage-8 tagging vocabulary** — titles + redirects + anchor texts per topic family = a free labeled term list for training the domain/subfield classifier ("which family's terms does this document use").
+- **(c) The coverage checklist** — map indexed works onto topic families; "do we cover grad-level stochastic PDEs?" becomes a query, not a vibe.
+- **(d) The `wikipedia-stem` slice itself** (~1.5–3B tokens, graph-selected rather than category-selected) — the byproduct, not the point: encyclopedic prose is glue/entity coverage, not working knowledge.
 
 ### 1.8 Source inventory — the five mixable slices
 
 | Slice | Candidate sources | Doctrine tier (§1.5) |
 |---|---|---|
 | Code | The Stack v2, GitHub issues/PRs, notebooks | green + grey (public repos regardless of license); secret-scanned always |
-| Math | FineMath, OpenWebMath, Proof-Pile-2/AlgebraicStack, arXiv math, **the math book canon** | green + grey (published books epoch-capped) |
+| Math | **Nemotron-CC-Math-v1 (133B — the big one)**, FineMath, OpenWebMath, Proof-Pile-2/AlgebraicStack, arXiv math, **the math book canon** | green + grey (published books epoch-capped) |
 | Physics + Eng | arXiv physics/cond-mat/eng, **Stack Exchange** Q&A (CC-BY-SA), OpenStax/LibreTexts (CC), USPTO patents (public domain), **the physics/eng book canon** | green + grey (published books epoch-capped) |
 | General glue (~15%) | FineWeb-Edu | green (ODC-By) |
 | Verified synthetic | generated-and-checked solutions / reasoning traces (open teacher) | green (self-owned, teacher disclosed) |
@@ -102,7 +113,7 @@ We size the corpus as if training a 7–13B model (a few trillion tokens-seen), 
 ### 1.9 What we've built vs net-new
 
 - **Built:** heuristic-filter seam, MinHash near-dedup, 13-gram decontam, quality-score thresholding, held-out holdout, ablation harness, manifests, general 32k tokenizer, packing, sharding, R2 storage.
-- **Net-new:** **seed index / catalog of intent (§1.7 — the next artifact)**, multi-source ingestion + LaTeX/PDF/code extraction, domain tagging, self-trained quality classifier, weighted-mix spec, per-domain bpb sets, verified synthetic, annealing set, STEM tokenizer retrain, **regurgitation eval + epoch-cap accounting (§1.5)**.
+- **Net-new:** **seed index / catalog of intent (§1.7 — seeded: `corpus/seed_index.csv`, 185 rows)**, multi-source ingestion + LaTeX/PDF/code extraction, domain tagging, self-trained quality classifier, weighted-mix spec, per-domain bpb sets, verified synthetic, annealing set, STEM tokenizer retrain, **regurgitation eval + epoch-cap accounting (§1.5)**.
 
 ---
 
@@ -131,6 +142,13 @@ Post-training is **not one dataset** — it's a different *kind* of data per sta
 | Math | **OpenMathInstruct-2** (Mixtral/Llama-gen), **NuminaMath** (AIMO-winning CoT), MetaMathQA, Orca-Math |
 | Science/physics | **Camel-AI** (physics/chem), SciInstruct |
 | Reasoning traces | **OpenR1-Math**, **OpenThoughts/2**, Bespoke-Stratos, Sky-T1 — long CoT distilled from *open* R1/QwQ |
+
+**The NVIDIA Nemotron harvest (checked 2026-07 — [math/reasoning](https://huggingface.co/collections/nvidia/nemotron-math-and-reasoning) + [code/SWE](https://huggingface.co/collections/nvidia/nemotron-code-and-swe) collections).** NVIDIA pre-built much of what §2.5 planned to generate, with doctrine-clean provenance (open teachers, permissive licenses) — harvest, don't rebuild:
+- **OpenMathReasoning** (5.68M rows, CC-BY-4.0, teachers R1+QwQ) — **includes 1.7M tool-integrated-reasoning traces**: literally the Phase-12 TIR training data, pre-made. P0.
+- **AceReason-1.1-SFT** (2.7M math + 1.3M code, CC-BY-4.0, teacher R1). P0.
+- **Nemotron-Math-v2** (7M trajectories over 347K problems, CC-BY/CC-BY-SA, teacher **gpt-oss-120b** — OpenAI's *open-weights* Apache model, so green: weights-license distillation, no API ToS in the chain) — solved w/ and w/o Python tool use. P1.
+- **Code/SWE**: Nemotron-SFT-SWE-v3 (238k agentic trajectories, CC-BY-4.0 — ⚠️ generating models unnamed on the card; provenance-check before keeper), Nemotron-RL-Agentic-SWE-Pivot-v1 (34k), RL competitive-coding sets, OpenCodeReasoning (R1-generated, CC-BY-4.0).
+- **RLVR problem banks**: Nemotron-RL-math sets, Nemotron-Math-Proofs (925k). Pretraining-scale siblings went into `corpus/seed_index.csv` (Nemotron-CC-Math-v1 133B P0, Nemotron-Pretraining-Code-v2 340B P1).
 
 **Open-reasoner distillation teachers (the verified-synthesis generator engine).** Distill *open, permissively-licensed* reasoners only — **never GPT/Claude** (their ToS forbids using outputs to train competing models: a provable contract breach, categorically worse than the books' copyright question — see §2.3). Roster by slice:
 - **Code (lead): GLM-5.2** (Z.ai, open weights, MoE ~744B/40B-active) — current best *open* coding model: SWE-Bench Pro 62.1 (SoTA-open), Terminal-Bench 2.1 81.0, #2 frontend. Plus **Qwen2.5-Coder-32B**, **DeepSeek-V3**.
