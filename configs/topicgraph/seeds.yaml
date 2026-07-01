@@ -1,0 +1,126 @@
+# Wikipedia topic-graph job — per-domain seed pages (docs/data-construction.md §1.7).
+#
+# Seeds are pre-made curation: "Outline of X" pages, "List of important
+# publications", glossaries, and core subject roots. PPR expands from these
+# over the full link graph; the per-domain result is the topic family.
+# Titles use spaces (redirects resolve automatically).
+
+alpha: 0.85
+max_iter: 40
+top_n: 60000 # default family size; per-domain override below
+
+domains:
+  math:
+    top_n: 80000
+    seeds:
+      - Mathematics
+      - Outline of mathematics
+      - Lists of mathematics topics
+      - List of important publications in mathematics
+      - Glossary of areas of mathematics
+      - Mathematical analysis
+      - Abstract algebra
+      - Linear algebra
+      - Topology
+      - Differential geometry
+      - Number theory
+      - Combinatorics
+      - Probability theory
+      - Mathematical statistics
+      - Mathematical optimization
+      - Numerical analysis
+      - Partial differential equation
+      - Dynamical system
+      - Mathematical logic
+      - Category theory
+      - Information theory
+  physics:
+    top_n: 80000
+    seeds:
+      - Physics
+      - Outline of physics
+      - List of important publications in physics
+      - Glossary of physics
+      - Classical mechanics
+      - Electromagnetism
+      - Quantum mechanics
+      - Quantum field theory
+      - Statistical mechanics
+      - Thermodynamics
+      - Condensed matter physics
+      - Particle physics
+      - General relativity
+      - Special relativity
+      - Optics
+      - Astrophysics
+      - Cosmology
+      - Nuclear physics
+      - Plasma physics
+      - Fluid dynamics
+      - Solid-state physics
+  cs:
+    top_n: 80000
+    seeds:
+      - Computer science
+      - Outline of computer science
+      - List of important publications in computer science
+      - Algorithm
+      - Data structure
+      - Computational complexity theory
+      - Programming language
+      - Compiler
+      - Operating system
+      - Computer architecture
+      - Distributed computing
+      - Database
+      - Computer network
+      - Machine learning
+      - Artificial intelligence
+      - Deep learning
+      - Cryptography
+      - Software engineering
+      - Formal verification
+      - Theory of computation
+  eng:
+    top_n: 80000
+    seeds:
+      - Engineering
+      - Outline of engineering
+      - Electrical engineering
+      - Electronic engineering
+      - Mechanical engineering
+      - Aerospace engineering
+      - Chemical engineering
+      - Control theory
+      - Signal processing
+      - Digital signal processing
+      - Robotics
+      - Mechatronics
+      - Embedded system
+      - Semiconductor device
+      - Integrated circuit
+      - Power electronics
+      - Telecommunications engineering
+      - Structural engineering
+      - Materials science
+      - Heat transfer
+      - Fluid mechanics
+      - Strength of materials
+      - Machine element
+      - Orbital mechanics
+  chem:
+    top_n: 40000
+    seeds:
+      - Chemistry
+      - Outline of chemistry
+      - Physical chemistry
+      - Organic chemistry
+      - Inorganic chemistry
+      - Analytical chemistry
+      - Quantum chemistry
+      - Electrochemistry
+      - Chemical kinetics
+      - Chemical thermodynamics
+      - Spectroscopy
+      - Chemical bond
+      - Periodic table

@@ -89,7 +89,7 @@ We size the corpus as if training a 7–13B model (a few trillion tokens-seen), 
 - **Harvest existing curation instead of curating from scratch:** university syllabi, qualifying-exam reading lists, the per-field "bibles", award lists, review-article bibliographies. Humanity already ranked its STEM canon; we transcribe the ranking.
 - **The index is also the enforcement surface:** license tier and epoch cap live as columns, so the §1.5 doctrine is applied mechanically at ingestion, and the regurgitation eval knows exactly which works to probe.
 
-**The Wikipedia topic-graph job (index infrastructure, one offline pass).** Wikipedia's *link graph* — not its token count — is the tool: a computed knowledge graph that curates everything else. One job, entirely from dumps (`pagelinks` + redirects + wikitext; no scraping):
+**The Wikipedia topic-graph job (index infrastructure, one offline pass).** *Built:* `lithos/data/topicgraph.py` + `scripts/run_topic_graph.py` (stages: `download` → `graph` → `citations`; seeds in `configs/topicgraph/seeds.yaml`). Wikipedia's *link graph* — not its token count — is the tool: a computed knowledge graph that curates everything else. One job, entirely from dumps (`pagelinks` + redirects + wikitext; no scraping):
 
 1. **Seed** with pre-made curation: "Outline of X" pages, Vital Articles STEM levels, "List of important publications in mathematics/physics/…", category roots for our domains.
 2. **Expand** by personalized PageRank over the full link graph (backlinks *and* outlinks), threshold by score → the **topic family** per domain/subfield. Graph proximity beats the category tree (messy, gappy) and beats raw one-hop backlinks (biographies, pop-culture noise).
@@ -211,5 +211,5 @@ In a verifiable domain we can **generate most of our own post-training data**: p
 ## Pointers
 
 - Plan: `lithos-implementation-plan.md` — Phase 9 (eval), Phase 10 (corpus + mix machinery), Phase 11 (post-training), Phase 12 (mix-sweep → 500M → 1B).
-- Code: `lithos/data/{pipeline,minhash,decontam,quality,documents}.py`, `lithos/evals/{benchmarks,scorecard,ablation}.py`.
+- Code: `lithos/data/{pipeline,minhash,decontam,quality,documents,topicgraph}.py`, `lithos/evals/{benchmarks,scorecard,ablation}.py`, `scripts/{run_topic_graph,validate_seed_index}.py`.
 - **Future deepening:** read each §1.4 report and extract its concrete filter constants, dedup scoping, and ablation deltas into this doc (tagged adopt / adapt / skip).
