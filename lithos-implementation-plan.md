@@ -88,7 +88,7 @@ Not in the original plan; now a real deliverable. `scripts/`: **`build_corpus.sh
 
 *The strategic pivot: own the data layer as a co-equal foundation, build a rock-solid scale-invariant pipeline at small scale, and **construct a best-in-class STEM corpus** whose mix is chosen empirically on the cheap 100M rig — the deliverable is a **compact cross-domain STEM reasoner for the edge** (the two-track from-scratch-vs-distillation gap becomes a side-experiment within the 1B step). All of Part II builds locally + on the 100M rig; only the 500M/1B/3B scale-ups need secured cloud compute.*
 
-## Phase 9 — Eval harness v1 (the measuring stick)  ·  ◑ harness built
+## Phase 9 — Eval harness v1 (the measuring stick)  ·  ◑ harness built  ·  *full eval plan: `docs/eval-plan.md`*
 
 **Goal:** a frozen, reproducible, scale-invariant benchmark harness — the yardstick for *all* data and post-training work. Nothing data-centric is measurable without it.
 

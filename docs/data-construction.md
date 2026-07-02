@@ -213,7 +213,7 @@ In a verifiable domain we can **generate most of our own post-training data**: p
 
 ---
 
-## Part 3 — Eval data (cross-ref Phase 9)
+## Part 3 — Eval data (full plan: `docs/eval-plan.md`; cross-ref Phase 9)
 
 - Frozen versioned battery (general) + **executable STEM battery** (HumanEval/MBPP/GSM8K/MATH) + **cross-domain transfer probe** (derive-then-implement) + **regurgitation eval** (verbatim-continuation probe over indexed grey-tier works — the §1.5 caveat, made measurable).
 - **Per-domain bpb held-out sets** (code/math/physics/eng/general) — the mix-sweep's decision metric.

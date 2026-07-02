@@ -1,0 +1,109 @@
+# Acquisition specs — the per-id details seed_index.csv doesn't carry
+# (HF include patterns, dump URLs, size estimates for planning).
+# Executed by scripts/acquire/acquire.py on a throwaway VM (bulk bytes never
+# transit the home connection); raw mirrors land at <R2>/raw/<id>/ with a
+# provenance manifest per doctrine (doc §0.4). id keys must exist in
+# corpus/seed_index.csv (enforced by the driver).
+
+waves:
+  p0:
+    - openwebmath
+    - finemath
+    - nemotron-cc-math
+    - megamath
+    - proof-pile-2
+    - fineweb-edu
+    - stackexchange-dumps
+  posttrain:
+    - openmathreasoning
+    - nemotron-math-v2
+    - acereason-sft
+    - open-swe-traces
+  p1:
+    - nemotron-pretraining-code-v2
+    - nemotron-cc-code
+    - pes2o
+    - mathpile
+
+specs:
+  openwebmath:
+    route: hf
+    repo: open-web-math/open-web-math
+    est_gb: 27
+  finemath:
+    route: hf
+    repo: HuggingFaceTB/finemath
+    include: ["finemath-3plus/*"] # 4plus is the higher-scored subset of 3plus
+    est_gb: 80
+  nemotron-cc-math:
+    route: hf
+    repo: nvidia/Nemotron-CC-Math-v1
+    est_gb: 270
+    notes: GATED - needs approved access on the stratalab account first
+  megamath:
+    route: hf
+    repo: LLM360/MegaMath
+    include: ["megamath-web/*", "megamath-code/*"] # synthetic subset deferred (generator unnamed)
+    est_gb: 600
+  proof-pile-2:
+    route: hf
+    repo: EleutherAI/proof-pile-2
+    est_gb: 100
+  fineweb-edu:
+    route: hf
+    repo: HuggingFaceFW/fineweb-edu
+    include: ["sample/100BT/*"] # glue budget is 150B; the 1.3T full set stays remote
+    est_gb: 220
+  stackexchange-dumps:
+    # Historical archive.org dumps (pre login-wall, clean CC-BY-SA) — see doc §2.2.
+    # aria2c resumes; sites chosen per seed_index qa rows.
+    route: dump
+    urls:
+      - https://archive.org/download/stackexchange/stackoverflow.com-Posts.7z
+      - https://archive.org/download/stackexchange/stackoverflow.com-Comments.7z
+      - https://archive.org/download/stackexchange/math.stackexchange.com.7z
+      - https://archive.org/download/stackexchange/mathoverflow.net.7z
+      - https://archive.org/download/stackexchange/physics.stackexchange.com.7z
+      - https://archive.org/download/stackexchange/electronics.stackexchange.com.7z
+      - https://archive.org/download/stackexchange/stats.stackexchange.com.7z
+      - https://archive.org/download/stackexchange/scicomp.stackexchange.com.7z
+      - https://archive.org/download/stackexchange/cstheory.stackexchange.com.7z
+    est_gb: 110
+    index_ids: [stackoverflow, math-se-mo, physics-se, electronics-se, scicomp-stats-se]
+  openmathreasoning:
+    route: hf
+    repo: nvidia/OpenMathReasoning
+    est_gb: 150
+    index_ids: [] # post-training set - lives in doc §2.2, not the pretrain index
+  nemotron-math-v2:
+    route: hf
+    repo: nvidia/Nemotron-Math-v2
+    est_gb: 143
+    index_ids: []
+  acereason-sft:
+    route: hf
+    repo: nvidia/AceReason-1.1-SFT
+    est_gb: 60
+    index_ids: []
+  open-swe-traces:
+    route: hf
+    repo: nvidia/Open-SWE-Traces
+    est_gb: 18
+    index_ids: []
+  nemotron-pretraining-code-v2:
+    route: hf
+    repo: nvidia/Nemotron-Pretraining-Code-v2
+    est_gb: 650
+  nemotron-cc-code:
+    route: hf
+    repo: nvidia/Nemotron-CC-Code-v1
+    est_gb: 40
+  pes2o:
+    route: hf
+    repo: allenai/peS2o
+    est_gb: 80
+  mathpile:
+    route: hf
+    repo: GAIR/MathPile
+    est_gb: 20
+    notes: research license - verify terms before any keeper run (index row says mixed)
