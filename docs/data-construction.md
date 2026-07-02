@@ -105,7 +105,7 @@ Four outputs, in value order:
 | Slice | Candidate sources | Doctrine tier (§1.5) |
 |---|---|---|
 | Code | The Stack v2, GitHub issues/PRs, notebooks | green + grey (public repos regardless of license); secret-scanned always |
-| Math | **Nemotron-CC-Math-v1 (133B — the big one)**, FineMath, OpenWebMath, Proof-Pile-2/AlgebraicStack, arXiv math, **the math book canon** | green + grey (published books epoch-capped) |
+| Math | **Nemotron-CC-Math-v1 (133B)** + **MegaMath (372B, ODC-By)** — the two big ones (⚠️ both CC-mined: cross-source dedup vs OWM/FineMath before mixing), FineMath, OpenWebMath, Proof-Pile-2/AlgebraicStack, arXiv math, **the math book canon** | green + grey (published books epoch-capped) |
 | Physics + Eng | arXiv physics/cond-mat/eng, **Stack Exchange** Q&A (CC-BY-SA), OpenStax/LibreTexts (CC), USPTO patents (public domain), **the physics/eng book canon** | green + grey (published books epoch-capped) |
 | General glue (~15%) | FineWeb-Edu | green (ODC-By) |
 | Verified synthetic | generated-and-checked solutions / reasoning traces (open teacher) | green (self-owned, teacher disclosed) |
@@ -117,7 +117,17 @@ Four outputs, in value order:
 - **Tier 2 (rides along nearly free):** aerospace (~80% mechanics+fluids+controls; keep the canon + orbital mechanics, don't over-invest), chemical (transport phenomena = applied PDE).
 - **Tier 3 (index the canon, don't target):** civil/structural (center of gravity = jurisdiction-specific design codes + liability, thin public data), industrial/ops (it's optimization + statistics — the math slice covers it from the other side).
 
-### 1.9 What we've built vs net-new
+### 1.9 Target composition — decide the split, curate into it (SETTLED)
+
+**Supply-driven corpora inherit the internet's biases** — code is abundant, so unchecked accumulation drifts toward a code model with STEM garnish. The fix: composition is decided *first*, and acquisition fills slots. Two layers, reconciling with the empirical-mix doctrine (§0.2):
+1. **Acquisition targets** (this section, `corpus/targets.yaml`) govern what we *curate toward* — strategy-set, with tolerance bands.
+2. **Training mix weights** are still swept empirically on the 100M rig (per-domain bpb) — *within* that supply. The link: **over-provision every slice** so the sweep is never starved in a direction we might want to go.
+
+Domain targets on ~1T unique acquired tokens: **code 28%** (capped — natural supply is 3×), **math 20%** (over-invested — scarce and load-bearing), **physics 10%, eng 10%** (both need synthetic + epoch boost to hit), **xdomain 15%** (the intersections, §1.3), **general 15%**, chem 2%. Plus **form targets** (global), because 200B of math that's 95% scraped web-math is still monoculture — forms teach different things (prose→concepts, Q&A→dialogue, problems→doing): web 30% · code 25% · papers 15% · expository 10% · synthetic 10% · qa 5% · reference 4% · problems 1%.
+
+**Enforcement:** the index carries a `form` column; `scripts/validate_seed_index.py` reports available supply vs target per domain and form. **UNDER-supplied slots are the acquisition queue** (or verified-synthetic generation orders) — a shortfall is a to-do, not an error; over-supply is fine (the mix samples down). Acquisition priority = what fills the most under-budget slot, not what's easiest to download.
+
+### 1.10 What we've built vs net-new
 
 - **Built:** heuristic-filter seam, MinHash near-dedup, 13-gram decontam, quality-score thresholding, held-out holdout, ablation harness, manifests, general 32k tokenizer, packing, sharding, R2 storage.
 - **Net-new:** **seed index / catalog of intent (§1.7 — seeded: `corpus/seed_index.csv`, 185 rows)**, multi-source ingestion + LaTeX/PDF/code extraction, domain tagging, self-trained quality classifier, weighted-mix spec, per-domain bpb sets, verified synthetic, annealing set, STEM tokenizer retrain, **regurgitation eval + epoch-cap accounting (§1.5)**.
@@ -154,7 +164,7 @@ Post-training is **not one dataset** — it's a different *kind* of data per sta
 - **OpenMathReasoning** (5.68M rows, CC-BY-4.0, teachers R1+QwQ) — **includes 1.7M tool-integrated-reasoning traces**: literally the Phase-12 TIR training data, pre-made. P0.
 - **AceReason-1.1-SFT** (2.7M math + 1.3M code, CC-BY-4.0, teacher R1). P0.
 - **Nemotron-Math-v2** (7M trajectories over 347K problems, CC-BY/CC-BY-SA, teacher **gpt-oss-120b** — OpenAI's *open-weights* Apache model, so green: weights-license distillation, no API ToS in the chain) — solved w/ and w/o Python tool use. P1.
-- **Code/SWE**: Nemotron-SFT-SWE-v3 (238k agentic trajectories, CC-BY-4.0 — ⚠️ generating models unnamed on the card; provenance-check before keeper), Nemotron-RL-Agentic-SWE-Pivot-v1 (34k), RL competitive-coding sets, OpenCodeReasoning (R1-generated, CC-BY-4.0).
+- **Code/SWE**: **Open-SWE-Traces** (207k agentic trajectories, CC-BY-4.0, **named open teachers** — MiniMax-M2.5 + Qwen3.5-122B; verify their weight licenses at acquisition) — preferred over Nemotron-SFT-SWE-v3 (238k, CC-BY-4.0 — ⚠️ generating models unnamed on the card); Nemotron-RL-Agentic-SWE-Pivot-v1 (34k), RL competitive-coding sets, OpenCodeReasoning (R1-generated, CC-BY-4.0).
 - **RLVR problem banks**: Nemotron-RL-math sets, Nemotron-Math-Proofs (925k). Pretraining-scale siblings went into `corpus/seed_index.csv` (Nemotron-CC-Math-v1 133B P0, Nemotron-Pretraining-Code-v2 340B P1).
 
 **Open-reasoner distillation teachers (the verified-synthesis generator engine).** Distill *open, permissively-licensed* reasoners only — **never GPT/Claude** (their ToS forbids using outputs to train competing models: a provable contract breach, categorically worse than the books' copyright question — see §2.3). Roster by slice:

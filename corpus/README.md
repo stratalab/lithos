@@ -4,8 +4,9 @@ The bill of materials for the Lithos STEM pretraining corpus (doctrine and ratio
 
 ## Files
 
-- `seed_index.csv` — one row per work / corpus / dump / series. The seed release covers the bulk corpora + the per-domain canon backbone (~190 rows); it grows toward the full canon over time.
-- `scripts/validate_seed_index.py` — schema check + coverage report (tokens by domain × tier × priority).
+- `seed_index.csv` — one row per work / corpus / dump / series. The seed release covers the bulk corpora + the per-domain canon backbone; it grows toward the full canon over time.
+- `targets.yaml` — the **acquisition target composition** (doc §1.9): per-domain and per-form shares with tolerance bands. Curation fills toward these slots so supply bias ("code is easy to get") can't shape the corpus; the *training* mix is swept empirically within this supply.
+- `scripts/validate_seed_index.py` — schema check + coverage report + **budget report** (available supply vs targets; UNDER-supplied slots are acquisition priorities, not errors).
 
 ## Schema
 
@@ -13,6 +14,7 @@ The bill of materials for the Lithos STEM pretraining corpus (doctrine and ratio
 |---|---|
 | `id` | stable slug, never reused |
 | `kind` | `corpus` (ML-ready dataset) · `dump` (raw public dump) · `series` (multi-volume set) · `book` · `reference` (handbook) · `notes` (lecture-note collections) · `problems` (exam/olympiad/problem-set banks — post-training feedstock, see doc §2.2) |
+| `form` | content shape, budgeted in `targets.yaml`: `web` · `code` · `papers` · `expository` (books/notes/textbooks) · `qa` · `problems` · `reference` · `synthetic` · `mixed` (splits across forms at extraction) |
 | `domain` | `code` · `math` · `physics` · `eng` · `chem` · `general` · `xdomain` (the intersections we over-weight: physics-via-code, math-as-program) |
 | `subfield` | free text (e.g. `analysis`, `qft`, `controls`) |
 | `level` | `intro` · `ug` · `grad` · `research` · `mixed` |

@@ -199,6 +199,7 @@ Once the MVP (500M + 4B hero) lands, expanding the family is mostly **config + c
 - **8B ← Qwen3-8B** — same light-continued-pretrain + deployment recipe. ~$13k incremental. The "high-end edge" tier.
 - **1B from-scratch** — the second sovereign model, *if* the 500M proves the from-scratch tier worth extending.
 - **Documented fallbacks** (only if the open-base path disappoints on quality): heavy continued-pretrain (≥500B), or a **from-scratch 3B @ 2–3T** (~$26–40k; ~600B–1T unique STEM repeated ~3–4 epochs per data-constrained-scaling; needs **multi-node + elastic-for-spot** training — a new infra dimension, deferred until justified).
+- **Small-tier fallback (the mirror case):** if the from-scratch **500M** disappoints against a continued-pretrained **Qwen3-0.6B** on the same battery (an eval we should run as a matter of course — it's cheap and keeps us honest), the *shipping* 500M-class model becomes the CPT'd Qwen and the from-scratch line **retreats to the R1/R2 research vehicle** — where it's irreplaceable anyway (trained-in retrieval/sparse attention and the 32k-tokenizer economics only exist from-scratch). Sovereignty stays intact via the research line; the product ships whatever wins the battery.
 
 **Acceptance:** each new family member ships through the **unchanged** recipe (continued-pretrain/pretrain → SFT → RLVR-TIR → DPO → eval → GGUF export → R2 → model card), best-in-class-for-its-size on the STEM + TIR battery. Confirmation runs, not the experiment loop.
 

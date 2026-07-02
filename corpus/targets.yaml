@@ -1,0 +1,39 @@
+# Acquisition target composition — the curation budget (doc §1.9).
+#
+# Two-layer doctrine: these targets govern ACQUISITION (what we curate toward,
+# so supply-driven bias — "code is easy to get" — can't shape the corpus);
+# the TRAINING mix is swept empirically on the 100M rig within this supply.
+# Rule: over-provision every slice relative to any plausible training mix.
+#
+# The validator reports available supply vs target per domain and per form.
+# UNDER-supplied slots are acquisition priorities (or verified-synthetic
+# generation orders), NOT errors; over-supply is fine — we sample down.
+
+budget_total: 1.0T # unique acquired tokens (sized as-if 7-13B, doc §1.6)
+
+# Domain targets. Note: xdomain carries arXiv bulk + notebooks + sci-computing
+# repos (the intersections we over-weight, §1.3), so physics/math domain rows
+# understate their true paper coverage.
+domains:
+  code: { share: 0.28, band: [0.23, 0.33] } # capped — natural supply is 3x this
+  math: { share: 0.20, band: [0.15, 0.25] } # over-invested vs natural supply
+  physics: { share: 0.10, band: [0.07, 0.15] }
+  eng: { share: 0.10, band: [0.05, 0.15] } # will need synthetic + epoch boost
+  chem: { share: 0.02, band: [0.01, 0.04] } # supporting slice only
+  xdomain: { share: 0.15, band: [0.10, 0.20] } # transfer is taught here
+  general: { share: 0.15, band: [0.10, 0.20] } # the glue (FineWeb-Edu)
+
+# Form targets (global across STEM): guards against within-domain monoculture —
+# 200B of math that is 95% scraped web-math is still monoculture. Forms teach
+# different things: prose teaches concepts, Q&A teaches dialogue, problems
+# teach doing. `mixed`-form corpora are reported separately (they split across
+# forms at extraction time).
+forms:
+  web: { share: 0.30, band: [0.20, 0.40] }
+  code: { share: 0.25, band: [0.20, 0.30] }
+  papers: { share: 0.15, band: [0.10, 0.20] }
+  expository: { share: 0.10, band: [0.05, 0.15] } # books, notes, textbooks
+  qa: { share: 0.05, band: [0.03, 0.10] }
+  problems: { share: 0.01, band: [0.005, 0.03] } # tiny but highest value/token
+  reference: { share: 0.04, band: [0.02, 0.06] }
+  synthetic: { share: 0.10, band: [0.05, 0.15] } # generated to order, grows
