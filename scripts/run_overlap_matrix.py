@@ -107,8 +107,10 @@ def detect_fields(record: dict, spec: CorpusSpec) -> tuple[str, str | None]:
     )
     if text_field is None:
         raise RuntimeError(f"{spec.name}: no text field among {list(record)}")
+    from lithos.data.overlap import get_field
+
     url_field = spec.url_field or next(
-        (f for f in URL_FIELD_CANDIDATES if isinstance(record.get(f), str)), None
+        (f for f in URL_FIELD_CANDIDATES if isinstance(get_field(record, f), str)), None
     )
     return text_field, url_field
 

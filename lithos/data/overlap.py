@@ -54,7 +54,17 @@ class CorpusSpec(BaseModel):
 
 
 TEXT_FIELD_CANDIDATES = ("text", "content", "markdown", "body")
-URL_FIELD_CANDIDATES = ("url", "URL", "uri", "source_url")
+URL_FIELD_CANDIDATES = ("url", "URL", "uri", "source_url", "metadata.url")
+
+
+def get_field(doc: dict, dotted: str):
+    """Fetch a possibly-nested field ("metadata.url")."""
+    cur = doc
+    for part in dotted.split("."):
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(part)
+    return cur
 
 _WS_RE = re.compile(r"\s+")
 
@@ -110,13 +120,13 @@ def build_sample(
     t_hashes: list[int] = []
     u_hashes: list[int] = []
     for doc in docs:
-        text = doc.get(text_field) or ""
+        text = get_field(doc, text_field) or ""
         if len(text) < min_chars:  # tiny docs make degenerate signatures
             continue
         sigs.append(hasher.signature(text))
         t_hashes.append(normalize_text_hash(text))
         if url_field is not None:
-            u_hashes.append(normalize_url(str(doc.get(url_field) or "")) or 0)
+            u_hashes.append(normalize_url(str(get_field(doc, url_field) or "")) or 0)
         if len(sigs) >= sample_size:
             break
     if not sigs:

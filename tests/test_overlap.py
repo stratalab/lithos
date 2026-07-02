@@ -58,6 +58,14 @@ def test_build_sample_respects_size_and_min_chars():
     assert s.url_hashes is not None
 
 
+def test_build_sample_nested_url_field():
+    docs = [{"text": "x " * 200, "metadata": {"url": f"https://n.com/{i}"}} for i in range(3)]
+    s = build_sample("a", docs, total_docs=3, sample_size=3,
+                     text_field="text", url_field="metadata.url")
+    assert s.url_hashes is not None
+    assert len(set(s.url_hashes.tolist())) == 3  # distinct urls hashed
+
+
 def test_build_sample_no_url_field():
     s = build_sample("a", [_doc(i, "a") for i in range(5)], total_docs=10,
                      sample_size=5, text_field="text", url_field=None)
