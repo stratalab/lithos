@@ -192,6 +192,29 @@ def test_extract_citations_kinds_and_fields():
     assert cites[3]["title"].startswith("Some Notes")  # nested template survived
 
 
+def test_ppr_weighted_counts_reorder_canon(tmp_path: Path):
+    # Two pages: a core page (huge PPR) citing book A once, and a stub
+    # (tiny PPR) citing book B three times. Raw counts rank B first;
+    # weighted counts must rank A first.
+    xml = tmp_path / "articles.xml"
+    xml.write_text(
+        "<mediawiki>"
+        "<page><title>Core</title><ns>0</ns><revision><text>"
+        "{{cite book|title=Book A|isbn=1111111111}}"
+        "</text></revision></page>"
+        "<page><title>Stub</title><ns>0</ns><revision><text>"
+        "{{cite book|title=Book B|isbn=2222222222}}"
+        "{{cite book|title=Book B|isbn=2222222222}}"
+        "{{cite book|title=Book B|isbn=2222222222}}"
+        "</text></revision></page>"
+        "</mediawiki>"
+    )
+    rows = tg.mine_citations_multi(xml, {"d": {"Core": 1e-2, "Stub": 1e-6}})["d"]
+    assert rows[0]["title"] == "Book A"  # weighted winner
+    assert rows[0]["citations"] == 1  # raw count preserved
+    assert rows[1]["citations"] == 3
+
+
 def test_isbn_key_normalization_merges_duplicates(tmp_path: Path):
     xml = tmp_path / "articles.xml"
     xml.write_text(

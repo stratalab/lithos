@@ -102,19 +102,30 @@ def run_citations(cfg: dict, dumps_dir: Path, out_dir: Path, seed_index: Path) -
     xml_path = dumps_dir / XML_DUMP
     if not xml_path.exists() and xml_path.with_suffix("").exists():
         xml_path = xml_path.with_suffix("")  # uncompressed variant (smoke runs)
+    families: dict[str, dict[str, float]] = {}
     for domain in cfg["domains"]:
         fam_path = out_dir / f"family_{domain}.tsv"
         if not fam_path.exists():
             log.warning("[%s] no family file (run `graph` first) — skipping", domain)
             continue
-        titles = [line.split("\t")[0] for line in fam_path.read_text().splitlines() if line]
-        candidates = tg.mine_citations(xml_path, titles)
+        fam: dict[str, float] = {}
+        for line in fam_path.read_text().splitlines():
+            if line:
+                title, score = line.split("\t")
+                fam[title] = float(score)  # PPR score = citation weight
+        families[domain] = fam
+    if not families:
+        return
+    # One pass over the ~26GB dump for ALL families, PPR-weighted counts.
+    per_domain = tg.mine_citations_multi(xml_path, families)
+    fieldnames = [
+        "weighted", "citations", "kind", "title", "author", "year", "isbn", "doi", "key",
+        "in_seed_index",
+    ]
+    for domain, candidates in per_domain.items():
         if seed_index.exists():
             candidates = tg.mark_seed_index_coverage(candidates, seed_index)
         out_path = out_dir / f"canon_{domain}.csv"
-        fieldnames = [
-            "citations", "kind", "title", "author", "year", "isbn", "doi", "key", "in_seed_index",
-        ]
         with open(out_path, "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
             w.writeheader()

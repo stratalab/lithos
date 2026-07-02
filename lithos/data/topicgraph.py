@@ -481,45 +481,78 @@ def iter_xml_pages(path: str | Path) -> Iterator[tuple[str, str]]:
             elem.clear()
 
 
-def mine_citations(
-    xml_path: str | Path, family_titles: Iterable[str]
-) -> list[dict[str, Any]]:
-    """Aggregate citations across a topic family → ranked canon candidates.
+def mine_citations_multi(
+    xml_path: str | Path, families: dict[str, Iterable[str] | dict[str, float]]
+) -> dict[str, list[dict[str, Any]]]:
+    """Aggregate citations for MANY topic families in one pass over the XML.
 
-    Titles are matched with spaces (XML form); family titles may be underscored.
+    The dump is ~26GB bz2 — streaming it once per family would multiply hours;
+    one pass tags each page with every family that contains it. Titles are
+    matched with spaces (XML form); family titles may be underscored.
+
+    Pass families as {title: weight} (weight = the page's PPR score) to get
+    **PPR-weighted** citation counts: a cite from a field's core page counts
+    for orders of magnitude more than one from a peripheral stub — raw counts
+    are dominated by the numerically-huge family tail (star catalogs, hobbyist
+    pages), which is noise for canon ranking. Plain iterables weight 1.0.
     """
-    wanted = {t.replace("_", " ") for t in family_titles}
-    counts: Counter[str] = Counter()
+    wanted: dict[str, dict[str, float]] = {}
+    for name, titles in families.items():
+        if isinstance(titles, dict):
+            wanted[name] = {t.replace("_", " "): w for t, w in titles.items()}
+        else:
+            wanted[name] = {t.replace("_", " "): 1.0 for t in titles}
+    raw: dict[str, Counter[str]] = {name: Counter() for name in wanted}
+    weighted: dict[str, dict[str, float]] = {name: {} for name in wanted}
     examples: dict[str, dict[str, str]] = {}
     pages_seen = 0
     for title, text in iter_xml_pages(xml_path):
-        if title not in wanted:
+        members = [(name, fam[title]) for name, fam in wanted.items() if title in fam]
+        if not members:
             continue
         pages_seen += 1
         for c in extract_citations(text):
             key = _candidate_key(c)
             if key is None:
                 continue
-            counts[key] += 1
             examples.setdefault(key, c)
-    logger.info("citations: %d family pages scanned, %d unique works", pages_seen, len(counts))
-    out = []
-    for key, count in counts.most_common():
-        c = examples[key]
-        author = c.get("last") or c.get("last1") or c.get("author") or c.get("author1") or ""
-        out.append(
-            {
-                "key": key,
-                "citations": count,
-                "kind": c.get("kind", ""),
-                "title": c.get("title", ""),
-                "author": author,
-                "year": c.get("year") or c.get("date", ""),
-                "isbn": c.get("isbn", ""),
-                "doi": c.get("doi", ""),
-            }
-        )
-    return out
+            for name, w in members:
+                raw[name][key] += 1
+                weighted[name][key] = weighted[name].get(key, 0.0) + w
+    logger.info(
+        "citations: %d family pages scanned, %s unique works",
+        pages_seen,
+        {n: len(c) for n, c in raw.items()},
+    )
+
+    def _rows(name: str) -> list[dict[str, Any]]:
+        out = []
+        for key, wsum in sorted(weighted[name].items(), key=lambda kv: -kv[1]):
+            c = examples[key]
+            author = c.get("last") or c.get("last1") or c.get("author") or c.get("author1") or ""
+            out.append(
+                {
+                    "key": key,
+                    "weighted": wsum,
+                    "citations": raw[name][key],
+                    "kind": c.get("kind", ""),
+                    "title": c.get("title", ""),
+                    "author": author,
+                    "year": c.get("year") or c.get("date", ""),
+                    "isbn": c.get("isbn", ""),
+                    "doi": c.get("doi", ""),
+                }
+            )
+        return out
+
+    return {name: _rows(name) for name in wanted}
+
+
+def mine_citations(
+    xml_path: str | Path, family_titles: Iterable[str]
+) -> list[dict[str, Any]]:
+    """Single-family convenience wrapper over :func:`mine_citations_multi`."""
+    return mine_citations_multi(xml_path, {"_": family_titles})["_"]
 
 
 # ---------------------------------------------------------------------------

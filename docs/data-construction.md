@@ -29,7 +29,7 @@ Consolidates the data strategy (pre- **and** post-training) for the STEM-domain 
 | 1. Acquire | source raw bytes | Common Crawl (WARC) for web; curated repos for the rest | **net-new**: multi-source ingestion |
 | 2. Extract | format → clean text | HTML: `trafilatura`/`resiliparse`; **PDF/LaTeX**: arXiv source > PDF, else `Nougat`/GROBID/Marker; code: strip binaries/generated | **net-new**: LaTeX/PDF + code extraction |
 | 3. Heuristic filter | drop obvious junk | C4 + Gopher rules (length, symbol/word ratio, repetition, boilerplate, stopwords) | seam built (`data/pipeline` filters) |
-| 4. Model-quality | the biggest lever | LLM labels a sample → distill into a cheap classifier → score whole corpus → threshold (FineWeb-Edu / DCLM) | thresholding carried edu-score ✅; **net-new**: train our own for unscored sources |
+| 4. Model-quality | the biggest lever | LLM labels a sample → distill into a cheap classifier → score whole corpus → threshold (FineWeb-Edu / DCLM); **full design: `docs/quality-classifiers.md`** | thresholding carried edu-score ✅; **net-new**: per-domain rubrics + classifiers for unscored sources |
 | 5. Dedup | remove duplicates | exact (hash) + **near (MinHash/LSH)**. Scope matters: FineWeb dedups *per-snapshot*, not globally (global can hurt) | MinHash ✅ (`data/minhash.py`) |
 | 6. Decontaminate | strip benchmark leaks | 13-gram match vs frozen battery | ✅ (`data/decontam.py`) |
 | 7. PII / license | redact secrets, license-comply | secret-scanning (critical for **code** — API keys); permissive-only, honor opt-outs | **net-new** for code/STEM |
@@ -228,5 +228,6 @@ In a verifiable domain we can **generate most of our own post-training data**: p
 ## Pointers
 
 - Plan: `lithos-implementation-plan.md` — Phase 9 (eval), Phase 10 (corpus + mix machinery), Phase 11 (post-training), Phase 12 (mix-sweep → 500M → 1B).
+- Design docs: `docs/eval-plan.md` (the measuring stick), `docs/quality-classifiers.md` (stage-4 rubrics + classifiers), `corpus/math_overlap_report.md` (measured web-math overlap).
 - Code: `lithos/data/{pipeline,minhash,decontam,quality,documents,topicgraph}.py`, `lithos/evals/{benchmarks,scorecard,ablation}.py`, `scripts/{run_topic_graph,validate_seed_index}.py`.
 - **Future deepening:** read each §1.4 report and extract its concrete filter constants, dedup scoping, and ablation deltas into this doc (tagged adopt / adapt / skip).
