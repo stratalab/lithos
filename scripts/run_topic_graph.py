@@ -53,7 +53,11 @@ def download(dumps_dir: Path, with_xml: bool) -> None:
         url = DUMP_BASE + name
         log.info("downloading %s ...", url)
         tmp = dest.with_suffix(dest.suffix + ".part")
-        with urllib.request.urlopen(url) as r, open(tmp, "wb") as f:
+        # Wikimedia 403s the default urllib UA; their policy wants a descriptive one.
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "LithosCorpusBot/0.1 (offline research corpus build)"}
+        )
+        with urllib.request.urlopen(req) as r, open(tmp, "wb") as f:
             while chunk := r.read(1 << 22):
                 f.write(chunk)
         tmp.rename(dest)

@@ -127,7 +127,14 @@ Domain targets on ~1T unique acquired tokens: **code 28%** (capped — natural s
 
 **Enforcement:** the index carries a `form` column; `scripts/validate_seed_index.py` reports available supply vs target per domain and form. **UNDER-supplied slots are the acquisition queue** (or verified-synthetic generation orders) — a shortfall is a to-do, not an error; over-supply is fine (the mix samples down). Acquisition priority = what fills the most under-budget slot, not what's easiest to download.
 
-### 1.10 What we've built vs net-new
+### 1.10 Corpus exports — StrataDB sample data (the flywheel)
+
+**One asset, three roles.** Curated corpus slices double as: (1) **StrataDB sample data** — every serious DB ships demo datasets (pagila, Neo4j movies, NYC taxi); they're load-bearing for adoption (docs/tutorials/benchmarks), and StrataDB's should demonstrate its actual product story (knowledge for AI on the edge); (2) **the R1 seed store** — the research track's datastore *is* a curated STEM knowledge slice in StrataDB, so the export is R1.1's first deliverable arriving early; (3) **self-contained stack demos** — Lithos + StrataDB answering technical questions against a local knowledge base needs content in the box. The topic-graph job's output (nodes/edges/scores/citations) is already graph-shaped sample data.
+
+- **Hard rule: green tier ONLY.** Training on grey content is one legal posture; *redistributing* it inside an Apache-2.0 product is straight republication — no fair-use argument. The index's `tier` column is the export filter (enforcement surface again). Green candidates: topic-graph slice (CC-BY-SA, attribute), Stack Exchange Q&A (CC-BY-SA), OpenStax (CC-BY), Regents (public record), patents (PD), the seed index itself. Shipped CC-BY-SA content keeps its license alongside the Apache code — state it.
+- **A pipeline output, not a project:** an `export` target takes (slice, tier=green, size budget) → versioned sample sets (~10MB quickstart / 1GB working / 10GB demo) in StrataDB-native shapes (documents + graph; vectors once an embedding story exists). Provenance manifests come free.
+
+### 1.11 What we've built vs net-new
 
 - **Built:** heuristic-filter seam, MinHash near-dedup, 13-gram decontam, quality-score thresholding, held-out holdout, ablation harness, manifests, general 32k tokenizer, packing, sharding, R2 storage.
 - **Net-new:** **seed index / catalog of intent (§1.7 — seeded: `corpus/seed_index.csv`, 185 rows)**, multi-source ingestion + LaTeX/PDF/code extraction, domain tagging, self-trained quality classifier, weighted-mix spec, per-domain bpb sets, verified synthetic, annealing set, STEM tokenizer retrain, **regurgitation eval + epoch-cap accounting (§1.5)**.
