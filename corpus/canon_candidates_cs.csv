@@ -1,0 +1,201 @@
+citations,specificity,title,author,year,isbn,in_seed_index,weighted,score,key
+17,0.959,"Structured Computer Organization, Third Edition",Tanenbaum,1990,978-0-13-854662-5,False,0.060429045609999996,0.05795759135364427,isbn:9780138546625
+14,0.965,"Operating System Concepts, Fourth Edition",Silberschatz,1994,978-0-201-50480-4,False,0.05974778925,0.057678245682514326,isbn:9780201504804
+16,0.958,The Linux Programming Interface,Kerrisk,2010,978-1-59327-220-3,True,0.043458732200999994,0.04161231344049084,isbn:9781593272203
+7,0.99,Microservices patterns: with examples in Java,Richardson,2019,978-1-61729-454-9,False,0.03268489698000001,0.032343124303330376,isbn:9781617294549
+7,0.989,Building Microservices,Newman,2015-02-20,978-1-4919-5035-7,False,0.03267824249000001,0.03233413900535417,isbn:9781491950357
+5,0.99,Practical Microservices Architectural Patterns: Event-Based Java Microservices with Spring Boot and Spring Cloud,Christudas,2019,978-1-4842-4501-9,False,0.032645253660000005,0.03230951047494907,isbn:9781484245019
+14,0.985,"2013 IEEE International Conference on Acoustics, Speech and Signal Processing: New types of deep neural network learning for speech recognition and related applications: An overview",Deng,2013,978-1-4799-0356-6,False,0.032328123946,0.031856208326642085,isbn:9781479903566
+4,0.966,Unix System Programming,Haviland,1987,0-201-12919-1,False,0.025550290600000004,0.024689466396867487,isbn:0201129191
+32,0.94,Artificial Intelligence: A Modern Approach,Russell,2020,978-0-1346-1099-3,True,0.026010472675,0.024443484987974468,isbn:9780134610993
+4,0.966,Computer Networks: A Systems Approach,Peterson,2000,9789814066433,True,0.02513635332,0.024294036349874204,isbn:9789814066433
+3,0.967,Software Engineering,Ian Sommerville,"March 24, 2015",978-0-13-394303-0,False,0.024733665000000002,0.02391456240166352,isbn:9780133943030
+27,0.96,Fundamentals of Software Architecture: An Engineering Approach,,2020,978-1492043454,False,0.018092084442000007,0.017360603986878297,isbn:9781492043454
+49,0.94,Complexity Theory: A Modern Approach,Arora,2009,978-0-521-42426-4,False,0.01775571222000001,0.016695057366451056,isbn:9780521424264
+30,0.952,Introduction To Algorithms,Thomas H. Cormen,2009,978-0-262-03384-8,True,0.017372798375,0.016546122440364415,isbn:9780262033848
+16,0.963,Computational Complexity,Papadimitriou,1994,978-0-201-53082-7,True,0.017034935097,0.01641196965441475,isbn:9780201530827
+14,0.955,Introduction to the Theory of Computation,Sipser,2006,978-0-534-94728-6,True,0.017091121622000004,0.01632342109010922,isbn:9780534947286
+5,0.945,Computer Science Handbook,Tucker,2004,978-1-58488-360-9,False,0.017196139872000003,0.01624295316299654,isbn:9781584883609
+22,0.942,Computer networks and their protocols,Davies,1979,978-0-471-99750-4,False,0.01716145787,0.01617465574729125,isbn:9780471997504
+5,0.989,Texts in Computer Science,,2010,978-1-84882-744-8,False,0.01633761544,0.01616090895174547,isbn:9781848827448
+12,0.963,How the Web was Born: The Story of the World Wide Web,Gillies,2000,978-0-19-286207-5,False,0.016773881161000002,0.01615045616689333,isbn:9780192862075
+8,0.948,Introduction to Artificial Intelligence: from data analysis to generative AI,Ciaramella,2024,978-8-8947-8760-3,False,0.017024027017,0.01613082328870491,isbn:9788894787603
+15,0.944,Encyclopedia of Computer Science,,January 2003,978-0-470-86412-8,False,0.01705162204,0.01610137694177961,isbn:9780470864128
+3,0.96,"2020 Design, Automation & Test in Europe Conference & Exhibition (DATE)",Dey,March 2020,978-3-9819263-4-7,False,0.0167574854,0.016083520514242233,isbn:9783981926347
+5,0.962,The Master Algorithm: How the Quest for the Ultimate Learning Machine Will Remake Our World,Domingos,2015,978-0-4650-6570-7,False,0.016710795070000003,0.016076654062047512,isbn:9780465065707
+5,0.947,"Algorithm Design: Foundations, Analysis, and Internet Examples",Goodrich,2002,978-0-471-38365-9,True,0.016920742117000002,0.016029849774503106,isbn:9780471383659
+3,0.964,Introduction to Machine Learning,"Alpaydin, Ethem",2010,978-0-262-01243-0,False,0.016611874000000002,0.01601979692534804,isbn:9780262012430
+9,0.964,2012 IEEE Conference on Computer Vision and Pattern Recognition,Ciresan,2012,978-1-4673-1228-8,False,0.016607504174000004,0.016002353300809805,isbn:9781467312288
+9,0.969,The Code Book,Singh,2000,978-0-385-49532-5,False,0.016468344744,0.015962999329022724,isbn:9780385495325
+9,0.945,A History of Algorithms,,1999,978-3-540-63369-3,True,0.016702711833,0.015788923083219414,isbn:9783540633693
+10,0.937,"The Undecidable: Basic Papers On Undecidable Propositions, Unsolvable Problems and Computable Functions",Davis,1965,978-0-486-43228-1,False,0.016768876704000003,0.015711507123456054,isbn:9780486432281
+26,0.922,Pattern Recognition and Machine Learning,Bishop,17 August 2006,978-0-387-31073-2,True,0.017020625507999997,0.015687883477796583,isbn:9780387310732
+9,0.907,Computational Intelligence: A Logical Approach,Poole,1998,978-0-1951-0270-3,False,0.017196279930000002,0.015595855774371893,isbn:9780195102703
+11,0.907,Artificial Intelligence: A New Synthesis,Nilsson,1998,978-1-5586-0467-4,False,0.017164372953,0.015569950658354302,isbn:9781558604674
+59,0.8,"Comparative Programming Languages, Third Edition",Wilson,2001,0-201-71012-9,False,0.014295124730000002,0.011429230444856199,isbn:0201710129
+13,0.937,Operating Systems Concepts,Silberschatz,2008,978-0-470-12872-5,False,0.009314681898000004,0.008726248121448446,isbn:9780470128725
+16,0.98,Advanced Compiler Design and Implementation,,1997,978-1-55860-320-2,False,0.008603455766999998,0.00843479114936125,isbn:9781558603202
+5,0.959,Concepts of Programming Languages,Sebesta,2012,978-0-13-139531-2,False,0.008785452516,0.008426434523007438,isbn:9780131395312
+4,0.98,Lisp 1.5 Programmers Manual,McCarthy,1965,978-0-26213011-0,False,0.008531377122999999,0.008362147861146968,isbn:9780262130110
+5,0.979,Database Systems – A Practical Approach to Design Implementation and Management,Connolly,2014,978-1292061184,False,0.008513893698000001,0.008338864867393561,isbn:9781292061184
+3,0.961,Programming Languages: Principles and Paradigms,Gabbrielli,2023,978-3-031-34144-1,False,0.0086662792,0.008331884538055454,isbn:9783031341441
+3,0.953,Operating Systems: Principles and Practice,Anderson,2014,978-0-9856735-2-9,False,0.008737515615,0.008326099523024483,isbn:9780985673529
+4,0.984,Compiler Construction for Digital Computers,,1971,0-471-32776-X,False,0.00845457338,0.008315701359531493,isbn:047132776X
+4,0.965,Operating System Concepts,Silberschatz,2018,978-1-119-32091-3,False,0.008593155896000002,0.0082888896335962,isbn:9781119320913
+4,0.961,The Design of the UNIX Operating System,Bach,1986,0-13-201799-7,False,0.008627452952000002,0.00828718481957176,isbn:0132017997
+17,0.905,Milestones in Computer Science and Information Technology,Edwin D. Reilly,2003,978-1-57356-521-9,False,0.009154506141,0.008285364265299223,isbn:9781573565219
+9,0.987,Designing Data-Intensive Applications,Kleppmann,2017,978-1-449-37332-0,True,0.008384792693,0.00827416040804069,isbn:9781449373320
+6,0.977,"Compilers: Principles, Techniques, and Tools",,1986,9780201100884,True,0.008463852850000002,0.00827099451090471,isbn:9780201100884
+3,0.975,Building Serverless Applications on Knative,,,978-1-0981-4204-9,False,0.008460784207000001,0.008247709353939446,isbn:9781098142049
+4,0.98,"Assemblers, Compilers, and Program Translation",,1979,0-914894-23-4,False,0.00841574735,0.008246960294426904,isbn:0914894234
+11,0.937,Introduction to modern cryptography,Katz,2008,9781584885511,False,0.008790611845,0.008239119201073128,isbn:9781584885511
+4,0.979,The Formal Semantics of Programming Languages: An Introduction,Winskel,5 February 1993,978-0-262-73103-4,False,0.008415547680000001,0.008238158346427014,isbn:9780262731034
+3,0.984,"Physical Database Design: the database professional's guide to exploiting indexes, views, storage, and more",Lightstone,2007,978-0-12-369389-1,False,0.00837093725,0.008233779033332724,isbn:9780123693891
+6,0.98,"Keller, Stack und automatisches Gedächtnis – eine Struktur mit Potenzial",,2015,978-3-88579-426-4,False,0.008393877449,0.00822746335701507,isbn:9783885794264
+6,0.947,Building Large Knowledge-Based Systems,Lenat,1989,978-0-2015-1752-1,False,0.008688991279999999,0.00822610491178179,isbn:9780201517521
+5,0.982,An Introduction to Database Systems,Date,2003,978-0321197849,False,0.008376529607000001,0.008223245394133796,isbn:9780321197849
+3,0.983,Proceedings of the 26th ACM International Conference on Architectural Support for Programming Languages and Operating Systems,Nigam,April 2021,978-1-4503-8317-2,False,0.008358845264,0.00821662476334393,isbn:9781450383172
+5,0.985,Programming Language Pragmatics,,2005,978-0-12-633951-2,False,0.008340823463,0.008214642074052252,isbn:9780126339512
+4,0.984,A Compiler Generator,,1970,978-0-13-155077-3,False,0.008337628800000002,0.008201921926733387,isbn:9780131550773
+4,0.986,Optimizing Compilers for Modern Architectures,,2001,978-1-55860-286-1,False,0.0083204265,0.00819990675081959,isbn:9781558602861
+8,0.94,The Alignment Problem: Machine learning and human values,Christian,2020,978-0-3938-6833-3,False,0.008718455744,0.008196407032472338,isbn:9780393868333
+4,0.984,"Geschichten der Informatik - Visionen, Paradigmen, Leitmotive.",,2004,978-3-540-00217-8,False,0.008326320041999999,0.008192269595988802,isbn:9783540002178
+8,0.925,What Every Engineer Should Know about Software Engineering,Laplante,2007,978-0-8493-7228-5,False,0.008850496617000003,0.00819034784322351,isbn:9780849372285
+10,0.948,Introduction to the Theory of Computation,Sipser,2006,978-0-534-95097-2,True,0.008636848652999997,0.008186824007102684,isbn:9780534950972
+12,0.929,Handbook of Applied Cryptography,Menezes,1996,978-0849385230,False,0.008791479768,0.008165987585330582,isbn:9780849385230
+3,0.986,Syntactic Structures,Chomsky,2002,978-3-11-017279-9,False,0.008276838277000001,0.008160205617044343,isbn:9783110172799
+5,0.962,Proceedings of the 2009 workshop on Re-architecting the internet,Feldmann,2009,978-1-60558-749-3,False,0.008475649653,0.008153684260496024,isbn:9781605587493
+5,0.951,Artificial Intelligence: Structures and Strategies for Complex Problem Solving,Luger,2004,978-0-8053-4780-7,False,0.00856577758,0.008147627236924438,isbn:9780805347807
+4,0.954,"Proceedings of the 2025 ACM Conference on Fairness, Accountability, and Transparency",Rehak,2025,979-8-4007-1482-5,False,0.008535205357,0.008144869456123279,isbn:9798400714825
+3,0.978,Models of Computation: Exploring the Power of Computing,"Savage, J.E.",1998,978-0-201-89539-1,False,0.008323864588,0.008143564072832324,isbn:9780201895391
+21,0.944,2016 IEEE Conference on Computer Vision and Pattern Recognition (CVPR),He,2016,978-1-4673-8851-1,False,0.008623119024000002,0.008142048283731822,isbn:9781467388511
+7,0.934,Artificial Intelligence: The Very Idea,Haugeland,1985,978-0-2620-8153-5,False,0.008718683618,0.008140650575721043,isbn:9780262081535
+17,0.951,Proceedings of the 26th Annual International Conference on Machine Learning – ICML '09,Raina,2009-06-14,9781605585161,False,0.008551984584,0.008133572467247245,isbn:9781605585161
+9,0.949,Human Compatible: Artificial Intelligence and the Problem of Control,Russell,2019,978-0-5255-5861-3,False,0.008559818718,0.00812703144503333,isbn:9780525558613
+6,0.933,The Essential Turing: the ideas that gave birth to the computer age,,2004,0-1982-5079-7,False,0.008704238734,0.008124033691068957,isbn:0198250797
+7,0.997,Deductive Software Verification - The KeY Book: From Theory to Practice,,2016,978-3-319-49812-6,False,0.008143600519999997,0.008118170193990772,isbn:9783319498126
+19,0.928,Deep learning,Goodfellow,2016,978-0-262-03561-3,True,0.008734990638,0.008110245329980567,isbn:9780262035613
+4,0.955,"Mind, language and society",Searle,1999,978-0-4650-4521-1,False,0.00849599704,0.008109913669228993,isbn:9780465045211
+4,0.956,What Computers Can't Do,Dreyfus,1972,978-0-0601-1082-6,False,0.008478459249999999,0.008103624446386386,isbn:9780060110826
+17,0.968,The Codebreakers: The Comprehensive History of Secret Communication from Ancient Times to the Internet,Kahn,1996,978-1-4391-0355-5,False,0.008370260578000003,0.008102557955938968,isbn:9781439103555
+20,0.967,The Codebreakers: The Story of Secret Writing,"Kahn, David L.",1996,978-0-684-83130-5,False,0.008374561116999999,0.008101516148099982,isbn:9780684831305
+4,0.948,Data Mining: Practical Machine Learning Tools and Techniques,"Witten, Ian H.",30 January 2011,978-0-12-374856-0,False,0.008541366906,0.008099652591118637,isbn:9780123748560
+4,0.957,"The Brain Makers: Genius, Ego, And Greed In The Quest For Machines That Think",Newquist,1994,978-0-6723-0412-5,False,0.008463885310000002,0.008097731545178,isbn:9780672304125
+3,0.99,Building Event-Driven Microservices: Leveraging Organizational Data at Scale,,,978-1-4920-5789-5,False,0.008181459870000001,0.00809598763983047,isbn:9781492057895
+6,0.945,Machine Learning,Mitchell,1997,978-0-07-042807-2,True,0.008563397079,0.008094228392220489,isbn:9780070428072
+4,0.968,"Transforming Computer Technology: Information Processing for the Pentagon, 1962–1986",Norberg,1996,978-0-8018-5152-0,False,0.008357687273,0.008094192243600735,isbn:9780801851520
+5,0.969,The Compatible Time-Sharing System: A Programmer's Guide,Corbató,1963,978-0-262-03008-3,False,0.008350165703,0.00809275630149458,isbn:9780262030083
+7,0.972,How Not to Network a Nation: The Uneasy History of the Soviet Internet,Peters,25 March 2016,978-0262034180,False,0.008324922510000003,0.008090487816410946,isbn:9780262034180
+6,0.972,The Computer Pioneers,Ritchie,1986,067152397X,False,0.008319066398000001,0.008086032050996766,isbn:067152397X
+4,0.954,"History of Programming Languages: Proceedings of the History of Programming Languages Conference, Los Angeles, Calif., June 1-3, 1978",,1981,978-0127450407,False,0.008462794526,0.008075205274267014,isbn:9780127450407
+14,0.931,The Singularity is Near,Kurzweil,2005,978-0-6700-3384-3,False,0.008671824229000001,0.008073109166412861,isbn:9780670033843
+7,0.904,Encyclopedia of Computer Science,Reilly,2000,9781561592487,False,0.008927281849999998,0.008070948091085842,isbn:9781561592487
+9,0.978,Advances in Cryptology — CRYPTO' 93,Daemen,1994,978-3-540-57766-9,False,0.008252285646999999,0.008066841723300779,isbn:9783540577669
+10,0.97,"Applied Cryptography, Second Edition",Schneier,1996,978-0-471-11709-4,False,0.008315112409,0.008065789254707204,isbn:9780471117094
+6,0.938,Howard Aiken: Portrait of a Computer Pioneer,Cohen,2000,9780262531795,False,0.008594090705,0.00806395865674067,isbn:9780262531795
+6,0.981,"Computer Architecture: A Quantitative Approach, 4th ed",Hennessy,2006,978-0123704900,True,0.00822265865,0.008063498026512114,isbn:9780123704900
+9,0.953,The deep learning revolution,Sejnowski,2018,978-0-262-03803-4,True,0.008463886759999999,0.008063462662326272,isbn:9780262038034
+5,0.951,"Thinking, Fast and Slow",Kahneman,2011,978-1-4299-6935-2,False,0.008463964599999999,0.008053147050041615,isbn:9781429969352
+5,0.947,Moral Machines: Teaching Robots Right from Wrong,Wallach,November 2008,978-0-19-537404-9,False,0.00849672223,0.008050411518385618,isbn:9780195374049
+6,0.958,The Froehlich/Kent Encyclopedia of Telecommunications: Volume 1 - Access Charges in the U.S.A. to Basics of Digital Communications,"F.E. Froehlich, A. Kent",1990,0824729005,True,0.008401240575,0.008047785753233502,isbn:0824729005
+3,0.964,Proceedings of the 1993 ACM SIGMOD international conference on Management of data - SIGMOD '93,Agrawal,1993,978-0-89791-592-2,False,0.008343475702,0.008039074794144617,isbn:9780897915922
+7,0.943,Consciousness Explained,Dennett,1991,978-0-7139-9037-9,False,0.008521366766,0.008039024741829865,isbn:9780713990379
+3,0.939,Charles Babbage: Pioneer of the Computer,Hyman,1982,978-0691083032,False,0.008561263,0.00803788185680266,isbn:9780691083032
+5,0.962,A Brief History of the Future,Naughton,2000,9780753810934,False,0.008354823586000001,0.008036912453366244,isbn:9780753810934
+3,0.963,Metalearning: Applications to Data Mining,Pavel Brazdil,2009,978-3-540-73262-4,False,0.00833980436,0.008027531542218799,isbn:9783540732624
+23,0.925,The Innovators,Isaacson,"October 7, 2014",978-1476708690,False,0.008678547615,0.008026989667687941,isbn:9781476708690
+3,0.951,The Advent of the Algorithm: The 300-Year Journey from an Idea to the Computer,Berlinski,2001,978-0-15-601391-8,False,0.008434817736,0.00802499174177916,isbn:9780156013918
+3,0.955,Programming Language Pragmatics,Scott,2009,978-0-12-374514-9,False,0.008398114940000001,0.008020732317591739,isbn:9780123745149
+3,0.957,Parsing the Turing Test: Philosophical and Methodological Issues in the Quest for the Thinking Computer,Harnad,2008,9781402067082,False,0.008377387913999999,0.008020137099671795,isbn:9781402067082
+9,0.95,Knapsack Problems {{!}} Hans Kellerer {{!}} Springer,Kellerer,2004,978-3-540-40286-2,False,0.008438405823000003,0.00801865577639293,isbn:9783540402862
+6,0.979,Artificial Neural Networks – ICANN 2007,Jung,2007,978-3-540-74693-5,False,0.00818527562,0.008011376592987984,isbn:9783540746935
+3,0.98,Cryptography and Network Security,Stallings,2014,978-0133354690,False,0.00816003732,0.007995668319616196,isbn:9780133354690
+4,0.973,Algorithms and Complexity,Meurant,2014,978-0-08093391-7,True,0.00821956977,0.007995571357055193,isbn:9780080933917
+15,0.921,Turing's Legacy: A history of computing at the National Physical Laboratory 1945–1995,Yates,1997,978-0-901805-94-2,False,0.008682290353,0.007992513116987702,isbn:9780901805942
+3,0.985,2021 International Conference on Computer Communication and Informatics (ICCCI),Singh,2021,978-1-7281-5875-4,False,0.00811580682,0.007990448675112487,isbn:9781728158754
+7,0.946,Neural Networks for Babies,"Ferrie, C.",2019,978-1-4926-7120-6,False,0.008450994573000001,0.00799043790564306,isbn:9781492671206
+3,0.954,Computation: Finite and Infinite Machines,Minsky,1967,978-0-13-165449-5,False,0.008371248993000001,0.007987943119568948,isbn:9780131654495
+4,0.982,"&#91;Proceedings&#93; ICASSP-92: 1992 IEEE International Conference on Acoustics, Speech, and Signal Processing",T. Robinson,1992,0-7803-0532-9,False,0.008133125114,0.00798788482787108,isbn:0780305329
+5,0.965,9th International Conference on Artificial Neural Networks: ICANN '99,Gers,1999,0-85296-721-7,False,0.00827735325,0.007983788984696469,isbn:0852967217
+5,0.966,The Roots of Backpropagation: From Ordered Derivatives to Neural Networks and Political Forecasting,Werbos,1994,0-471-59897-6,False,0.00826090851,0.007982359606777675,isbn:0471598976
+18,0.901,"Fundamental Algorithms, Third Edition",Knuth,1997,978-0-201-89683-1,True,0.008851201340000002,0.00797158909166569,isbn:9780201896831
+3,0.986,"Proceedings of the 5th ACM Conference on Bioinformatics, Computational Biology, and Health Informatics - BCB '14",Chicco,2014,9781450328944,False,0.008084295449,0.007968533303090965,isbn:9781450328944
+3,0.945,Software Engineering,Sommerville,2007,978-0-321-31379-9,False,0.008426738070000002,0.007967245503347403,isbn:9780321313799
+3,0.95,Alan Turing: The Enigma,Hodges,1983,978-0-671-49207-6,False,0.008386678868000002,0.007966984595161921,isbn:9780671492076
+7,0.958,Medical Image Computing and Computer-Assisted Intervention – MICCAI 2013,Ciresan,2013,978-3-642-38708-1,False,0.008305943770000001,0.007961000496061226,isbn:9783642387081
+6,0.929,Engines of Logic: Mathematicians and the Origin of the Computer,Davis,2000,978-0-393-32229-3,False,0.008569660843000001,0.007960851870300326,isbn:9780393322293
+4,0.951,A History of Computing in the Twentieth Century,,1980,978-1-4832-9668-5,False,0.008371101904,0.007958717170985084,isbn:9781483296685
+5,0.968,Cybernetics and Forecasting Techniques,Ivakhnenko,1967,978-0-444-00020-0,False,0.008211078259999999,0.00794657213893992,isbn:9780444000200
+4,0.964,A Field Guide to Dynamical Recurrent Networks,Hochreiter,15 January 2001,978-0-7803-5369-5,False,0.008241379889999999,0.007945627728207899,isbn:9780780353695
+15,0.925,The Dream Machine,Waldrop,2018,978-1-953953-36-0,False,0.008582352773000002,0.007942664816852742,isbn:9781953953360
+4,0.967,"Parallel Distributed Processing: Explorations in the Microstructure of Cognition, Volume 1: Foundations",Smolensky,1986,0-262-68053-X,False,0.00821217449,0.007941672085277322,isbn:026268053X
+4,0.988,Rethinking Innateness: A Connectionist Perspective on Development,Elman,1996,9780262550307,False,0.008029589149,0.007932691157041906,isbn:9780262550307
+3,0.971,Neural networks: a comprehensive foundation,Haykin,1999,978-0-13-273350-2,False,0.00816315626,0.007925381898973523,isbn:9780132733502
+4,0.935,Super-Recursive Algorithms,Burgin,2004,978-0-387-95569-8,True,0.008471611580000002,0.007924325619741152,isbn:9780387955698
+3,0.947,The Muslim contribution to mathematics,Daffa',1977,978-0-85664-464-1,False,0.008359022169,0.007919082226081346,isbn:9780856644641
+4,0.946,Artificial Neural Nets and Genetic Algorithms,Bozinovski,1999,978-3-211-83364-3,True,0.008370844603,0.007918619697061303,isbn:9783211833643
+6,0.971,"A History of US: Book 9: War, Peace, and All that Jazz",Hakim,"January 5, 1995",978-0195095142,False,0.008146511863,0.00790838477774697,isbn:9780195095142
+3,0.945,"International Handbook of Research in History, Philosophy and Science Teaching",Grabiner,December 2013,9789400776548,False,0.008348586457,0.00789212637682359,isbn:9789400776548
+11,0.932,Theory of Recursive Functions and Effective Computability,Rogers,1987,978-0-262-68052-3,False,0.008470996459000003,0.007891752533064787,isbn:9780262680523
+18,0.918,UNESCO Science Report: the Race Against Time for Smarter Development.,,2021,978-9-2310-0450-6,False,0.008592993942,0.00789109528615863,isbn:9789231004506
+5,0.941,Introduction to Metamathematics,Kleene,1991,978-0-7204-2103-3,False,0.008380387706,0.007889799966276837,isbn:9780720421033
+3,0.979,"Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis",Häner,2017-11-12,978-1-4503-5114-0,False,0.00805623432,0.007885080798422643,isbn:9781450351140
+8,0.938,Introduction to the Theory of Computation,Sipser,2013,978-1-133-18779-0,True,0.00839602837,0.007876724357177085,isbn:9781133187790
+6,0.939,Darwin's Dangerous Idea,Dennett,1995,978-0-684-80290-9,False,0.008383700422,0.007869632506630947,isbn:9780684802909
+16,0.902,The MIT Encyclopedia of the Cognitive Sciences,Dietrich,1999,9780262731447,False,0.008721154683000006,0.007865682253453883,isbn:9780262731447
+6,0.941,Episodes from the Early History of Astronomy,Aaboe,2001,978-0-387-95136-2,False,0.008352760091000002,0.007860300805917495,isbn:9780387951362
+5,0.94,The History of Mathematics: A Brief Course,Cooke,2005,978-1-118-46029-0,False,0.00836138489,0.007859131097395933,isbn:9781118460290
+6,0.948,Computability Theory,S. Barry Cooper,2004,1-58488-237-9,False,0.008284255194000001,0.007850857941596782,isbn:1584882379
+5,0.914,A Brief History of Computing,Regan,2008,978-1848000834,False,0.008584457310000002,0.007847972913172395,isbn:9781848000834
+4,0.969,"Introduction to Automata Theory, Languages, and Computation",Hopcroft,2006,978-0-321-45536-9,False,0.008086803413,0.007839998493489705,isbn:9780321455369
+4,0.952,Understanding Cryptography: A Textbook for Students and Practitioners,Paar,2009,978-3-642-04101-3,False,0.008238096038,0.007839050269581356,isbn:9783642041013
+7,0.963,Machine Learning: A Probabilistic Perspective,Murphy,2012,978-0-262-01802-9,False,0.00813881694,0.007835099077840706,isbn:9780262018029
+33,0.814,Artificial Intelligence A Modern Approach,Russel,2010,978-0-13-604259-4,True,0.009624008369999998,0.007829428311594456,isbn:9780136042594
+3,0.958,Alan Turing: The Enigma,Hodges,2012,978-0-691-15564-7,False,0.008171540938999999,0.0078254160360866,isbn:9780691155647
+3,0.953,"Cryptography, Information Theory, and Error-Correction: A Handbook for the 21st Century",Bruen,2005,978-0-471-65317-2,False,0.008199434166,0.007817415990492252,isbn:9780471653172
+6,0.94,The Early Mathematical Manuscripts of Leibniz: Translated from the Latin Texts Published by Carl Immanuel Gerhardt with Critical and Historical Notes,Leibniz,2007-07-27,9780598818461,False,0.008312331019999999,0.007814929354882344,isbn:9780598818461
+4,0.961,Pattern Recognition and Machine Learning,Nakano,1971,978-1-4615-7568-9,True,0.00810884548,0.007789242759620946,isbn:9781461575689
+4,0.926,A History of Algorithms: From the Pebble to the Microchip,Chabert,2012,9783642181924,True,0.008389957679999999,0.007769938985456914,isbn:9783642181924
+10,0.924,Mathematical Logic,Donald Monk,1976,9780387901701,False,0.008185737565999997,0.007566439908753236,isbn:9780387901701
+25,0.481,"From Frege to Gödel, A Source Book in Mathematical Logic, 1879–1931",van Heijenoort,2001,978-0-674-32449-7,False,0.008805337804000005,0.00423745961355567,isbn:9780674324497
+18,0.603,"Principles of Information Systems, Sixth Edition",Stair,2003,0-619-06489-7,False,0.002090307458000001,0.001259762253054087,isbn:0619064897
+47,0.589,Physically Based Rendering: From Theory to Implementation,Pharr,"March 28, 2023",978-0262048026,False,0.0021257693719999977,0.0012516996167328855,isbn:9780262048026
+21,0.677,The C++ Programming Language,,23 May 2013,978-0-321-56384-2,True,0.0015263492449999992,0.0010340125467554774,isbn:9780321563842
+13,0.604,Software Engineering,Schach,1990,0-256-08515-3,False,0.0014294878000000002,0.0008636043129977472,isbn:0256085153
+14,0.61,"Structured Computer Organization, Sixth Edition",Tanenbaum,2013,978-0-13-291652-3,False,0.00134064327,0.0008184409376789819,isbn:9780132916523
+39,0.582,Introduction to Algorithms,Cormen,2001,0-262-03293-7,True,0.0012704179999999995,0.000738972836089866,isbn:0262032937
+19,0.791,Effective Java: Programming Language Guide,Bloch,2018,978-0-13-468599-1,False,0.0008660821260000003,0.0006851552063778026,isbn:9780134685991
+11,0.647,"Open Source Law, Policy and Practice",,2022,978-0-19-886234-5,False,0.0010449258359999998,0.0006759749227452538,isbn:9780198862345
+7,0.667,Computational Intelligence: An Introduction,Engelbrecht,2007,978-0-470-03561-0,False,0.0009943661,0.0006632043624466898,isbn:9780470035610
+21,0.67,Computational Complexity,Christos Papadimitriou,1993,0-201-53082-1,True,0.0009516160519999999,0.0006379272735383034,isbn:0201530821
+13,0.696,The C Programming Language Second Edition,Kernighan,1988,0-13-110362-8,True,0.0008501396150000002,0.0005920509771564042,isbn:0131103628
+7,0.599,An Introduction to Ray Tracing,Glassner,"April 11, 2019",978-0-12-286160-4,False,0.0009601419979999999,0.0005751775340695167,isbn:9780122861604
+13,0.741,History of programming languages,Perlis,1978,0-12-745040-8,False,0.00074038204,0.0005482840301435346,isbn:0127450408
+17,0.639,Types and Programming Languages,Pierce,2002,978-0-262-16209-8,False,0.0008573862200000001,0.0005482241443381994,isbn:9780262162098
+33,0.797,Design Patterns: Elements of Reusable Object-Oriented Software,Gamma,1994,0-201-63361-2,True,0.0006860060089999997,0.0005469967116926809,isbn:0201633612
+15,0.734,Design Patterns: Elements of Reusable Object-Oriented Software,Gamma,1995,9780201633610,True,0.0007437009789999999,0.0005461293098141594,isbn:9780201633610
+20,0.534,Sorting and searching,Knuth,1998,978-0-201-89685-5,False,0.001009273036,0.0005387538482243792,isbn:9780201896855
+9,0.602,ENIAC – The Triumphs and Tragedies of the World's First Computer,McCartney,1999,978-0-8027-1348-3,False,0.0008912826099999999,0.0005361851685452986,isbn:9780802713483
+22,0.804,Sorting and searching,Knuth,2000,0-201-89685-0,False,0.0006660023849999997,0.0005356292302785225,isbn:0201896850
+5,0.673,Readings in Knowledge Representation,Smith,1985,978-0-934613-01-9,False,0.000734289097,0.0004944307316671745,isbn:9780934613019
+4,0.599,Highly parallel computing,Gottlieb,1989,978-0-8053-0177-9,False,0.000799409,0.0004789731738116857,isbn:9780805301779
+5,0.667,"Computational intelligence: synergies of fuzzy logic, neural networks, and evolutionary computing",Siddique,2013,978-1-118-53481-6,False,0.0007102615000000001,0.00047371740174763567,isbn:9781118534816
+3,0.641,Guide to Software Development: Designing and Managing the Life Cycle,Langer,2016,978-1-4471-6799-0,False,0.0007375217,0.00047302506857217075,isbn:9781447167990
+9,0.577,A dictionary of computer science,Butterfield,2016,978-0-19-968897-5,False,0.0008184406410000001,0.000472215750513677,isbn:9780199688975
+15,0.782,Proceedings of the third ACM SIGPLAN conference on History of programming languages,Niklaus Wirth,2007,9781595937667,False,0.0005900927850000002,0.0004614365115612255,isbn:9781595937667
+63,0.54,The ultimate history of video games: from Pong to Pokémon and beyond: the story behind the craze that touched our lives and changed the world,Steve L. Kent,2001,0-7615-3643-4,False,0.0008403677659999991,0.0004537841143260046,isbn:0761536434
+19,0.674,Dive into deep learning,Zhang,2024,978-1-009-38943-3,True,0.0006706626740000002,0.00045188796790534544,isbn:9781009389433
+10,0.714,Linkers and Loaders,,2000,1-55860-496-0,False,0.000630852243,0.00045024740244164536,isbn:1558604960
+4,0.569,Computer Organization and Design: the Hardware/Software Interface,Patterson,1999,978-1558604285,True,0.0007734883999999999,0.00044018015288217527,isbn:9781558604285
+11,0.745,Encyclopedia of Parallel Computing,,2011,978-0-387-09765-7,False,0.0005831791920000001,0.0004344099234627516,isbn:9780387097657
+15,0.632,Computer Architecture: A Quantitative Approach,Hennessy,2011,978-0-12-383872-8,True,0.0006806591480000001,0.0004298748773843567,isbn:9780123838728
+4,0.649,Parallel programming: for multicore and cluster systems,Rauber,2013,978-3-642-37801-0,False,0.00066220298,0.00042968433763350097,isbn:9783642378010
+29,0.459,Inventing the Internet,Abbate,2000,978-0-262-51115-5,False,0.0009264144779999995,0.00042519391162537684,isbn:9780262511155
+4,0.669,"Software Development, Design and Coding: With Patterns, Debugging, Unit Testing, and Refactoring",Dooley,2017,978-1-4842-3153-1,False,0.00063211245,0.00042271243054728543,isbn:9781484231531
+5,0.662,Computational Intelligence: A Methodological Introduction,Kruse,2022,978-3-030-42226-4,False,0.0006182234100000001,0.00040904738912319217,isbn:9783030422264
+7,0.634,Measuring the Business Value of Cloud Computing,Rosati,2020,978-3-030-43198-3,False,0.000641613003,0.0004066467735726867,isbn:9783030431983
+34,0.648,Introduction to Evolutionary Computing,Eiben,2015,978-3-662-44873-1,False,0.0006148878940000001,0.0003985797446229941,isbn:9783662448731
+4,0.642,Concise Guide to Software Engineering: From Fundamentals to Application Methods,O'Regan,2022,978-3-031-07816-3,False,0.000615233603,0.0003946919878122953,isbn:9783031078163
+6,0.596,Ray Tracing Gems: High-Quality and Real-Time Rendering with DXR and Other APIs,Stich,"February 25, 2019",978-1-4842-4427-2,False,0.0006593216,0.00039319301636566757,isbn:9781484244272
+10,0.814,C# in Depth,Skeet,23 March 2019,978-1617294532,False,0.000467883276,0.0003808242581362438,isbn:9781617294532
+20,0.646,Introduction to the Theory of Computation,Michael Sipser,1997,0-534-94728-X,True,0.00058845759,0.0003799253937111714,isbn:053494728X

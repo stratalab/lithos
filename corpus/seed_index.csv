@@ -213,3 +213,12 @@ thrun-probabilistic-robotics,book,expository,xdomain,robotics,grad,Probabilistic
 curtis-orbital,book,expository,eng,aerospace,ug,Orbital Mechanics for Engineering Students,Curtis,isbn:TBD,grey,,0.4M,P1,4,lawful-copy,indexed
 bate-astrodynamics,book,expository,eng,aerospace,ug,Fundamentals of Astrodynamics,Bate/Mueller/White,isbn:TBD,grey,Dover reprint,0.3M,P2,4,lawful-copy,indexed
 yiu-cortex-m,book,expository,eng,embedded,ug,The Definitive Guide to ARM Cortex-M3 and Cortex-M4,Yiu,isbn:TBD,grey,embedded canon,0.3M,P2,4,lawful-copy,indexed
+weinberg-gravitation,book,expository,physics,relativity,grad,Gravitation and Cosmology,Weinberg,isbn:TBD,grey,canon-miner discovery,0.45M,P1,4,lawful-copy,indexed
+reif-statmech,book,expository,physics,stat-mech,ug,Fundamentals of Statistical and Thermal Physics,Reif,isbn:TBD,grey,canon-miner discovery,0.4M,P1,4,lawful-copy,indexed
+eisberg-resnick,book,expository,physics,modern-physics,ug,"Quantum Physics of Atoms, Molecules, Solids, Nuclei, and Particles",Eisberg & Resnick,isbn:TBD,grey,canon-miner discovery,0.45M,P1,4,lawful-copy,indexed
+hawking-ellis,book,expository,physics,relativity,grad,The Large Scale Structure of Space-Time,Hawking & Ellis,isbn:TBD,grey,canon-miner discovery,0.3M,P2,4,lawful-copy,indexed
+hardy-wright,book,expository,math,number-theory,ug,An Introduction to the Theory of Numbers,Hardy & Wright,isbn:TBD,grey,canon-miner discovery; fills the number-theory gap,0.3M,P0,4,lawful-copy,indexed
+ireland-rosen,book,expository,math,number-theory,grad,A Classical Introduction to Modern Number Theory,Ireland & Rosen,isbn:TBD,grey,number-theory shelf,0.3M,P2,4,lawful-copy,indexed
+princeton-companion,reference,expository,math,survey,mixed,The Princeton Companion to Mathematics,Gowers (ed.),isbn:TBD,grey,canon-miner discovery,1M,P1,4,lawful-copy,indexed
+kerrisk-tlpi,book,expository,code,systems,ug,The Linux Programming Interface,Kerrisk,isbn:TBD,grey,canon-miner discovery,0.55M,P1,4,lawful-copy,indexed
+peterson-davie,book,expository,code,networking,ug,Computer Networks: A Systems Approach,Peterson & Davie,isbn:TBD,grey,canon-miner discovery; free online edition exists,0.4M,P2,4,lawful-copy,indexed
