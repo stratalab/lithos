@@ -38,6 +38,10 @@ if ! command -v nvidia-smi >/dev/null || ! nvidia-smi >/dev/null 2>&1; then
 fi
 nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
 
+echo "==> build deps (vLLM JIT-compiles CUDA utils at startup — needs Python.h)"
+sudo apt-get install -y -qq python3.12-dev build-essential 2>/dev/null \
+  || sudo apt-get install -y -qq python3-dev build-essential
+
 echo "==> uv + vllm"
 command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
