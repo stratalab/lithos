@@ -142,5 +142,13 @@ stage-3.5 filter before scoring (cheap rejections first).
    - Remaining before rubric freeze: the ~100-doc human hand-check
      (`data/labels/hand-check.md`). Gated corpora note: Nemotron-CC-Code
      needs an access request (same as CC-Math).
-5. fastText v0 per domain; held-out label agreement reported.
+5. ✅ **v0 classifiers TRAINED (2026-07-03)** — owned fastText-style model
+   (hashed 1-2-gram features → linear head, pure numpy;
+   `lithos/data/quality_classifier.py`), trained on the pilot labels.
+   Holdout: physics-eng **ρ=0.78** / within-1 99%; math **ρ=0.69** / 95%;
+   code **ρ=0.50** / 97% (code quality is least lexical — the expected
+   embedder-upgrade candidate per §4). Caveat honored: at ~300-450 labels
+   these may partly learn source-vocabulary shortcuts; the 5k/domain run
+   over diverse sources is the real referendum. Models:
+   `data/classifiers/<domain>-v0.npz` (retrainable; not committed).
 6. Threshold ablations on the 100M rig (first GPU consumer) → ship cutoffs.

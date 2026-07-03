@@ -155,6 +155,9 @@ def main() -> int:
                    help="relabel first K docs at temp 0.7 for stability stats")
     p.add_argument("--carry-field", action="append",
                    help="copy source fields into records (e.g. score, for correlation)")
+    p.add_argument("--save-texts", action="store_true", default=True,
+                   help="write <out>.texts.jsonl alongside labels (classifier training input)")
+    p.add_argument("--no-save-texts", dest="save_texts", action="store_false")
     p.add_argument("--no-think", action="store_true", default=True,
                    help="append Qwen3 /no_think soft switch (default on)")
     p.add_argument("--think", dest="no_think", action="store_false")
@@ -180,6 +183,12 @@ def main() -> int:
     records = label_docs(docs, rubric_cfg, args)
     out = args.out or Path(f"data/labels/{args.domain}.jsonl")
     out.parent.mkdir(parents=True, exist_ok=True)
+    if args.save_texts:
+        tpath = out.with_suffix(".texts.jsonl")
+        with open(tpath, "w") as f:
+            for doc_id, text, _ in docs:
+                f.write(json.dumps({"id": doc_id, "text": text}) + "\n")
+        log.info("texts → %s (classifier training needs these)", tpath)
     with open(out, "w") as f:
         for r in records:
             f.write(json.dumps(r.to_json()) + "\n")
