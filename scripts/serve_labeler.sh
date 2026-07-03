@@ -51,6 +51,9 @@ uv pip install vllm hf_transfer
 
 echo "==> serving $MODEL on :8000 (first run downloads ~33GB)"
 export HF_HUB_ENABLE_HF_TRANSFER=1
+# flashinfer's sampler JIT-compiles with nvcc, which bare images lack; the
+# torch-native fallback is fine for short labeling generations.
+export VLLM_USE_FLASHINFER_SAMPLER=0
 exec vllm serve "$MODEL" \
   --served-model-name qwen3-32b \
   --max-model-len 8192 \
