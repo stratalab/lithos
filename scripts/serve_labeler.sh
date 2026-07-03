@@ -17,6 +17,27 @@ set -euo pipefail
 
 MODEL="${LABELER_MODEL:-Qwen/Qwen3-32B-FP8}"
 
+# --- GPU driver (some rental images ship bare Ubuntu, no NVIDIA driver) -----
+if ! command -v nvidia-smi >/dev/null || ! nvidia-smi >/dev/null 2>&1; then
+  if ! lspci | grep -qi nvidia; then
+    echo "!! no NVIDIA device on the PCI bus — wrong instance type?" >&2
+    exit 1
+  fi
+  echo "==> NVIDIA device present but driver missing — installing server driver"
+  sudo apt-get update -qq
+  sudo apt-get install -y -qq nvidia-driver-570-server 2>/dev/null \
+    || sudo apt-get install -y -qq nvidia-driver-550-server
+  sudo modprobe nvidia || true
+  if ! nvidia-smi >/dev/null 2>&1; then
+    echo "==> driver installed but not loadable without reboot."
+    echo "==> rebooting in 5s — RE-RUN THIS SCRIPT after the box comes back."
+    sleep 5
+    sudo reboot
+    exit 0
+  fi
+fi
+nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+
 echo "==> uv + vllm"
 command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
