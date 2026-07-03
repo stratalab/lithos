@@ -11,7 +11,7 @@ Labels are only comparable within a rubric version; every record carries it.
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 DOC_CHAR_BUDGET = 8000  # ~2k tokens of document is enough to judge quality
@@ -67,6 +67,9 @@ class LabelRecord:
     justification: str
     labeler: str  # model name
     source: str  # where the doc came from (hf id / file)
+    # carried source fields (e.g. FineMath's own score, for rubric-vs-classifier
+    # correlation checks during the pilot)
+    extra: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)

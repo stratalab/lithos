@@ -67,10 +67,10 @@ def iter_hf(spec: str) -> Iterator[dict]:
     yield from ds.shuffle(seed=7, buffer_size=10_000)
 
 
-def collect_docs(args) -> list[tuple[str, str]]:
-    """[(doc_id, text)] — id is a content hash unless the record carries one."""
+def collect_docs(args) -> list[tuple[str, str, dict]]:
+    """[(doc_id, text, extra)] — extra carries --carry-field values."""
     source = iter_jsonl(args.jsonl) if args.jsonl else iter_hf(args.hf)
-    docs: list[tuple[str, str]] = []
+    docs: list[tuple[str, str, dict]] = []
     for rec in source:
         text = next(
             (t for f in TEXT_FIELD_CANDIDATES if isinstance(t := get_field(rec, f), str)), None
@@ -78,7 +78,8 @@ def collect_docs(args) -> list[tuple[str, str]]:
         if not text or len(text) < args.min_chars:
             continue
         doc_id = str(rec.get("id") or hashlib.sha1(text.encode()).hexdigest()[:16])
-        docs.append((doc_id, text))
+        extra = {f: get_field(rec, f) for f in (args.carry_field or []) if get_field(rec, f) is not None}
+        docs.append((doc_id, text, extra))
         if len(docs) >= args.n:
             break
     return docs
@@ -106,14 +107,16 @@ class ChatEndpoint:
 
 
 def label_docs(
-    docs: list[tuple[str, str]], rubric_cfg: dict, args, *, temperature: float = 0.0
+    docs: list[tuple[str, str, dict]], rubric_cfg: dict, args, *, temperature: float = 0.0
 ) -> list[LabelRecord]:
     endpoint = ChatEndpoint(args.endpoint, args.model)
     dom = rubric_cfg["domains"][args.domain]
     records: list[LabelRecord] = []
     failures = 0
-    for doc_id, text in tqdm(docs, desc=f"label:{args.domain}", unit="doc"):
+    for doc_id, text, extra in tqdm(docs, desc=f"label:{args.domain}", unit="doc"):
         messages = build_prompt(dom["rubric"], rubric_cfg["response_format"], text)
+        if args.no_think:  # Qwen3 soft switch: suppress thinking mode for speed
+            messages[0]["content"] += " /no_think"
         try:
             response = endpoint.generate(messages, temperature=temperature)
         except Exception as e:  # transient endpoint errors shouldn't kill a run
@@ -129,7 +132,7 @@ def label_docs(
         records.append(LabelRecord(
             doc_id=doc_id, domain=args.domain, rubric_version=int(rubric_cfg["version"]),
             score=score, justification=why, labeler=args.model,
-            source=args.jsonl.name if args.jsonl else args.hf,
+            source=args.jsonl.name if args.jsonl else args.hf, extra=extra,
         ))
     if failures:
         log.warning("%d/%d docs failed", failures, len(docs))
@@ -150,6 +153,11 @@ def main() -> int:
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--second-pass", type=int, default=0,
                    help="relabel first K docs at temp 0.7 for stability stats")
+    p.add_argument("--carry-field", action="append",
+                   help="copy source fields into records (e.g. score, for correlation)")
+    p.add_argument("--no-think", action="store_true", default=True,
+                   help="append Qwen3 /no_think soft switch (default on)")
+    p.add_argument("--think", dest="no_think", action="store_false")
     p.add_argument("--dry-run", action="store_true", help="print prompts, no endpoint calls")
     args = p.parse_args()
 
@@ -163,7 +171,7 @@ def main() -> int:
 
     if args.dry_run:
         dom = rubric_cfg["domains"][args.domain]
-        for doc_id, text in docs:
+        for doc_id, text, _extra in docs:
             msgs = build_prompt(dom["rubric"], rubric_cfg["response_format"], text)
             print(f"=== {doc_id} ===\n[system] {msgs[0]['content'][:200]}...\n"
                   f"[user] {msgs[1]['content'][:400]}...\n")
