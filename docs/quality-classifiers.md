@@ -126,7 +126,21 @@ stage-3.5 filter before scoring (cheap rejections first).
 
 1. ✅ Carried-score thresholding (FineWeb-Edu path live in `data/quality.py`).
 2. Wire carried scores for FineMath / Nemotron-CC-Math / MegaMath at ingestion.
-3. Write rubric prompts (§2) + code executable tier (tree-sitter parse gate).
-4. Pilot: 5k/domain labels on local samples → agreement stats → freeze rubrics.
+3. ✅ Rubric prompts (`configs/quality/rubrics.yaml` v1) + labeling pipeline
+   (`lithos/data/labeling.py`, `scripts/label_quality.py`); code executable
+   tier (tree-sitter gate) still to build.
+4. ◑ **Pilot RUN (2026-07-03, rented H100 + Qwen3-32B-FP8, ~$8):**
+   - **physics-eng** (450 wiki docs, PPR-stratified): clean monotonic stratum
+     separation — core mean **2.51** / mid **1.05** / tail **0.51**; Aristotle
+     probe scored 1 (topical centrality did not leak into the score).
+     Stability 90% exact / 100% within-1 across temperature.
+   - **math** (300 FineMath docs): **r = 0.52** vs FineMath's own classifier —
+     attenuated by range restriction (3plus is pre-filtered), so read as a
+     lower bound; our labels spread their kept docs across 0–4.
+   - **code** (300 codeparrot-clean files): mode 3, usable spread, stability
+     93% exact / 100% within-1.
+   - Remaining before rubric freeze: the ~100-doc human hand-check
+     (`data/labels/hand-check.md`). Gated corpora note: Nemotron-CC-Code
+     needs an access request (same as CC-Math).
 5. fastText v0 per domain; held-out label agreement reported.
 6. Threshold ablations on the 100M rig (first GPU consumer) → ship cutoffs.

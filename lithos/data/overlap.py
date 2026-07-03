@@ -53,7 +53,7 @@ class CorpusSpec(BaseModel):
     total_docs_approx: bool = False  # True = N is an estimate; flag in the report
 
 
-TEXT_FIELD_CANDIDATES = ("text", "content", "markdown", "body")
+TEXT_FIELD_CANDIDATES = ("text", "content", "markdown", "body", "code")
 URL_FIELD_CANDIDATES = ("url", "URL", "uri", "source_url", "metadata.url")
 
 
