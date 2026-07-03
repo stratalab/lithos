@@ -204,7 +204,10 @@ def main() -> int:
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--wave", choices=["p0", "posttrain", "p1"])
     p.add_argument("--id", action="append", dest="ids")
-    p.add_argument("--scratch", type=Path, default=Path.home() / "acquire-scratch")
+    # Prefer the big data volume for scratch when present (falls back to $HOME).
+    _default_scratch = Path("/data/corpus-staging") if Path("/data").is_mount() \
+        else Path.home() / "acquire-scratch"
+    p.add_argument("--scratch", type=Path, default=_default_scratch)
     p.add_argument("--dest", default=None,
                    help="rclone dest (default: from LITHOS_STORAGE_BASE_URI)")
     p.add_argument("--dry-run", action="store_true")
