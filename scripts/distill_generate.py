@@ -35,6 +35,11 @@ def main() -> None:
     ap.add_argument("--max-prompt-tokens", type=int, default=384, help="skip longer prompts")
     ap.add_argument("--val-frac", type=float, default=0.03)
     ap.add_argument("--strip-think", action="store_true", help="keep only the final answer (drop <think>..)")
+    ap.add_argument(
+        "--decontam-probes",
+        default=None,
+        help="Probe JSONL (decontam.write_probes) — screen out eval-battery leaks (F2, recommended).",
+    )
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -84,6 +89,13 @@ def main() -> None:
     if lengths:
         lengths.sort()
         print(f"response tokens: median {lengths[len(lengths)//2]}, p90 {lengths[int(len(lengths)*0.9)]}, max {lengths[-1]}")
+
+    if args.decontam_probes:
+        from lithos.posttrain.decontam_gate import PostTrainDecontaminator, messages_text
+
+        gate = PostTrainDecontaminator.from_probe_file(args.decontam_probes)
+        recs = gate.screen(recs, messages_text)
+        print(f"decontam: {gate.report()}")
 
     random.Random(0).shuffle(recs)
     n_val = int(len(recs) * args.val_frac)

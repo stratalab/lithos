@@ -76,6 +76,11 @@ def main() -> None:
     ap.add_argument("--max-new", type=int, default=64)
     ap.add_argument("--temperature", type=float, default=0.9)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument(
+        "--decontam-probes",
+        default=None,
+        help="Probe JSONL (decontam.write_probes) — screen out eval-battery leaks (F2, recommended).",
+    )
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -130,6 +135,13 @@ def main() -> None:
             )
         if (i + 1) % 200 == 0:
             print(f"  generated {i + 1}/{len(rows)} ({len(prefs)} kept)")
+
+    if args.decontam_probes:
+        from lithos.posttrain.decontam_gate import PostTrainDecontaminator, prefs_text
+
+        gate = PostTrainDecontaminator.from_probe_file(args.decontam_probes)
+        prefs = gate.screen(prefs, prefs_text)
+        print(f"decontam: {gate.report()}")
 
     random.Random(args.seed + 1).shuffle(prefs)
     n_val = int(len(prefs) * args.val_frac)

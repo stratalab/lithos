@@ -6,6 +6,18 @@ from lithos.model import generate
 from tests.helpers import make_model
 
 
+def test_generate_restores_training_mode():
+    # F1 landmine: generate() must not leave a training model in eval mode, or the
+    # GRPO loss forward after a rollout runs with dropout off (a silent bug).
+    model = make_model(seed=0)
+    model.train()
+    generate(model, torch.tensor([[1, 2, 3]]), max_new_tokens=4, greedy=True)
+    assert model.training is True
+    model.eval()
+    generate(model, torch.tensor([[1, 2, 3]]), max_new_tokens=4, greedy=True)
+    assert model.training is False
+
+
 def test_greedy_is_deterministic():
     model = make_model(seed=0)
     ids = torch.tensor([[1, 2, 3]])
