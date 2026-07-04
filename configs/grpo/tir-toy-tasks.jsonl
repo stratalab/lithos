@@ -1,0 +1,6 @@
+{"id": "add-579", "prompt": "Compute 123 + 456.", "kind": "numeric", "answer": "579"}
+{"id": "mul-156", "prompt": "Compute 12 * 13.", "kind": "numeric", "answer": "156"}
+{"id": "sub-289", "prompt": "Compute 512 - 223.", "kind": "numeric", "answer": "289"}
+{"id": "pow-1024", "prompt": "Compute 2 to the power 10.", "kind": "numeric", "answer": "1024"}
+{"id": "div-37", "prompt": "Compute 1554 divided by 42.", "kind": "numeric", "answer": "37"}
+{"id": "sum-5050", "prompt": "Compute the sum of the integers from 1 to 100.", "kind": "numeric", "answer": "5050"}

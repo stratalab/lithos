@@ -130,19 +130,43 @@ and duck-types `PackedDataset`, so `train()` is unchanged via new `kind: sft_pac
 
 ### Wave 2 — TIR plumbing + throughput (after Wave 1)
 
-**E3 · TIR template + dataset episodes** · §2.1 · deps D1, E2 · M · local
-Extend `chat_template.py`: tool roles from D1, tool-result tokens **masked**,
-multi-step episodes (call → result → continue) rendered with exact by-ID masking
-(keep the existing "never string-parse" guarantee). Extend `SFTDataset`/`build_xy`
-for multi-segment episodes. **Done:** a tool-use conversation round-trips to
-`(x,y)` with tool-result positions at `IGNORE_INDEX`, asserted in a test.
+**E3 · TIR template + dataset episodes** · §2.1 · deps D1, E2 · M · local · ✅ **DONE (2026-07-03)**
+`chat_template.py` renders TIR episodes: an assistant turn is an ordered list of
+typed `segments` (`think`/`text`/`tool`/`tool_result`) — the inline single-turn
+form D1's grammar mandates. `_encode_segments` applies the D1 §4 mask by ID
+(think/tool/text learned; the `tool_result` span incl. its closing `<|end|>`
+masked), shared by `render_conversation` + `render_prompt`. TIR tokens
+(`tir_token_ids`) resolve **lazily** — only when a segments turn is rendered — so
+non-TIR SFT still works on today's tokenizer; flat `content` is unchanged
+(byte-identical, existing tests pass). `build_xy`/`SFTDataset`/`PackedSFTDataset`/
+`build_sft_corpus` inherit TIR for free (no change). `decontam_gate.messages_text`
+now pulls segment text so F2 screens TIR traces. **Scope:** rendering only (the
+generate→execute→inject loop is E4); building *real* TIR corpora needs the STEM
+tokenizer (TIR tokens must live in-vocab). Adversarial review hardened
+malformed-input handling (clear errors for missing/non-string segment fields,
+non-dict/non-list segments, content⊕segments; decontam made crash-proof on messy
+records). 20 new tests; suite green at 321.
 
-**E4 · GRPO multi-segment rollout** · §2.1 · deps E1, E3 · L · local+rented
-The rollout becomes generate → detect tool call → execute in E1 sandbox → append
-result → resume, looped until answer/limit. PG loss **and** KL exclude
-tool-result tokens (they're not policy actions). Reward = E1 verifier.
-**Done:** a TIR GRPO step runs end-to-end on the 100M against a toy executable
-task; tool-result tokens verified out of both loss terms.
+**E4 · GRPO multi-segment rollout** · §2.1 · deps E1, E3 · L · local+rented · ✅ **DONE (2026-07-04)**
+`lithos/posttrain/tir_rollout.py`: `tir_rollout` loops generate (stop at
+`<|/tool|>`/`<|end|>` — new `stop_token_ids` in `generation.py`) → `parse_tool_call`
+by ID → `run_tool` (E1 sandbox) → inject `<|tool_result|>…<|end|>` → resume, with
+a per-token **action mask** (False on prompt + injected results). `grpo_trainer.py`
+gains a TIR mode (`cfg.grpo_tir`): G sequential rollouts/prompt, reward =
+`shaped_reward(verify(...))` with the E1 verifier + task bank, zeroed by
+`heuristic_gaming_check` (E1e hook). Labels built from the action mask via the
+shared `_labels_from_action_mask` + extracted `_grpo_loss`, so **tool-result tokens
+drop out of PG and KL for free** (the existing `IGNORE_INDEX` machinery). Arithmetic
+path preserved (locked by a step test). **Verified:** a scripted-model rollout
+executes a real `print(2+2)` in the sandbox and masks the injected "4"; the
+exclusion invariant proven numerically (0 PG + 0 KL contribution at tool-result
+positions); arith + TIR GRPO steps run end-to-end on toy models. `configs/grpo/
+lithos-tir-toy.yaml` + task bank. **Scope:** sequential rollouts (E5 batches);
+real 100M TIR run waits on the STEM tokenizer (TIR tokens in-vocab). 11 new tests;
+suite green at 332. Review hardening: empty-task-bank guard (was ZeroDivisionError);
+`generate` docstring warns that batched `stop_token_ids` without eos needs
+per-row trimming (E5); TIR reward uses `completion_text` (right for answer-checked
+tasks — code-kind TIR verifying the executed tool code is a documented TODO).
 
 **E5 · Rollout throughput** · §3.1 · deps E4 · M · rented (to measure)
 Tier (a), in-repo: batch P×G together, cast rollout weights to bf16 (today

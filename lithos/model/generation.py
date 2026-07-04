@@ -57,10 +57,21 @@ def generate(
     top_p: float | None = None,
     greedy: bool = False,
     eos_token_id: int | None = None,
+    stop_token_ids: set[int] | None = None,
     use_cache: bool = True,
     generator: torch.Generator | None = None,
 ) -> torch.Tensor:
     """Generate up to ``max_new_tokens`` tokens; returns prompt + completion.
+
+    A sequence finishes when it emits ``eos_token_id`` **or** any id in
+    ``stop_token_ids`` — the latter lets a TIR rollout stop at ``<|/tool|>`` (to
+    execute + resume) or ``<|end|>`` (done) and inspect which fired.
+
+    NOTE: generation runs until **all** batch rows have finished. A row that
+    finishes early is padded with ``eos_token_id`` if set, but with only
+    ``stop_token_ids`` (no eos) an early-finished row keeps *sampling* until the
+    batch ends — so a batched caller must trim each row at its first stop token
+    (single-row callers like ``tir_rollout`` break immediately and are unaffected).
 
     Restores the model's prior train/eval mode on exit, so calling ``generate``
     mid-training (e.g. GRPO rollouts) does not silently leave the policy in eval
@@ -71,6 +82,9 @@ def generate(
     try:
         generated = input_ids
         finished = torch.zeros(input_ids.shape[0], dtype=torch.bool, device=input_ids.device)
+        stop_ids: set[int] = set(stop_token_ids or ())
+        if eos_token_id is not None:
+            stop_ids.add(eos_token_id)
 
         kv_caches = model.init_kv_caches() if use_cache else None
         next_logits: torch.Tensor | None = None
@@ -98,8 +112,12 @@ def generate(
 
             generated = torch.cat((generated, next_token), dim=1)
 
-            if eos_token_id is not None:
-                finished = finished | (next_token.squeeze(1) == eos_token_id)
+            if stop_ids:
+                tok_col = next_token.squeeze(1)
+                is_stop = torch.zeros_like(finished)
+                for sid in stop_ids:
+                    is_stop |= tok_col == sid
+                finished = finished | is_stop
                 if bool(finished.all()):
                     break
 

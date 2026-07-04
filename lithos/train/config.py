@@ -88,6 +88,12 @@ class TrainConfig(BaseModel):
     grpo_max_new: int = 16          # max new tokens per rollout
     grpo_temperature: float = 1.0   # rollout sampling temperature (diversity)
     grpo_kl_coef: float = 0.05      # KL leash to the reference
+    # TIR mode (E4): multi-segment tool-use rollouts scored by the E1 verifier.
+    grpo_tir: bool = False              # arithmetic test bench (False) vs TIR rollouts (True)
+    grpo_task_bank: str | None = None   # kind=problems JSONL (required when grpo_tir)
+    grpo_max_tool_calls: int = 4        # tool executions per episode
+    grpo_tool_timeout_s: float = 5.0    # sandbox wall-clock per tool call
+    grpo_result_token_cap: int = 256    # cap on injected tool-result tokens
 
     micro_batch_size: int = 8
     gradient_accumulation_steps: int = 1

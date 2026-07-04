@@ -36,6 +36,11 @@ from lithos.posttrain.taskbank import (
     verify,
     verify_batch,
 )
+from lithos.posttrain.tir_rollout import (
+    RolloutResult,
+    parse_tool_call,
+    tir_rollout,
+)
 from lithos.posttrain.verifier import (
     CheckResult,
     MathVerifier,
@@ -57,6 +62,7 @@ __all__ = [
     "MathVerifier",
     "PackedSFTDataset",
     "PostTrainDecontaminator",
+    "RolloutResult",
     "SFTCorpusBuildConfig",
     "SFTDataset",
     "SFTShardWriter",
@@ -78,6 +84,7 @@ __all__ = [
     "load_tasks",
     "messages_text",
     "octave_available",
+    "parse_tool_call",
     "prefs_text",
     "run_octave",
     "run_python",
@@ -86,6 +93,7 @@ __all__ = [
     "shaped_reward",
     "split_by_year",
     "task_from_record",
+    "tir_rollout",
     "verify",
     "verify_batch",
 ]
