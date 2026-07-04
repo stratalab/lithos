@@ -185,11 +185,21 @@ grad checkpointing on in the SFT/RL configs. **Done:** a per-rung memory table i
 this doc with headroom on the intended card; LoRA flagged as the fallback if a
 rung still doesn't fit.
 
-**E8 · Verifier-labeled DPO** · §4.6 · deps E4 · M · local
-Replace the token-F1 judge (`prepare_dpo_prefs.py:63`, right for Dolly) with
-E1-verifier-labeled correct/incorrect rollouts from the same prompt — machinery
-is ~identical to E4's rollout+verify loop. **Done:** an on-policy verifier-labeled
-pref set generated + a DPO run consuming it.
+**E8 · Verifier-labeled DPO** · §4.6 · deps E4 · M · local · ✅ **DONE (2026-07-04)**
+`lithos/posttrain/verifier_prefs.py`: `build_verifier_prefs` samples K completions
+per verifiable task, labels each with the **E1 verifier** (`verify(...).correct`),
+and `make_pairs` pairs a correct one (chosen) against an incorrect one (rejected) —
+on-policy, in-distribution (addresses the banked v1-OOD-Goodhart lesson). Output is
+the **unchanged** pref format, so `PreferenceDataset` + `train_dpo` + `dpo_loss`
+consume it with zero changes (proven by a round-trip test). `scripts/prepare_verifier_prefs.py`
+(sample via `generate` + F2 decontam + train/val write) + `configs/dpo/lithos-100m-verifier.yaml`
+(β=0.5, the banked recipe that held). **Scope:** plain completions (runs on today's
+tokenizer — no TIR dependency); tool-use/TIR-DPO (segment-aware pref dataset) is the
+follow-on. Only frontier tasks (pass-rate∈(0,1)) yield pairs — all-solved/all-failed
+are skipped. Generator only; no trainer change. Review added a real `train_dpo`
+step on generated verifier prefs (the "Done" claim end-to-end — and the first
+end-to-end coverage of `train_dpo` itself); batched-sampling diversity verified.
+8 new tests; suite green at 341.
 
 **E9 · GRPO loss decisions** · §4.2 · deps E4, Part B RL sweep · S (code) · rented (validate)
 Decide and document, each validated by the Part B RL experiment: per-token vs

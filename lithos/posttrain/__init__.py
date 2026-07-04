@@ -54,6 +54,10 @@ from lithos.posttrain.verifier import (
     heuristic_gaming_check,
     shaped_reward,
 )
+from lithos.posttrain.verifier_prefs import (
+    build_verifier_prefs,
+    make_pairs,
+)
 
 __all__ = [
     "IGNORE_INDEX",
@@ -70,6 +74,7 @@ __all__ = [
     "Task",
     "assert_disjoint",
     "build_sft_corpus",
+    "build_verifier_prefs",
     "build_xy",
     "check_code",
     "check_numeric",
@@ -82,6 +87,7 @@ __all__ = [
     "heuristic_gaming_check",
     "load_sft_shard_specs",
     "load_tasks",
+    "make_pairs",
     "messages_text",
     "octave_available",
     "parse_tool_call",

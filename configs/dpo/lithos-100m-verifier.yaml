@@ -1,0 +1,54 @@
+# DPO on VERIFIER-labeled preferences (epic E8) — the sovereign pref path.
+# Preferences come from scripts/prepare_verifier_prefs.py: both chosen and rejected
+# are the model's own on-policy samples, labeled by the E1 verifier (correct=chosen).
+# Same gentle recipe that held in the Dolly-v2 test bench: tight KL leash (beta 0.5),
+# low LR, ~1 epoch — sharpen toward correctness without coherence collapse.
+run_name: lithos-100m-dpo-verifier
+seed: 0
+device: auto
+precision: bf16
+
+init_from: runs/<sft-run>/checkpoints/step_XXXXXX   # start from the SFT model
+dpo_beta: 0.5                     # tight leash to the reference (the banked v2 setting)
+
+micro_batch_size: 2
+gradient_accumulation_steps: 8    # effective 16 pairs
+grad_checkpointing: false
+compile: false
+
+log_interval: 10
+eval_interval: 30
+checkpoint_interval: 0
+
+model:
+  vocab_size: 32000
+  n_layers: 12
+  hidden: 768
+  n_heads: 12
+  n_kv_heads: 12
+  intermediate_size: 2048
+  seq_len: 2048
+  rope_theta: 10000.0
+  qk_norm: true
+  tie_embeddings: true
+
+data:
+  kind: dpo
+  tokenizer_path: artifacts/tokenizer/fineweb-edu-32k/tokenizer.json
+  corpus_manifest: data/dpo/verifier/train.jsonl      # verifier-labeled on-policy prefs
+  val_corpus_manifest: data/dpo/verifier/val.jsonl
+  seq_len: 1024
+
+optim:
+  lr: 0.000003                    # 3e-6 — gentle
+  betas: [0.9, 0.95]
+  weight_decay: 0.0
+  grad_clip: 1.0
+
+schedule:
+  warmup_steps: 10
+  max_steps: 120
+  min_lr_ratio: 0.1
+
+wandb:
+  enabled: false
