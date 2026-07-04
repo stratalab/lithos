@@ -220,7 +220,7 @@ ratio clipping (lets expensive rollouts feed multiple updates once E5 makes them
 costly). **Done:** each choice recorded with its ablation delta.
 
 **E10 · Long-context pretrain extension** · §2.3 · deps D1 · M · rented · *(pretraining-side; from D1(B))*
-The 500M gains a context-extension phase (RoPE-theta scaling + long-doc anneal)
+The 500M gains a context-extension phase (high-theta RoPE + long-doc anneal)
 so it natively handles the 4k–16k harvested reasoning traces instead of dropping
 them — the D1(B) resolution. Sits on the **spine**: it's part of the 500M
 pretrain, before keeper post-training. First step is measurement: profile the
@@ -230,6 +230,77 @@ feeds Part-B P1. **Done:** a 500M (or 100M proxy) trains stably at the extended
 context with intact short-context bpb; target length recorded. Belongs to the
 pretraining plan (`lithos-implementation-plan.md` Phase 12 Track S) — tracked
 here because it fell out of this review chain.
+
+**Architecture decisions (settled 2026-07-04, from the Qwen-options discussion):**
+- **High RoPE theta from day one, no rope_scaling machinery.** The 500M sets
+  `rope_theta ≈ 1e6` in its config from the start (the ABF practice — Llama-3
+  500k, Qwen3 1M), trains the bulk at ~4k, and anneals at the E10 target length —
+  so the target context works *natively* and no YaRN/NTC/linear scaling hack is
+  ever needed within it. Zero new code (`rope_theta` is an existing field; the
+  E7 importer already handles θ=1e6). YaRN reconsidered only if a
+  beyond-trained-context requirement ever appears.
+- **Full attention through the 500M/1B; sliding-window attention gated, not
+  adopted.** Qwen3's dense models (incl. the 4B hero base) ship SWA off; full
+  attention at 8–16k with GQA is fine at this scale; and long-context-on-edge is
+  the **R2** research track's problem (KV offload to StrataDB), which SWA would
+  partially duplicate with a lossier mechanism. Revisit interleaved SWA
+  (Gemma-3-style) at 3B **only if** measured edge KV budgets demand it and R2
+  isn't ready. Also settled in the same discussion: **no attention_bias** (Qwen3
+  itself dropped it — QK-norm supersedes it) and **no configurable activations**
+  (SwiGLU is the settled consensus; the ablation is already run in the
+  literature). The boring core is the architecture; novelty budget goes to
+  data/RLVR/R1+R2.
+
+### Wave 4 — Feed the machine (from review 2; all CPU-local, unblocked now)
+
+> Source: `docs/post-training-review-2.md` (2026-07-04). Waves 0–3's machinery is
+> built and reviewed; these epics give it real data and close the integration
+> seams. None needs the GPU or the tokenizer freeze.
+
+**E11 · P0 SFT acquisition + converters** · rev2 §B.1 · deps none · L · local/VM
+Acquire the §2.2 P0 sets (OpenMathReasoning, AceReason-1.1-SFT, Tülu-3,
+StarCoder2-Instruct; per-dataset license check) and write converters →
+messages/segments JSONL (incl. `<think>`-text → segments, near-identity by D1
+design; F2 decontam wired in). Then build the first **real** multi-source packed
+corpus through E2 (first exercise of the mixer/decontam at scale; watch the
+`dropped_overlong` counter — it feeds E10's length profiling). **Done:** a
+recorded-manifest packed corpus from ≥3 real sources.
+
+**E12 · Real task banks** · rev2 §B.2 · deps none · M · local/VM
+`kind=problems` acquisitions → Task JSONL: GSM8K (numeric), an MBPP-style code
+set (tests), a small FE-style units set — with `level`/`year` columns (curriculum
+ladder + year split), `assert_disjoint` enforced, answer keys spot-validated.
+Replaces the 6-problem toy bank for E4/E8 and feeds E14. **Done:** three real
+banks loading through `load_tasks` with a year-split eval holdout.
+
+**E13 · Rollout→segments + mask-consistency** · rev2 §B.3/§B.8 · deps none · M · local
+Convert a verified `RolloutResult` into E3 segments (by ID over the action mask)
+— the §2.5 self-generation engine's missing link (generate → verify → keep →
+SFT). Adds the **SFT/RL mask-consistency test**: render a converted rollout via
+E3 and assert its learned positions equal E4's action positions (divergence =
+SFT and RLVR pushing on different token sets). Scope note: E7 makes Qwen3-family
+teachers drivable by `tir_rollout` (`load_qwen3` + rollout) for eng-TIR trace
+generation. **Done:** verified rollouts round-trip into a packed SFT corpus;
+consistency test green.
+
+**E14 · Executable eval runner (the verifier's third customer)** · rev2 §B.4 · deps E12 · M · local
+A battery runner scoring a checkpoint on a task bank via `verify_batch`
+(pass@1, per-kind breakdown) — the `eval-plan.md` battery-v2 executable
+instrument, and the close of E1's one-verifier-three-customers design. Wire the
+post-training **regression gate** here too (base battery + bpb after SFT; SFT
+battery after RL — review-1 item 14). **Done:** one command scores a checkpoint
+on E12's banks; gate output in the run dir.
+
+**E15 · Dimensional verification for engineering** · rev2 §B.5 · deps none · S · local
+`uv add` pint/CoolProp/python-control; implement real dimensional checking in
+`check_units` (parse the response's own unit, convert, compare — the documented
+TODO) + tests. "Wrong dimension dies instantly" becomes true. **Done:** a
+wrong-unit answer fails and a right-unit answer passes, executed.
+
+**F3 · Manifest/model compat guards** · rev2 §B.7 · deps none · S · local
+`kind: sft_packed` (and dpo/grpo loaders) check the manifest's tokenizer name +
+seq_len against the run config and fail loudly on mismatch. **Done:** a
+mismatched load raises with both values named.
 
 ### Coverage check (every review item lands somewhere)
 
@@ -270,7 +341,9 @@ deliverable, and an un-inspected reward curve is not an answer.
 ## Sequencing summary
 
 1. **Now (pre-compute, local):** D1 (get the two user decisions), F1, F2, X1, E7
-   — plus start E1 and E2, the long poles.
+   — plus start E1 and E2, the long poles. ✅ **All landed (2026-07-04), plus
+   E3/E4/E8 — Waves 0–2 and E8 complete. The current "now" is Wave 4 (feed the
+   machine): E11 → E12 → E14 → E13 → E15 + F3, none GPU- or freeze-gated.**
 2. **Freeze gate:** D1 ratified → tokenizer v1.0 (`docs/tokenizer.md` process) →
    retokenize. Runs in parallel with E1/E2 finishing.
 3. **Wave 2:** E3 → E4 → E5, dry-run the full SFT → GRPO-with-sandbox loop on the
@@ -289,7 +362,8 @@ it also sets E2's `seq_len`.
 
 ## Pointers
 
-- Source review: `docs/post-training-review.md` (the gaps this closes).
+- Source reviews: `docs/post-training-review.md` (machinery gaps → Waves 0–3),
+  `docs/post-training-review-2.md` (integration seams + feedstock → Wave 4).
 - Phase context: `lithos-implementation-plan.md` Phase 12 (the family + TIR
   recipe this operationalizes), Phase 11 (the test-bench lessons).
 - Gates & experiments frame: `docs/eval-plan.md`. Format→freeze dependency:
