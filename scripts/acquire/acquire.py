@@ -110,6 +110,18 @@ def build_plan(
                      "-P", str(dest_dir), url]
                     for url in spec["urls"]
                 ]
+        elif spec["route"] == "scrape":
+            # Source-specific fetch+extract handler under lithos/data/ (writes
+            # canonical .jsonl.zst into dest_dir). Runs with the `data` extra so
+            # the extractor's lxml/zstandard are present.
+            handler = spec.get("handler")
+            if not handler:
+                raise ValueError(f"{id_}: scrape route needs a 'handler'")
+            argv = ["uv", "run", "--extra", "data", "python", "-m",
+                    f"lithos.data.{handler}", "--out", str(dest_dir)]
+            for opt in spec.get("handler_args", []):
+                argv.append(str(opt))
+            download = [argv]
         else:
             raise ValueError(f"{id_}: unsupported route {spec['route']!r}")
 

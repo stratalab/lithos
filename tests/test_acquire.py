@@ -56,6 +56,22 @@ def test_dump_route_falls_back_to_wget_without_aria2c(monkeypatch):
     assert argv[0][-1] == "https://x/a.7z"
 
 
+def test_scrape_route_builds_handler_command():
+    cfg = {"waves": {}, "specs": {
+        "osx": {"route": "scrape", "handler": "openstax", "est_gb": 1, "index_ids": ["osx-row"]},
+    }}
+    jobs = acquire.build_plan({"osx-row"}, cfg, only_ids=["osx"], scratch=SCRATCH)
+    argv = jobs[0].download_argv[0]
+    assert argv[:7] == ["uv", "run", "--extra", "data", "python", "-m", "lithos.data.openstax"]
+    assert "--out" in argv and str(SCRATCH / "osx") in argv
+
+
+def test_scrape_route_needs_handler():
+    cfg = {"waves": {}, "specs": {"bad": {"route": "scrape", "est_gb": 1, "index_ids": ["r"]}}}
+    with pytest.raises(ValueError, match="needs a 'handler'"):
+        acquire.build_plan({"r"}, cfg, only_ids=["bad"], scratch=SCRATCH)
+
+
 def test_index_ids_override_maps_to_index_rows():
     jobs = acquire.build_plan(INDEX_IDS, CFG, wave="p0", scratch=SCRATCH)
     assert jobs[1].index_rows == ["a-row", "b-row"]

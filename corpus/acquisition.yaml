@@ -26,6 +26,7 @@ waves:
   # suite (PDF/LaTeX/HTML->text). See docs/physics-eng-ingestion.md.
   physeng:
     - pes2o
+    - openstax
   p1:
     - nemotron-pretraining-code-v2
     - nemotron-cc-code
@@ -108,6 +109,14 @@ specs:
     route: hf
     repo: allenai/peS2o
     est_gb: 80
+  openstax:
+    # physics/chem/math CC-BY textbooks: GitHub osbooks-* tarballs (pinned to the
+    # approved commit) -> CNXML -> EX-1 (lithos/data/markup_text). Output is
+    # canonical .jsonl.zst directly (scrape fetch+extract are coupled).
+    route: scrape
+    handler: openstax
+    est_gb: 1
+    notes: CC-BY; math preserved as LaTeX; no eng texts (grey canon covers those)
   mathpile:
     route: hf
     repo: GAIR/MathPile
