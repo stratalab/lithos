@@ -90,6 +90,24 @@ def _build_sft_loader(
     return loader, {"tokenizer": cfg.data.tokenizer_path, "corpus": path, "sft": dataset.stats()}
 
 
+def _build_sft_packed_loader(
+    manifest_path: str, seq_len: int, batch_size: int, seed: int, rank: int = 0, world_size: int = 1
+) -> tuple[PackedDataLoader, dict[str, Any]]:
+    """Build a loader over prebuilt packed SFT shards (tokens + loss-mask streams).
+    ``PackedSFTDataset`` duck-types ``PackedDataset``, so the same loader/loop drive it."""
+    from lithos.posttrain.sft_dataset import PackedSFTDataset, load_sft_shard_specs
+
+    specs = load_sft_shard_specs(manifest_path)
+    loader = PackedDataLoader(
+        PackedSFTDataset(specs, seq_len),  # type: ignore[arg-type]  # duck-types PackedDataset
+        batch_size,
+        seed=seed,
+        rank=rank,
+        world_size=world_size,
+    )
+    return loader, read_json(manifest_path)
+
+
 def _autocast(device: str, precision: str) -> Any:
     if device.startswith("cuda") and precision in ("bf16", "fp16"):
         dtype = torch.bfloat16 if precision == "bf16" else torch.float16
@@ -178,34 +196,23 @@ def train(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | None:
         load_model_weights(cfg.init_from, raw_model)
     optimizer = build_optimizer(raw_model, cfg.optim)
 
-    if cfg.data.kind == "sft":
-        loader, corpus_man = _build_sft_loader(
-            cfg, cfg.data.corpus_manifest, cfg.seed, dist.rank, dist.world_size
+    def _loader_for(manifest_path: str, seed: int) -> tuple[PackedDataLoader, dict[str, Any]]:
+        if cfg.data.kind == "sft":
+            return _build_sft_loader(cfg, manifest_path, seed, dist.rank, dist.world_size)
+        if cfg.data.kind == "sft_packed":
+            return _build_sft_packed_loader(
+                manifest_path, cfg.data.seq_len, cfg.micro_batch_size, seed,
+                rank=dist.rank, world_size=dist.world_size,
+            )
+        return _build_loader(
+            manifest_path, cfg.data.seq_len, cfg.micro_batch_size, seed,
+            rank=dist.rank, world_size=dist.world_size,
         )
-    else:
-        loader, corpus_man = _build_loader(
-            cfg.data.corpus_manifest,
-            cfg.data.seq_len,
-            cfg.micro_batch_size,
-            cfg.seed,
-            rank=dist.rank,
-            world_size=dist.world_size,
-        )
+
+    loader, corpus_man = _loader_for(cfg.data.corpus_manifest, cfg.seed)
     val_loader = None
     if cfg.data.val_corpus_manifest:
-        if cfg.data.kind == "sft":
-            val_loader, _ = _build_sft_loader(
-                cfg, cfg.data.val_corpus_manifest, cfg.seed + 1, dist.rank, dist.world_size
-            )
-        else:
-            val_loader, _ = _build_loader(
-                cfg.data.val_corpus_manifest,
-                cfg.data.seq_len,
-                cfg.micro_batch_size,
-                cfg.seed + 1,
-                rank=dist.rank,
-                world_size=dist.world_size,
-            )
+        val_loader, _ = _loader_for(cfg.data.val_corpus_manifest, cfg.seed + 1)
 
     step = 0
     tokens_seen = 0

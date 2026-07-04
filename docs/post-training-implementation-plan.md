@@ -105,21 +105,28 @@ the longest pole. Sub-epics:
   literally call this. Tests: `test_sandbox.py`, `test_verifier_checks.py`,
   `test_taskbank.py` (38 new tests, suite green at 281).
 
-**E2 · SFT data path rewrite** · §3.2/4.4 · deps F2 · L · local
-`SFTDataset` materializes dense padded int64 arrays (~65GB at flagship, mostly
-pad). Replace with:
-- **Streamed/memmapped SFT shards** (mirror the pretrain shard format) — no
-  full-corpus RAM materialization.
-- **Sequence packing** — concatenate conversations into `seq_len` windows;
-  **decision inside the epic:** document-boundary attention masking (block-diagonal
-  / position-id reset via the SDPA path) vs accepting cross-doc attention at
-  boundaries (common in SFT, loss-mask already isolates targets). Pick and record.
-- **Weighted mixer** — blend sources (general backbone · math · code · physics)
-  at recorded per-source ratios/caps with a manifest; the LIMA-in-reverse guard
-  (don't let 2.7M AceReason rows drown 1k excellent general examples).
-- **Per-source loss logging** — see which slice is starving.
-- **Done:** a packed multi-source SFT run on the 100M with `loss_token_fraction`
-  ≫ the current dense-pad value and a recorded mix manifest.
+**E2 · SFT data path rewrite** · §3.2/4.4 · deps F2 · L · local · ✅ **DONE (2026-07-03)**
+Offline SFT-corpus build (`lithos/posttrain/sft_corpus.py`: `SFTShardWriter`
+dual-stream tokens+mask, `build_sft_corpus`, `SFTCorpusBuildConfig`) mirrors
+`build_corpus`; loader `PackedSFTDataset` (`sft_dataset.py`) memmaps both streams
+and duck-types `PackedDataset`, so `train()` is unchanged via new `kind: sft_packed`.
+- **Streamed/memmapped shards** ✅ — dual `.bin` streams (uint16/32 tokens + uint8
+  loss mask), 3 B/tok, no RAM materialization.
+- **Sequence packing** ✅ — **decision recorded: cross-doc bleed** (matches
+  pretraining `packing.py`; block-diagonal masking is the deferred PRD §27 shared
+  upgrade — needs top-level forward + dataloader-contract changes). Zero model
+  changes.
+- **Weighted mixer** ✅ — per-source `max_examples` cap + `repeats` upsample
+  (LIMA-in-reverse), realized mixture recorded in the manifest.
+- **Per-source logging** ◑ — build-time per-source accounting in the manifest
+  (`mixture[src] = {examples, kept_unique, tokens, loss_tokens, decontam_dropped,
+  dropped_overlong, ...}`). Per-source *training*-loss logging (source-tagged
+  windows) remains the fast-follow.
+- **Verified:** the smoke build on Dolly gives **loss_token_fraction 0.47 vs the
+  dense path's 0.078 (~6×)** — the core FLOPs-per-loss-token win; `train()` overfits
+  a packed stream via `kind: sft_packed`. F2 decontam wired into the build.
+  `scripts/build_sft_corpus.py` + `configs/sft/{mix-smoke,lithos-100m-packed}.yaml`.
+  17 new tests; suite green at 298.
 
 ### Wave 2 — TIR plumbing + throughput (after Wave 1)
 

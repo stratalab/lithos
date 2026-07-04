@@ -1,15 +1,20 @@
-"""Integration tests for SFT wiring: config validation + weight-only init (Phase 11)."""
+"""Integration tests for SFT wiring: config validation + weight-only init (Phase 11),
+plus the packed-SFT loop path (E2)."""
+
+import json
 
 import pytest
 import torch
 from lithos.model import LithosForCausalLM
 from lithos.model.config import ModelConfig
+from lithos.posttrain.sft_corpus import SFTShardWriter
+from lithos.train import train
 from lithos.train.checkpoint import (
     load_model_from_checkpoint,
     load_model_weights,
     save_checkpoint,
 )
-from lithos.train.config import DataConfig
+from lithos.train.config import DataConfig, OptimConfig, ScheduleConfig, TrainConfig
 from safetensors.torch import save_model
 
 
@@ -35,6 +40,53 @@ def test_sft_data_requires_tokenizer_path():
 def test_packed_data_defaults_need_no_tokenizer():
     cfg = DataConfig(corpus_manifest="corpus.json", seq_len=64)
     assert cfg.kind == "packed" and cfg.tokenizer_path is None
+
+
+def test_sft_packed_needs_no_tokenizer():
+    # sft_packed reads pre-rendered shards, so (unlike kind="sft") it must NOT
+    # require a tokenizer at train time — the tokenizer is recorded in the manifest.
+    cfg = DataConfig(kind="sft_packed", corpus_manifest="sft_manifest.json", seq_len=64)
+    assert cfg.kind == "sft_packed" and cfg.tokenizer_path is None
+
+
+def _write_packed_sft_shards(shard_dir, tokens, mask):
+    shard_dir.mkdir(parents=True, exist_ok=True)
+    w = SFTShardWriter(shard_dir, tokens_per_shard=1_000_000, dtype="uint16",
+                       tokenizer_name="t", rel_base=shard_dir)
+    w.add(list(tokens), [bool(m) for m in mask])
+    shards = w.close()
+    manifest = shard_dir / "sft_manifest.json"
+    manifest.write_text(json.dumps({"kind": "sft_packed", "shards": shards}))
+    return str(manifest)
+
+
+def test_train_loop_drives_packed_sft(tmp_path):
+    # A tiny model overfits a deterministic packed-SFT stream, proving the
+    # kind="sft_packed" loader drives the unchanged train() loop + ignore_index path.
+    seq_len = 16
+    tokens = [1, 2, 3, 4, 5, 6, 7, 8] * 200  # learnable repeating pattern, vocab < 32
+    manifest = _write_packed_sft_shards(tmp_path / "sft", tokens, [1] * len(tokens))
+
+    cfg = TrainConfig(
+        run_name="packed-sft",
+        runs_dir=str(tmp_path / "runs"),
+        device="cpu",
+        precision="fp32",
+        micro_batch_size=4,
+        log_interval=1,
+        model=ModelConfig(vocab_size=32, n_layers=2, hidden=64, n_heads=4, seq_len=32),
+        data=DataConfig(kind="sft_packed", corpus_manifest=manifest, seq_len=seq_len),
+        optim=OptimConfig(lr=1e-3),
+        schedule=ScheduleConfig(warmup_steps=10, max_steps=120, min_lr_ratio=0.1),
+    )
+    run = train(cfg)
+    losses = [
+        json.loads(line)["train_loss"]
+        for line in run.metrics.read_text().splitlines()
+        if "train_loss" in json.loads(line)
+    ]
+    assert losses[0] > losses[-1]  # it learned
+    assert losses[-1] < losses[0] * 0.7
 
 
 def test_load_model_weights_roundtrip(tmp_path):

@@ -1,0 +1,52 @@
+# SFT of the Lithos 100M base on a PACKED multi-source corpus (epic E2).
+# Consumes prebuilt dual-stream shards (from scripts/build_sft_corpus.py) via
+# data.kind=sft_packed — no per-conversation padding, streamed from memmap.
+# The model section MUST match the 100M base (weights loaded via init_from).
+run_name: lithos-100m-sft-packed
+seed: 0
+device: auto
+precision: bf16
+
+init_from: models/lithos-100m-v0.1/checkpoint
+
+micro_batch_size: 4
+gradient_accumulation_steps: 8    # effective batch 32
+grad_checkpointing: false
+compile: false
+
+log_interval: 10
+eval_interval: 200
+eval_steps: 20
+checkpoint_interval: 0
+
+model:                            # identical architecture to lithos-100m
+  vocab_size: 32000
+  n_layers: 12
+  hidden: 768
+  n_heads: 12
+  n_kv_heads: 12
+  intermediate_size: 2048
+  seq_len: 2048
+  rope_theta: 10000.0
+  qk_norm: true
+  tie_embeddings: true
+
+data:
+  kind: sft_packed                # prebuilt SFT shards; tokenizer recorded in the manifest
+  corpus_manifest: data/sft/mix-smoke-v0.1/sft_manifest.json
+  val_corpus_manifest: data/sft/mix-smoke-v0.1/val/sft_manifest.json
+  seq_len: 1024                   # must match the build's seq_len
+
+optim:
+  lr: 0.00002                     # 2e-5 — SFT is a light touch
+  betas: [0.9, 0.95]
+  weight_decay: 0.0
+  grad_clip: 1.0
+
+schedule:
+  warmup_steps: 50
+  max_steps: 1200
+  min_lr_ratio: 0.1
+
+wandb:
+  enabled: false

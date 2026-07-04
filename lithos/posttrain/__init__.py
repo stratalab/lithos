@@ -12,6 +12,20 @@ from lithos.posttrain.sandbox import (
     run_python,
     run_tool,
 )
+from lithos.posttrain.sft_corpus import (
+    SFTCorpusBuildConfig,
+    SFTShardWriter,
+    SFTSourceSpec,
+    build_sft_corpus,
+    sft_corpus_manifest,
+)
+from lithos.posttrain.sft_dataset import (
+    IGNORE_INDEX,
+    PackedSFTDataset,
+    SFTDataset,
+    build_xy,
+    load_sft_shard_specs,
+)
 from lithos.posttrain.taskbank import (
     Task,
     assert_disjoint,
@@ -37,12 +51,20 @@ from lithos.posttrain.verifier import (
 )
 
 __all__ = [
+    "IGNORE_INDEX",
     "CheckResult",
     "ExecutionResult",
     "MathVerifier",
+    "PackedSFTDataset",
     "PostTrainDecontaminator",
+    "SFTCorpusBuildConfig",
+    "SFTDataset",
+    "SFTShardWriter",
+    "SFTSourceSpec",
     "Task",
     "assert_disjoint",
+    "build_sft_corpus",
+    "build_xy",
     "check_code",
     "check_numeric",
     "check_symbolic",
@@ -52,6 +74,7 @@ __all__ = [
     "filter_by_level",
     "gen_arithmetic",
     "heuristic_gaming_check",
+    "load_sft_shard_specs",
     "load_tasks",
     "messages_text",
     "octave_available",
@@ -59,6 +82,7 @@ __all__ = [
     "run_octave",
     "run_python",
     "run_tool",
+    "sft_corpus_manifest",
     "shaped_reward",
     "split_by_year",
     "task_from_record",

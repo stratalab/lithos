@@ -34,9 +34,12 @@ class ScheduleConfig(BaseModel):
 class DataConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    # "packed": corpus_manifest is a tokenized-shard manifest (pretraining).
-    # "sft":    corpus_manifest is a messages-JSONL file, rendered at load time.
-    kind: Literal["packed", "sft", "dpo", "grpo"] = "packed"
+    # "packed":     corpus_manifest is a tokenized-shard manifest (pretraining).
+    # "sft":        corpus_manifest is a messages-JSONL file, rendered at load time.
+    # "sft_packed": corpus_manifest is a prebuilt SFT-shard manifest (packed +
+    #               loss-mask channel, from build_sft_corpus) — read like "packed",
+    #               so the tokenizer is recorded in the manifest, not needed here.
+    kind: Literal["packed", "sft", "sft_packed", "dpo", "grpo"] = "packed"
     corpus_manifest: str
     seq_len: int
     val_corpus_manifest: str | None = None
@@ -44,6 +47,7 @@ class DataConfig(BaseModel):
 
     @model_validator(mode="after")
     def _require_tokenizer_for_rendered(self) -> DataConfig:
+        # sft_packed reads pre-rendered shards, so it does NOT need a tokenizer here.
         if self.kind in ("sft", "dpo", "grpo") and not self.tokenizer_path:
             raise ValueError(f"data.tokenizer_path is required when data.kind={self.kind!r}")
         return self
