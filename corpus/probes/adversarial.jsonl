@@ -1,0 +1,12 @@
+{"text": "Mixed scripts in one line: English, 日本語のテキスト, 中文文本, 한국어 텍스트, русский текст, العربية, עברית, हिन्दी।"}
+{"text": "Emoji stress: 👍 🎉 🚀 plus ZWJ sequences 👨‍👩‍👧‍👦 🏳️‍🌈 👩🏽‍💻 and skin tones 👋🏻👋🏿 and a keycap 1️⃣."}
+{"text": "Combining marks: café (e + U+0301) vs café (precomposed); ǟ stacks two diacritics; Zalgo-lite: h̵e̶l̷l̸o̴."}
+{"text": "Whitespace zoo: tab\there, non-breaking space, thin space, zero-width​space, ideographic　space, and trailing spaces   "}
+{"text": "Windows line endings\r\nsecond line\r\nthird line with lone \r carriage return\rand a final Unix newline\n"}
+{"text": "Math symbols: ∀ε>0 ∃δ>0 : |x−a|<δ ⟹ |f(x)−f(a)|<ε; also ℝ ℕ ℤ ℚ ℂ, ∮ ∇×F·dA, ⊕ ⊗ ⊥ ≠ ≤ ≥ ≈ ∞, x² x³ xⁿ, ½ ⅓ ¾."}
+{"text": "Quotes and dashes: \"curly double\", 'curly single', „German low\", «guillemets», en–dash, em—dash, minus −, hyphen-, ellipsis…"}
+{"text": "Bidirectional text: The price is 100 ريال سعودي for the item, and שלום עולם appears mid-sentence, then back to English."}
+{"text": "Rare and astral-plane characters: 𝕳𝖊𝖑𝖑𝖔 mathematical bold Fraktur, 𓀀𓀁 Egyptian hieroglyphs, 🜁🜂🜃🜄 alchemical symbols, ᚠᚢᚦᚨᚱᚲ runes, ꙮ multiocular O."}
+{"text": "URL-ish and escape-ish soup: https://example.com/path?q=a%20b&x=1#frag, C:\\Users\\test\\file.txt, printf(\"%s\\n\", s), regex ^[a-z]{2,5}\\d+$, HTML &amp;&lt;&gt;, \\u0041 literal."}
+{"text": "Fullwidth and halfwidth: ＦＵＬＬＷＩＤＴＨ　ｔｅｘｔ１２３ vs halfwidth katakana ｱｲｳｴｵ, plus circled numbers ①②③ and parenthesized ⑴⑵⑶."}
+{"text": "Ligatures and confusables: ﬁnal ﬂow oﬃce (ﬁ ﬂ ﬃ), Cyrillic а vs Latin a, Greek ο vs Latin o, straight ' vs modifier ʼ, µ micro vs μ mu."}

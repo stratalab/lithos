@@ -1,0 +1,25 @@
+{"text": "12345", "note": "plain integer — individual_digits should give one token per digit"}
+{"text": "3.14159", "note": "decimal number"}
+{"text": "1,000,000", "note": "thousands separators"}
+{"text": "1e-10", "note": "scientific notation"}
+{"text": "0x1F4A9", "note": "hex literal"}
+{"text": "The year 2026 and the price $4,299.99", "note": "numbers in running text"}
+{"text": "\\alpha + \\beta = \\gamma", "note": "LaTeX Greek letters — commands should stay whole"}
+{"text": "\\frac{\\partial u}{\\partial t}", "note": "LaTeX fraction with partials"}
+{"text": "\\begin{equation} E = mc^2 \\end{equation}", "note": "LaTeX environment delimiters"}
+{"text": "\\mathbb{R}^n \\to \\mathbb{R}", "note": "blackboard bold and arrow"}
+{"text": "\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}", "note": "integral with limits and spacing macro"}
+{"text": "\\sum_{k=1}^{n} k^2", "note": "sum with sub/superscript braces"}
+{"text": "def __init__(self, *args, **kwargs):", "note": "Python dunder + star-args"}
+{"text": "        return {k: v for k, v in items.items() if v}", "note": "8-space indent + dict comprehension — indentation should be few tokens"}
+{"text": "if __name__ == \"__main__\":", "note": "Python main guard idiom"}
+{"text": "for i in range(len(arr) - 1):", "note": "common loop idiom"}
+{"text": "-> dict[str, Any]:", "note": "return-type annotation"}
+{"text": "std::vector<std::pair<int, int>>", "note": "C++ nested template"}
+{"text": "snake_case_name camelCaseName PascalCaseName SCREAMING_SNAKE", "note": "identifier casing conventions"}
+{"text": "x += 1; y -= 2; z **= 3", "note": "compound operators"}
+{"text": "https://en.wikipedia.org/wiki/Byte_pair_encoding", "note": "URL"}
+{"text": "9.81 m/s^2", "note": "physical constant with units"}
+{"text": "6.62607015e-34 J·s", "note": "Planck constant — long mantissa, middle dot"}
+{"text": "25 °C ± 0.5 °C", "note": "temperature with plus-minus"}
+{"text": "10 kΩ resistor at 5 V draws 0.5 mA", "note": "electrical units with Greek omega"}
