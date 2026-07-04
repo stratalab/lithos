@@ -32,7 +32,9 @@ INDEX_IDS = {"alpha", "a-row", "b-row", "gated1", "badroute"}
 SCRATCH = Path("/scratch")
 
 
-def test_wave_plan_builds_commands():
+def test_wave_plan_builds_commands(monkeypatch):
+    # Pin the dump downloader to aria2c regardless of what's installed on the box.
+    monkeypatch.setattr(acquire.shutil, "which", lambda name: "/usr/bin/aria2c")
     jobs = acquire.build_plan(INDEX_IDS, CFG, wave="p0", scratch=SCRATCH)
     assert [j.id for j in jobs] == ["alpha", "dumps"]
     hf = jobs[0].download_argv[0]
@@ -41,6 +43,17 @@ def test_wave_plan_builds_commands():
     assert str(SCRATCH / "alpha") in hf
     assert len(jobs[1].download_argv) == 2  # one aria2c per url
     assert jobs[1].download_argv[0][0] == "aria2c"
+
+
+def test_dump_route_falls_back_to_wget_without_aria2c(monkeypatch):
+    # When aria2c is absent, the dump route degrades to wget -c (still resumable).
+    monkeypatch.setattr(acquire.shutil, "which", lambda name: None)
+    jobs = acquire.build_plan(INDEX_IDS, CFG, only_ids=["dumps"], scratch=SCRATCH)
+    argv = jobs[0].download_argv
+    assert len(argv) == 2  # one wget per url
+    assert argv[0][0] == "wget"
+    assert "--continue" in argv[0]
+    assert argv[0][-1] == "https://x/a.7z"
 
 
 def test_index_ids_override_maps_to_index_rows():
