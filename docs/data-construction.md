@@ -36,7 +36,7 @@ Consolidates the data strategy (pre- **and** post-training) for the STEM-domain 
 | 8. Domain tag + mix | control the blend | tag by domain; choose mix weights (DoReMi / data-mixing-laws / empirical sweep); tagger vocabulary from the Wikipedia topic-graph job (§1.7) | **net-new**: weighted-mix spec + tagging |
 | 9. Curriculum / anneal | order matters | bulk mix → **final cooldown phase on a small, very-high-quality set** as LR→0 (Llama-3, OLMo-2, MiniCPM) — cheap, high-impact | **net-new**: annealing set |
 | 10. Synthetic | multiply quality tokens | rephrase (WRAP), textbook-gen (Cosmopedia/Phi); **STEM: generate-then-verify** | **net-new**: verified synthetic (un-deferred) |
-| 11. Tokenize/pack/shard | finalize | train tokenizer, pack sequences, shard + manifest | ✅ (general 32k); **net-new**: STEM tokenizer retrain |
+| 11. Tokenize/pack/shard | finalize | train tokenizer, pack sequences, shard + manifest | ✅ (general 32k); **net-new**: STEM tokenizer retrain — **full design: `docs/tokenizer.md`** |
 
 ### 1.3 STEM-specific additions
 
@@ -228,6 +228,6 @@ In a verifiable domain we can **generate most of our own post-training data**: p
 ## Pointers
 
 - Plan: `lithos-implementation-plan.md` — Phase 9 (eval), Phase 10 (corpus + mix machinery), Phase 11 (post-training), Phase 12 (mix-sweep → 500M → 1B).
-- Design docs: `docs/eval-plan.md` (the measuring stick), `docs/quality-classifiers.md` (stage-4 rubrics + classifiers), `corpus/math_overlap_report.md` (measured web-math overlap).
+- Design docs: `docs/eval-plan.md` (the measuring stick), `docs/quality-classifiers.md` (stage-4 rubrics + classifiers), `docs/tokenizer.md` (stage-11 STEM tokenizer design + retrain gates), `docs/post-training-review.md` (Part-2 pipeline code review: gaps, unknowns, order of attack), `corpus/math_overlap_report.md` (measured web-math overlap).
 - Code: `lithos/data/{pipeline,minhash,decontam,quality,documents,topicgraph}.py`, `lithos/evals/{benchmarks,scorecard,ablation}.py`, `scripts/{run_topic_graph,validate_seed_index}.py`.
 - **Future deepening:** read each §1.4 report and extract its concrete filter constants, dedup scoping, and ablation deltas into this doc (tagged adopt / adapt / skip).

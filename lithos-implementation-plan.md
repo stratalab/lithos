@@ -171,12 +171,17 @@ The **keeper** post-training lands on the flagship (the **4B hero** + the from-s
 
 ## Phase 12 — Lithos family + the deployment recipe (TIR)  ·  ◻  *(reshapes "STEM flagship")*
 
+> **Post-training buildout:** the gaps between the Phase-11 test bench and this
+> flagship recipe are reviewed in `docs/post-training-review.md` and sequenced
+> into epics + an experiment plan in `docs/post-training-implementation-plan.md`
+> (the spine: TIR format decision → tokenizer freeze → retokenize → 500M → keeper).
+
 **Goal:** the **MVP family** — one *from-scratch* sovereign small model (**500M**) + one *continued-pretrained* capable **hero (4B ← Qwen3-4B)** — both turned into compact STEM **reasoners that drive tools**. The differentiation is the deployment recipe, not the pretraining.
 
 **The deployment recipe (identical for both — the family's identity):**
 base/pretrain → **light continued-pretrain** *(capable tier only)* → **SFT** (instructions + reasoning-trace format + **tool-use demos**) → **RLVR-TIR** *(the main event)* → **DPO** polish. Reasoning is the *path* to STEM excellence, not an add-on: SFT → competent assistant; **RLVR → reasoner**.
 
-**Track S — from-scratch 500M (sovereign tier).** Mix-sweep on the 100M rig (directional ~5–6 runs, decided on per-domain **bpb** — STEM benchmarks flat-line below ~500M) → train the 500M on the winning STEM recipe (~600B tok, 32k STEM tokenizer) → the shared deployment recipe. Fully owned. ~$1.3k pretrain.
+**Track S — from-scratch 500M (sovereign tier).** Mix-sweep on the 100M rig (directional ~5–6 runs, decided on per-domain **bpb** — STEM benchmarks flat-line below ~500M) → train the 500M on the winning STEM recipe (~600B tok, 32k STEM tokenizer), **including a long-context extension phase** (RoPE-theta scaling + long-doc anneal — epic E10, so the model natively handles the 4k–16k harvested reasoning traces at SFT; target context set by profiling the trace-length distribution) → the shared deployment recipe. Fully owned. ~$1.3k pretrain.
 
 **Track C — continued-pretrained 4B hero (capable tier).** Qwen3-4B-base → **light** continued-pretrain (mostly *verified-synthetic + reasoning + STEM anneal*, general-replay mixed in; ~100–300B — **not** re-showing public data the base already has) → the shared deployment recipe. The hero — capable enough to *actually reason*; edge-deployable (GGUF/4-bit), runs next to StrataDB. **~$15–20k all-in**, most of it RLVR + synthetic, *not* continued-pretrain.
 
