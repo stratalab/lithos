@@ -225,3 +225,9 @@ peterson-davie,book,expository,code,networking,ug,Computer Networks: A Systems A
 nasa-ntrs,dump,papers,eng,tech-reports,research,NASA Technical Reports Server (aerospace/physics/eng),NASA,https://ntrs.nasa.gov,green,US-gov public domain,5B,P1,-,pd,indexed
 doe-osti,dump,papers,physics,tech-reports,research,DOE OSTI technical reports (physics/energy/materials),DOE OSTI,https://www.osti.gov,green,US-gov public domain,4B,P1,-,pd,indexed
 nist-pubs,dump,reference,physics,metrology-materials,research,NIST publications + reference data (metrology/materials),NIST,https://www.nist.gov/publications,green,US-gov public domain,1B,P1,-,pd,indexed
+lean-mathlib4,corpus,code,math,formal-proofs,research,Lean 4 mathlib formalized mathematics,leanprover-community,https://github.com/leanprover-community/mathlib4,green,Apache-2.0; needs LeanDojo extraction,0.5B,P1,-,scrape,indexed
+isabelle-afp,corpus,code,math,formal-proofs,research,Isabelle Archive of Formal Proofs,AFP,https://www.isa-afp.org,green,open; needs IsarStep extraction,0.5B,P2,-,scrape,indexed
+naturalproofs,corpus,expository,math,proofs,research,NaturalProofs NL theorem statements + proofs,Welleck et al.,hf:wellecks/naturalproofs,green,MIT,0.05B,P1,-,hf,indexed
+knzhou-physics,problems,problems,physics,problem-solving,ug,Kevin Zhou physics olympiad handouts + solutions,Zhou,https://knzhou.github.io/,grey,official-free online; ~1000 problems,3M,P1,4,free-web,indexed
+openfoam,corpus,code,eng,cfd,research,OpenFOAM CFD solver + tutorials/docs,OpenFOAM Foundation,https://github.com/OpenFOAM/OpenFOAM-dev,green,GPL; physics-via-code,0.3B,P2,-,scrape,indexed
+su2,corpus,code,eng,cfd-multiphysics,research,SU2 multiphysics simulation suite + tutorials,SU2,https://github.com/su2code/SU2,green,LGPL,0.15B,P2,-,scrape,indexed
