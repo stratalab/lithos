@@ -68,6 +68,13 @@ def test_check_symbolic_bad_parse_is_not_correct():
     assert not r.correct
 
 
+def test_check_symbolic_strips_assignment_lhs():
+    # models often answer "x = <expr>"; compare only the RHS
+    assert check_symbolic("x = 5", "5").correct
+    assert check_symbolic("<think>solve</think>\ny = (x-1)*(x+1)", "x**2 - 1").correct
+    assert not check_symbolic("x = 6", "5").correct
+
+
 @pytest.mark.skipif(not _POSIX, reason="POSIX-only sandbox")
 def test_check_code_passes_and_fails():
     solution = "def add(a, b):\n    return a + b"

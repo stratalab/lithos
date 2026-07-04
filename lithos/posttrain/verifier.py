@@ -166,6 +166,8 @@ def check_symbolic(response: str, answer: str) -> CheckResult:
 
     candidate = extract_final(response).splitlines()[-1].strip() if response.strip() else ""
     candidate = candidate.rstrip(".")
+    if "=" in candidate:  # "x = 5" / "y = (x-1)*(x+1)" -> compare only the RHS expression
+        candidate = candidate.split("=")[-1].strip()
     if not candidate:
         return CheckResult(False, "empty response", None)
     # parse_expr on free-form model text can raise from deep in the tokenizer; treat
@@ -193,25 +195,29 @@ def check_code(
 def check_units(
     response: str, answer: str, *, units: str, rel_tol: float = 1e-3
 ) -> CheckResult:
-    """Compare the response's final quantity to ``answer * units`` by **magnitude and
-    dimension** via ``pint`` — a wrong-dimension answer dies instantly (engineering's
-    "the code runs"). Guarded: if ``pint`` isn't installed, returns not-correct with a
-    clear detail rather than raising."""
+    """Value check for a units task: compare the response's number to ``answer``,
+    both interpreted in ``units``, via ``pint`` when available.
+
+    KNOWN GAP (do not overclaim): this does **not** parse the response's *own* unit,
+    so it does not yet catch a wrong-*dimension* answer (Pa vs kPa) — it verifies
+    magnitude only. True dimensional checking ("wrong dimension dies instantly", the
+    engineering thesis) needs parsing the response's unit string, converting, and
+    comparing; that is a TODO to implement + validate once ``pint`` is installed and
+    the units-RLVR path is first exercised (``pint`` is not in the current env).
+    Guarded: without ``pint`` it returns not-correct rather than raising.
+    """
     try:
         import pint
     except ImportError:
         return CheckResult(False, "pint not installed (units checking unavailable)", None)
 
     ureg = pint.UnitRegistry()
-    text = extract_final(response)
-    pred = extract_number(text)
+    pred = extract_number(extract_final(response))
     if pred is None:
         return CheckResult(False, "no number in response", None)
     try:
         expected = float(answer) * ureg(units)
-        # The response's unit: take the token after the number if present, else assume
-        # the target unit (numeric-only answer) — dimension check still guards symbols.
-        got = pred * ureg(units)
+        got = pred * ureg(units)  # TODO: use the response's own parsed unit, not `units`
         ratio = (got / expected).to_base_units()
         ok = abs(float(ratio.magnitude) - 1.0) <= rel_tol and ratio.dimensionless
     except (pint.errors.PintError, ValueError) as e:

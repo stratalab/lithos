@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -80,37 +81,49 @@ def _run(
     # network jail — just a smaller surface + reproducible hashing.
     env = {"PATH": os.environ.get("PATH", ""), "PYTHONHASHSEED": "0", "OPENBLAS_NUM_THREADS": "1"}
     start = time.monotonic()
+    # start_new_session=True makes the child a process-group leader, so on timeout we
+    # kill the WHOLE group — otherwise a grandchild the code spawned outlives the
+    # timeout (subprocess.run's timeout only SIGKILLs the direct child). Popen +
+    # killpg is what actually reaps forked/spawned escapees.
+    proc = subprocess.Popen(
+        argv,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+        preexec_fn=_rlimit_preexec(cpu_s, mem_bytes),
+        env=env,
+    )
     try:
-        proc = subprocess.run(
-            argv,
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-            start_new_session=True,  # own process group, so a timeout kill takes children
-            preexec_fn=_rlimit_preexec(cpu_s, mem_bytes),
-            env=env,
-            check=False,
-        )
+        stdout, stderr = proc.communicate(timeout=timeout_s)
         return ExecutionResult(
             ok=proc.returncode == 0,
-            stdout=_truncate(proc.stdout),
-            stderr=_truncate(proc.stderr),
+            stdout=_truncate(stdout),
+            stderr=_truncate(stderr),
             returncode=proc.returncode,
             timed_out=False,
             duration_s=time.monotonic() - start,
         )
-    except subprocess.TimeoutExpired as e:
-        out = e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
-        err = e.stderr.decode() if isinstance(e.stderr, bytes) else (e.stderr or "")
+    except subprocess.TimeoutExpired:
+        _kill_group(proc)
+        stdout, stderr = proc.communicate()  # drain the pipes after the kill
         return ExecutionResult(
             ok=False,
-            stdout=_truncate(out),
-            stderr=_truncate(err + f"\n[timed out after {timeout_s}s]"),
+            stdout=_truncate(stdout or ""),
+            stderr=_truncate((stderr or "") + f"\n[timed out after {timeout_s}s]"),
             returncode=None,
             timed_out=True,
             duration_s=time.monotonic() - start,
         )
+
+
+def _kill_group(proc: subprocess.Popen) -> None:
+    """SIGKILL the child's whole process group (reaps grandchildren it spawned)."""
+    try:
+        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):  # already gone / not our group
+        proc.kill()
 
 
 def run_python(
