@@ -35,6 +35,10 @@ cloud = ["s3fs>=2024.0", "gcsfs>=2024.0"]
 # Experiment tracking: optional W&B mirror of metrics.jsonl (PRD §15). Lazily
 # imported and disabled by default, so the core install never needs it.
 tracking = ["wandb>=0.18"]
+data = [
+    "lxml>=5.0",
+    "py7zr>=0.21",
+]
 
 [dependency-groups]
 dev = [
