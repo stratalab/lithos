@@ -108,7 +108,12 @@ specs:
   pes2o:
     route: hf
     repo: allenai/peS2o
-    est_gb: 80
+    # ~40M full-text papers — the real footprint is ~280 GB, NOT 80 GB. It filled
+    # the current /data on 2026-07-04 (763 GB drive). DEFERRED until the larger
+    # /data drive is installed; then pull locally. Same hold applies to the other
+    # bulk sources (megamath ~600 GB, nemotron-cc-math ~270 GB, Stack v2).
+    est_gb: 280
+    notes: DEFERRED — needs the larger /data drive (being installed); too big for the current drive
   openstax:
     # physics/chem/math CC-BY textbooks: GitHub osbooks-* tarballs (pinned to the
     # approved commit) -> CNXML -> EX-1 (lithos/data/markup_text). Output is
