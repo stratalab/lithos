@@ -19,10 +19,16 @@ waves:
     - nemotron-math-v2
     - acereason-sft
     - open-swe-traces
+  # Physics/eng wave — next ingestion priority, ahead of the code wave p1
+  # (2026-07-04). Only pes2o has a runnable hf route today; the rest of the
+  # physics/eng sources are indexed in corpus/seed_index.csv but need net-new
+  # acquire.py routes (scrape / arxiv-src / lawful-copy / pd) plus the extractor
+  # suite (PDF/LaTeX/HTML->text). See docs/physics-eng-ingestion.md.
+  physeng:
+    - pes2o
   p1:
     - nemotron-pretraining-code-v2
     - nemotron-cc-code
-    - pes2o
     - mathpile
 
 specs:

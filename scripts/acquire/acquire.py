@@ -212,7 +212,7 @@ def execute(
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--wave", choices=["p0", "posttrain", "p1"])
+    p.add_argument("--wave", choices=["p0", "posttrain", "physeng", "p1"])
     p.add_argument("--id", action="append", dest="ids")
     # Prefer the big data volume for scratch when present (falls back to $HOME).
     _default_scratch = Path("/data/corpus-staging") if Path("/data").is_mount() \

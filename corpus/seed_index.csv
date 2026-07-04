@@ -222,3 +222,6 @@ ireland-rosen,book,expository,math,number-theory,grad,A Classical Introduction t
 princeton-companion,reference,expository,math,survey,mixed,The Princeton Companion to Mathematics,Gowers (ed.),isbn:TBD,grey,canon-miner discovery,1M,P1,4,lawful-copy,indexed
 kerrisk-tlpi,book,expository,code,systems,ug,The Linux Programming Interface,Kerrisk,isbn:TBD,grey,canon-miner discovery,0.55M,P1,4,lawful-copy,indexed
 peterson-davie,book,expository,code,networking,ug,Computer Networks: A Systems Approach,Peterson & Davie,isbn:TBD,grey,canon-miner discovery; free online edition exists,0.4M,P2,4,lawful-copy,indexed
+nasa-ntrs,dump,papers,eng,tech-reports,research,NASA Technical Reports Server (aerospace/physics/eng),NASA,https://ntrs.nasa.gov,green,US-gov public domain,5B,P1,-,pd,indexed
+doe-osti,dump,papers,physics,tech-reports,research,DOE OSTI technical reports (physics/energy/materials),DOE OSTI,https://www.osti.gov,green,US-gov public domain,4B,P1,-,pd,indexed
+nist-pubs,dump,reference,physics,metrology-materials,research,NIST publications + reference data (metrology/materials),NIST,https://www.nist.gov/publications,green,US-gov public domain,1B,P1,-,pd,indexed
