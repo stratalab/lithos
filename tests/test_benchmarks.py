@@ -6,9 +6,16 @@ a fake `lm_eval` module so the wiring is proven without the heavy dependency.
 
 import sys
 import types
+from pathlib import Path
 
 import pytest
-from lithos.evals.benchmarks import BATTERY_VERSION, normalize_results, run_benchmarks
+import yaml
+from lithos.evals.benchmarks import (
+    BATTERY_VERSION,
+    STEM_TASKS,
+    normalize_results,
+    run_benchmarks,
+)
 
 
 def test_normalize_prefers_acc_norm_and_computes_mean():
@@ -33,6 +40,30 @@ def test_normalize_prefers_acc_norm_and_computes_mean():
 def test_normalize_empty():
     out = normalize_results({})
     assert out == {"tasks": {}, "mean": None, "num_tasks": 0}
+
+
+def test_normalize_picks_exact_match_for_reasoning_tasks():
+    # gsm8k/MATH report exact_match (no acc/acc_norm) — resolve it deterministically.
+    raw = {"results": {"gsm8k": {
+        "exact_match,strict-match": 0.42, "exact_match_stderr,strict-match": 0.01,
+        "exact_match,flexible-extract": 0.44,
+    }}}
+    out = normalize_results(raw)
+    assert out["tasks"]["gsm8k"] == {"metric": "exact_match,strict-match", "value": 0.42}
+
+
+def test_stem_battery_covers_target_domains():
+    joined = " ".join(STEM_TASKS)
+    for token in ("gsm8k", "math", "physics", "chemistry", "electrical_engineering",
+                  "mathematics", "computer_science"):
+        assert token in joined, token
+
+
+def test_stem_config_matches_constant():
+    # The runnable config and the code constant must not drift.
+    cfg = yaml.safe_load((Path("configs/eval/stem.yaml")).read_text())
+    assert cfg["benchmarks"]["tasks"] == STEM_TASKS
+    assert cfg["benchmarks"]["battery_version"] == "stem-v1"
 
 
 class _FakeLmEval(types.ModuleType):

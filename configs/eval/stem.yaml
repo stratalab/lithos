@@ -1,0 +1,37 @@
+# STEM parity-frontier battery (flagship 500M+). See docs/physics-eng-ingestion.md
+# and lithos/evals/benchmarks.py::STEM_TASKS.
+#
+# SEPARATE from the frozen v1 general battery (configs/eval/lm-eval.yaml + the
+# small-model DEFAULT_TASKS): these reasoning tasks flat-line at chance below ~500M,
+# so run them on flagship checkpoints, not the 100M mix-sweeps.
+#
+#   python scripts/run_evals.py --config configs/eval/stem.yaml --checkpoint <ckpt>
+#
+# For the parity map, the anchors above and at our weight class (Qwen3-8B / Llama-3.1-8B
+# class, plus same-size Qwen-Math/Coder specialists) must be re-run on THIS battery —
+# scores compare only within a battery_version, so the v1 anchors don't transfer.
+name: stem
+# TODO: point at the STEM tokenizer once retrained; the current 32k is a placeholder
+# (lm-eval loads the exported HF dir's own tokenizer, so this only affects the
+# Lithos-side perplexity/sample pass, not the benchmark scores).
+tokenizer_path: artifacts/tokenizer/fineweb-edu-32k/tokenizer.json
+export_dir: artifacts/lithos-stem-eval
+
+benchmarks:
+  enabled: true
+  battery_version: stem-v1
+  num_fewshot: 0
+  # Must match lithos/evals/benchmarks.py::STEM_TASKS (a test guards this).
+  tasks:
+    - gsm8k
+    - minerva_math
+    - gpqa_main_zeroshot
+    - mmlu_college_physics
+    - mmlu_high_school_physics
+    - mmlu_conceptual_physics
+    - mmlu_college_chemistry
+    - mmlu_high_school_chemistry
+    - mmlu_electrical_engineering
+    - mmlu_college_mathematics
+    - mmlu_abstract_algebra
+    - mmlu_college_computer_science

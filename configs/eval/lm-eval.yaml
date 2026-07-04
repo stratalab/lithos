@@ -18,6 +18,10 @@
 #
 # Small models are expected to score near chance on most of these; the point at
 # smoke/100M scale is that the plumbing runs and results are saved.
+#
+# This is the v1 GENERAL battery (small-model plumbing). The STEM reasoning/knowledge
+# parity battery for the flagship (gsm8k, MATH, MMLU physics/chem/eng/math, gpqa) lives
+# separately in configs/eval/stem.yaml — it flat-lines at chance below ~500M.
 tasks:
   - hellaswag
   - arc_easy

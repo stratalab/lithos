@@ -28,9 +28,43 @@ DEFAULT_TASKS = [
     "openbookqa",
 ]
 
+# The STEM parity-frontier battery (flagship 500M+). Kept SEPARATE from the default
+# small-model battery: these reasoning tasks flat-line at chance below ~500M, so
+# running them on every 100M mix-sweep is cost without signal (100M decisions use
+# per-domain bpb, not benchmarks). Run explicitly via configs/eval/stem.yaml on
+# flagship checkpoints to map the task x weight-class parity frontier. All are
+# runnable lm-eval tasks (verify names against the installed lm-eval version).
+STEM_BATTERY_VERSION = "stem-v1"
+STEM_TASKS = [
+    # math + graduate-STEM reasoning (exact_match / multiple-choice)
+    "gsm8k",
+    "minerva_math",
+    "gpqa_main_zeroshot",
+    # MMLU domain subsets across our four domains: physics / chem / eng / math / code
+    "mmlu_college_physics",
+    "mmlu_high_school_physics",
+    "mmlu_conceptual_physics",
+    "mmlu_college_chemistry",
+    "mmlu_high_school_chemistry",
+    "mmlu_electrical_engineering",
+    "mmlu_college_mathematics",
+    "mmlu_abstract_algebra",
+    "mmlu_college_computer_science",
+]
+# Backlog — research-surfaced physics/eng benchmarks that are NOT lm-eval built-ins;
+# each needs a custom task YAML (its HF dataset) and several are eval-only/multimodal:
+# PHYBench, SciBench, SoM-1K (strength-of-materials, the rare *engineering* eval),
+# OlympiadBench (physics-OE), TheoremQA, MatSciBench, CMPhysBench. Add these when
+# building the flagship parity map (docs/physics-eng-ingestion.md, docs research §7).
+
 # Metric preference order — lm-eval reports several per task (acc, acc_norm, ...),
 # sometimes with a ",none" filter suffix. We pick one primary per task, consistently.
-_PRIMARY_PREFERENCE = ("acc_norm,none", "acc_norm", "acc,none", "acc")
+# exact_match variants come last so gsm8k/MATH resolve deterministically without
+# displacing acc_norm/acc for the multiple-choice tasks.
+_PRIMARY_PREFERENCE = (
+    "acc_norm,none", "acc_norm", "acc,none", "acc",
+    "exact_match,strict-match", "exact_match,flexible-extract", "exact_match,none", "exact_match",
+)
 
 
 def _primary_metric(metrics: dict[str, Any]) -> tuple[str, float | None]:
