@@ -70,12 +70,23 @@ edge STEM tool: a few hundred refusal examples folded into the E2 SFT blend +
 one red-team pass on the shipped GGUF as a keeper-gate line in `eval-plan.md`.
 User ratifies scope.
 
-**E7 · Qwen3-import spike** · §3.4 · deps none · S · local
-Cheap, independent, de-risks the whole hero track. Load Qwen3-0.6B weights into
-`LithosForCausalLM`; verify logit parity vs transformers on a fixed prompt set
-(untied embeddings, 151k vocab, RoPE-theta, norm placement). **Done:** parity
-within fp tolerance → the family shares one tooling path; or a written list of
-what diverges → "one deployment recipe" is re-scoped before it's promised.
+**E7 · Qwen3-import spike** · §3.4 · deps none · S · local · ✅ **DONE (2026-07-04) — PARITY CONFIRMED**
+**Finding: the family shares one tooling path.** The Lithos arch matches Qwen3's
+envelope exactly (qk_norm, GQA, SwiGLU, rotate_half RoPE, no biases, matching leaf
+names — Lithos was built to export *to* Qwen3ForCausalLM). The **only** divergence
+was `head_dim`, computed `hidden//n_heads` in Lithos but decoupled in Qwen3-0.6B
+(128 ≠ 1024//16). Fixed with a backward-compatible `ModelConfig.head_dim` field
+(unset → auto; every consumer already reads `cfg.head_dim`). `lithos/serve/hf_import.py`
+(`load_qwen3`, `lithos_config_from_hf`) inverts `export.py`'s mapping, pads vocab,
+and shares tied embeddings. **Verified: real Qwen3-0.6B imports with max |Δlogit| =
+0.0 (bit-exact)** on real prompts (`scripts/spike_qwen3_import.py`); offline
+tied+untied decoupled-head_dim parity in `tests/test_hf_import.py`; export tests
+unregressed. The imported model drives Lithos `generate` unchanged. So the 4B hero
+(Qwen3-4B, untied) can run the shared recipe. Review hardening: the importer now
+**refuses** Qwen3 configs with features Lithos can't represent (attention_bias,
+non-silu activation, sliding-window attention, scaled RoPE) and any checkpoint whose
+weights would be silently dropped — these previously imported *without error* but
+wrong (gelu Δ=1.6e-3, sliding-window Δ=0.23). 8 tests; suite green at 349.
 
 ### Wave 1 — The two long poles (parallel; E1 informed by D1's task schema)
 
