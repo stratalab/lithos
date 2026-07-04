@@ -32,7 +32,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from lithos.data.stackexchange import ExtractParams, extract_archive, infer_site  # noqa: E402
+from lithos.data.stackexchange import (  # noqa: E402
+    ExtractParams,
+    archive_has_posts,
+    extract_archive,
+    infer_site,
+)
 
 log = logging.getLogger("extract_se")
 
@@ -84,6 +89,9 @@ def main() -> int:
         manifest = out_root / site / "_manifest.json"
         if manifest.exists() and not args.force:
             log.info("[%s] manifest exists — skipping (use --force)", site)
+            continue
+        if not archive_has_posts(arc):
+            log.info("[%s] %s has no Posts.xml — skipping (not a Q&A archive)", site, arc.name)
             continue
         try:
             log.info("[%s] extracting from %s", site, arc.name)

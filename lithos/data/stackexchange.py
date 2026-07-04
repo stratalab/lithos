@@ -25,6 +25,7 @@ this module — and the rest of ``lithos.data`` — never requires it.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import queue
 import re
@@ -39,6 +40,8 @@ from typing import Any
 
 import zstandard
 from lxml import etree, html
+
+log = logging.getLogger("lithos.stackexchange")
 
 # Post types we care about (Posts.xml also carries tag-wikis, moderator posts, …).
 QUESTION = 1
@@ -148,6 +151,24 @@ def find_posts_member(names: list[str]) -> str:
         if n.replace("\\", "/").split("/")[-1].lower() == "posts.xml":
             return n
     raise ValueError(f"no Posts.xml in archive members: {names}")
+
+
+def archive_has_posts(archive_path: str | Path) -> bool:
+    """True if the ``.7z`` contains a Posts.xml (vs. a Comments-only archive).
+
+    Stack Overflow's dump splits Comments into ``*-Comments.7z``, which carries
+    no questions/answers — the driver skips such archives instead of failing.
+    Reads only the archive header, so it is cheap even for the 22 GB SO dump.
+    """
+    import py7zr  # lazy: `data` extra
+
+    with py7zr.SevenZipFile(str(archive_path), "r") as z:
+        names = z.getnames()
+    try:
+        find_posts_member(names)
+        return True
+    except ValueError:
+        return False
 
 
 def _drain(parser: Any, put: Any) -> None:
@@ -277,8 +298,11 @@ def assemble_text(title: str, question: str, answers: list[str]) -> str:
 def _stage_rows(conn: sqlite3.Connection, rows: Iterator[dict[str, str]], params: ExtractParams,
                 ) -> tuple[int, int]:
     """Stream Posts rows into the staging db. Returns (questions_in, answers_kept)."""
+    # temp_store=FILE (not MEMORY): the CREATE INDEX sort on tens of millions of
+    # answers (Stack Overflow scale) must spill to disk, not RAM. SQLITE_TMPDIR
+    # (set in extract_archive) points that spill at the data volume, not /tmp.
     conn.executescript(
-        "PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA temp_store=MEMORY;"
+        "PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA temp_store=FILE;"
         "CREATE TABLE q(id INTEGER PRIMARY KEY, title TEXT, body TEXT, tags TEXT,"
         " accepted INTEGER, score INTEGER);"
         "CREATE TABLE a(id INTEGER, parent INTEGER, body TEXT, score INTEGER);"
@@ -295,7 +319,11 @@ def _stage_rows(conn: sqlite3.Connection, rows: Iterator[dict[str, str]], params
             conn.executemany("INSERT INTO a VALUES (?,?,?,?)", a_batch)
             a_batch.clear()
 
+    n_rows = 0
     for r in rows:
+        n_rows += 1
+        if n_rows % 2_000_000 == 0:
+            log.info("  staging: %d rows scanned (%d questions, %d answers kept)", n_rows, n_q, n_a)
         ptype = _to_int(r.get("PostTypeId"))
         if ptype == QUESTION:
             qid = _to_int(r.get("Id"))
@@ -322,7 +350,9 @@ def _stage_rows(conn: sqlite3.Connection, rows: Iterator[dict[str, str]], params
         if len(q_batch) >= 5000 or len(a_batch) >= 5000:
             flush()
     flush()
+    log.info("  staging done: %d questions, %d answers — building answer index", n_q, n_a)
     conn.execute("CREATE INDEX a_parent ON a(parent)")
+    log.info("  index built — joining questions to answers")
     return n_q, n_a
 
 
@@ -418,8 +448,12 @@ def extract_archive(archive_path: str | Path, out_dir: str | Path, *,
 
     db_dir = Path(tmpdir) if tmpdir else out
     db_dir.mkdir(parents=True, exist_ok=True)
+    # Point SQLite's temp spill (index-build sort) at the data volume, not /tmp,
+    # which is typically small — a big CREATE INDEX would otherwise fill it.
+    os.environ["SQLITE_TMPDIR"] = str(db_dir)
     db_fd, db_path = tempfile.mkstemp(suffix=".sqlite", dir=str(db_dir))
     conn = sqlite3.connect(db_path)
+    conn.isolation_level = None  # autocommit: don't accumulate one giant transaction
     writer = ShardWriter(out, shard_size=shard_size)
     try:
         n_q, n_a = _stage_rows(conn, iter_posts(archive_path), params)

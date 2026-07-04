@@ -9,6 +9,7 @@ import pytest
 from lithos.data.documents import read_jsonl
 from lithos.data.stackexchange import (
     ExtractParams,
+    archive_has_posts,
     assemble_text,
     extract_archive,
     html_to_text,
@@ -117,6 +118,17 @@ def test_iter_posts_streams_all_rows(tmp_path: Path) -> None:
     ids = {r["Id"] for r in rows}
     assert ids == {str(i) for i in range(1, 10)}
     assert rows[0]["Title"] == "Why is the sky blue?"
+
+
+def test_archive_has_posts(tmp_path: Path) -> None:
+    py7zr = pytest.importorskip("py7zr")
+    # A normal site dump has Posts.xml.
+    assert archive_has_posts(_pack(tmp_path)) is True
+    # Stack Overflow's Comments archive has only Comments.xml → skip, not fail.
+    comments = tmp_path / "stackoverflow.com-Comments.7z"
+    with py7zr.SevenZipFile(str(comments), "w") as z:
+        z.writef(io.BytesIO(b"<comments><row Id='1'/></comments>"), "Comments.xml")
+    assert archive_has_posts(comments) is False
 
 
 # --------------------------------------------------------------------------- #
