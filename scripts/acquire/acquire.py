@@ -96,10 +96,20 @@ def build_plan(
                 argv += ["--include", pat]
             download = [argv]
         elif spec["route"] == "dump":
-            download = [
-                ["aria2c", "-x8", "-s8", "--continue=true", "-d", str(dest_dir), url]
-                for url in spec["urls"]
-            ]
+            # Prefer aria2c (multi-connection, resumable); fall back to wget -c
+            # where aria2c isn't installed. Both do HTTP range-resume on the same
+            # files, so switching mid-download is safe.
+            if shutil.which("aria2c"):
+                download = [
+                    ["aria2c", "-x8", "-s8", "--continue=true", "-d", str(dest_dir), url]
+                    for url in spec["urls"]
+                ]
+            else:
+                download = [
+                    ["wget", "--continue", "--tries=0", "--progress=dot:giga",
+                     "-P", str(dest_dir), url]
+                    for url in spec["urls"]
+                ]
         else:
             raise ValueError(f"{id_}: unsupported route {spec['route']!r}")
 
