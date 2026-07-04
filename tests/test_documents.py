@@ -2,7 +2,8 @@
 
 import json
 
-from lithos.data.documents import DocumentSource, iter_documents, normalize
+import pytest
+from lithos.data.documents import DocumentSource, _expand_paths, iter_documents, normalize
 
 
 def test_normalize_fills_defaults():
@@ -40,3 +41,25 @@ def test_iter_jsonl_with_limit(tmp_path):
     assert len(docs) == 3
     assert docs[0]["text"] == "doc 0"
     assert docs[0]["source"] == "t"
+
+
+def test_expand_paths_glob_and_literal(tmp_path):
+    (tmp_path / "a.jsonl").write_text("")
+    (tmp_path / "b.jsonl").write_text("")
+    (tmp_path / "c.txt").write_text("")
+    # Glob matches sorted; literal path passes through unchanged.
+    got = _expand_paths([str(tmp_path / "*.jsonl"), "/literal/path.jsonl"])
+    assert got == [str(tmp_path / "a.jsonl"), str(tmp_path / "b.jsonl"), "/literal/path.jsonl"]
+
+
+def test_expand_paths_empty_glob_raises(tmp_path):
+    with pytest.raises(FileNotFoundError, match="no files match"):
+        _expand_paths([str(tmp_path / "*.parquet")])
+
+
+def test_iter_jsonl_via_glob(tmp_path):
+    for i in range(2):
+        (tmp_path / f"shard{i}.jsonl").write_text(json.dumps({"text": f"d{i}"}) + "\n")
+    src = DocumentSource(kind="jsonl", paths=[str(tmp_path / "*.jsonl")], source_name="t")
+    docs = list(iter_documents(src))
+    assert {d["text"] for d in docs} == {"d0", "d1"}

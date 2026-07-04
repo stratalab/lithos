@@ -1,0 +1,108 @@
+# P0 corpus source catalog — local /data ingestion (banked 2026-07-04).
+#
+# One entry per mixable source. Each maps to a lithos.data.documents.DocumentSource
+# (kind/paths/text_field/quality_field/source_name/license) plus a `domain` tag for
+# mix planning (not a DocumentSource field — consumed by scripts/inventory_corpus.py
+# and, later, the domain-tag/mix stage). `paths` are globs; the readers expand them.
+#
+# Splits: train only (proof-pile-2 test/validation are eval holdouts, excluded).
+# Cross-source dedup note: proof-pile-2/open-web-math is the SAME dataset as the
+# standalone `openwebmath` source below, so it is EXCLUDED here (use openwebmath).
+# Heavier near-dedup (finemath/openwebmath overlap) is a later funnel stage.
+
+sources:
+  # ---- math (the scarce, precious slice) ----
+  - source_name: openwebmath
+    domain: math
+    kind: parquet
+    paths: ["/data/corpus-staging/openwebmath/data/*.parquet"]
+    text_field: text
+    license: "mixed (CC-mined; per-doc)"
+
+  - source_name: finemath-3plus
+    domain: math
+    kind: parquet
+    paths: ["/data/corpus-staging/finemath/finemath-3plus/*.parquet"]
+    text_field: text
+    quality_field: score
+    license: odc-by
+
+  - source_name: proof-pile-2-algebraic-stack
+    domain: math
+    kind: jsonl
+    paths: ["/data/corpus-staging/proof-pile-2/algebraic-stack/train/*.zst"]
+    text_field: text
+    license: "mixed (permissive code/math)"
+
+  - source_name: proof-pile-2-arxiv
+    domain: math  # arXiv math+physics; Llemma's math-leaning arXiv slice
+    kind: jsonl
+    paths: ["/data/corpus-staging/proof-pile-2/arxiv/train/*.zst"]
+    text_field: text
+    license: "arXiv (non-exclusive; per-paper)"
+
+  # ---- general-English glue (~15% target) ----
+  - source_name: fineweb-edu
+    domain: glue
+    kind: parquet
+    paths: ["/data/corpus-staging/fineweb-edu/sample/100BT/*.parquet"]
+    text_field: text
+    quality_field: score
+    license: odc-by
+
+  # ---- STEM Q&A (Stack Exchange, CC-BY-SA; extracted to canonical JSONL) ----
+  - source_name: se-math.stackexchange.com
+    domain: math
+    kind: jsonl
+    paths: ["/data/corpus-staging/stackexchange-extracted/math.stackexchange.com/*.jsonl.zst"]
+    text_field: text
+    license: cc-by-sa-4.0
+
+  - source_name: se-mathoverflow.net
+    domain: math
+    kind: jsonl
+    paths: ["/data/corpus-staging/stackexchange-extracted/mathoverflow.net/*.jsonl.zst"]
+    text_field: text
+    license: cc-by-sa-4.0
+
+  - source_name: se-physics.stackexchange.com
+    domain: physics
+    kind: jsonl
+    paths: ["/data/corpus-staging/stackexchange-extracted/physics.stackexchange.com/*.jsonl.zst"]
+    text_field: text
+    license: cc-by-sa-4.0
+
+  - source_name: se-electronics.stackexchange.com
+    domain: eng
+    kind: jsonl
+    paths: ["/data/corpus-staging/stackexchange-extracted/electronics.stackexchange.com/*.jsonl.zst"]
+    text_field: text
+    license: cc-by-sa-4.0
+
+  - source_name: se-stats.stackexchange.com
+    domain: xdomain
+    kind: jsonl
+    paths: ["/data/corpus-staging/stackexchange-extracted/stats.stackexchange.com/*.jsonl.zst"]
+    text_field: text
+    license: cc-by-sa-4.0
+
+  - source_name: se-scicomp.stackexchange.com
+    domain: xdomain
+    kind: jsonl
+    paths: ["/data/corpus-staging/stackexchange-extracted/scicomp.stackexchange.com/*.jsonl.zst"]
+    text_field: text
+    license: cc-by-sa-4.0
+
+  - source_name: se-cstheory.stackexchange.com
+    domain: xdomain
+    kind: jsonl
+    paths: ["/data/corpus-staging/stackexchange-extracted/cstheory.stackexchange.com/*.jsonl.zst"]
+    text_field: text
+    license: cc-by-sa-4.0
+
+  - source_name: se-stackoverflow.com
+    domain: code
+    kind: jsonl
+    paths: ["/data/corpus-staging/stackexchange-extracted/stackoverflow.com/*.jsonl.zst"]
+    text_field: text
+    license: cc-by-sa-4.0

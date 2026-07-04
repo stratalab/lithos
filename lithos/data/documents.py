@@ -8,6 +8,7 @@ fills defaults and drops records without usable text.
 from __future__ import annotations
 
 import contextlib
+import glob
 import io
 import json
 from collections.abc import Iterator
@@ -77,8 +78,24 @@ def _open_text(path: str | Path) -> Iterator[io.TextIOBase]:
             yield f
 
 
+def _expand_paths(paths: list[str]) -> list[str]:
+    """Expand glob patterns (``*?[``); literal paths pass through. Sorted for
+    deterministic shard order. A pattern that matches nothing is an error — a
+    silently-empty source would corrupt a corpus build without warning."""
+    out: list[str] = []
+    for p in paths:
+        if any(c in p for c in "*?["):
+            matched = sorted(glob.glob(p, recursive=True))
+            if not matched:
+                raise FileNotFoundError(f"no files match pattern: {p}")
+            out.extend(matched)
+        else:
+            out.append(p)
+    return out
+
+
 def read_jsonl(paths: list[str]) -> Iterator[dict[str, Any]]:
-    for path in paths:
+    for path in _expand_paths(paths):
         with _open_text(path) as f:
             for line in f:
                 line = line.strip()
@@ -89,7 +106,7 @@ def read_jsonl(paths: list[str]) -> Iterator[dict[str, Any]]:
 def read_parquet(paths: list[str]) -> Iterator[dict[str, Any]]:
     import pyarrow.parquet as pq
 
-    for path in paths:
+    for path in _expand_paths(paths):
         table = pq.read_table(path)
         for batch in table.to_batches():
             yield from batch.to_pylist()
