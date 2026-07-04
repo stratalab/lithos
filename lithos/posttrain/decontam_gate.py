@@ -20,10 +20,28 @@ from typing import Any
 from lithos.data.decontam import DecontaminationFilter, read_probes
 
 
+def _turn_text(msg: dict[str, Any]) -> str:
+    """All screenable text of one turn — flat ``content`` or TIR ``segments``
+    (think/text/tool/tool_result), so a leak in an assistant trace can't slip past.
+
+    Best-effort: this runs *before* the renderer validates, so a malformed segment
+    must not crash the build — non-dict segments are stringified, not rejected here.
+    """
+    if "segments" in msg:
+        parts = [
+            str(seg.get("text") or seg.get("code") or seg.get("output") or "")
+            if isinstance(seg, dict)
+            else str(seg)
+            for seg in msg["segments"]
+        ]
+        return "\n".join(parts)
+    return str(msg.get("content", ""))
+
+
 def messages_text(record: dict[str, Any]) -> str:
-    """Screenable text of an SFT record ``{"messages": [...]}`` — all turn content
+    """Screenable text of an SFT record ``{"messages": [...]}`` — all turn text
     joined (a leaked problem shows up in the user prompt *or* an assistant trace)."""
-    return "\n".join(m.get("content", "") for m in record.get("messages", []))
+    return "\n".join(_turn_text(m) for m in record.get("messages", []))
 
 
 def prefs_text(record: dict[str, Any]) -> str:

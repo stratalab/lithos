@@ -30,6 +30,15 @@ ROLE_TOKEN = {
 }
 _SPECIALS = ("<bos>", "<eos>", "<pad>", "<|end|>", *ROLE_TOKEN.values())
 
+# TIR (tool-integrated reasoning) tokens — docs/tir-format.md §2. These live in the
+# reserved block (IDs 7-15) of the STEM tokenizer, NOT in today's fineweb-edu-32k,
+# so they are resolved lazily (only when a TIR episode is rendered), unlike the
+# always-required core specials above.
+THINK_OPEN, THINK_CLOSE = "<think>", "</think>"
+TOOL_CLOSE, TOOL_RESULT = "<|/tool|>", "<|tool_result|>"
+TOOL_OPEN = {"python": "<|python|>", "octave": "<|octave|>"}  # runtime identity in the open tag
+TIR_TOKENS = (THINK_OPEN, THINK_CLOSE, *TOOL_OPEN.values(), TOOL_CLOSE, TOOL_RESULT)
+
 
 class _Encoding(Protocol):
     ids: list[int]
@@ -66,14 +75,129 @@ def special_ids(tok: TokenizerLike) -> dict[str, int]:
     return {name: int(tid) for name, tid in ids.items()}  # type: ignore[arg-type]
 
 
+def tir_token_ids(tok: TokenizerLike) -> dict[str, int]:
+    """Resolve the TIR special-token IDs, erroring loudly if any are missing.
+
+    Called only when an assistant turn carries ``segments`` (tool/think), so
+    non-TIR SFT keeps working on a tokenizer without the TIR vocab.
+    """
+    ids = {name: tok.token_to_id(name) for name in TIR_TOKENS}
+    missing = [name for name, tid in ids.items() if tid is None]
+    if missing:
+        raise ValueError(
+            f"tokenizer is missing TIR tokens {missing}; rendering a tool-use episode "
+            "needs the STEM tokenizer's reserved block (docs/tir-format.md §2)"
+        )
+    return {name: int(tid) for name, tid in ids.items()}  # type: ignore[arg-type]
+
+
+_SEGMENT_TYPES = ("think", "text", "tool", "tool_result")
+
+
+def _encode_segments(
+    segments: list[dict], tok: TokenizerLike, tir: dict[str, int], sids: dict[str, int]
+) -> tuple[list[int], list[bool]]:
+    """Encode an assistant turn's TIR segments to (ids, mask), per docs/tir-format.md
+    §4: think/text/tool are learned; the tool_result span (incl. its closing
+    ``<|end|>``) is masked — the sandbox wrote it, the model must not learn to
+    predict it. All tokens inserted by ID (never string-parsed)."""
+    ids: list[int] = []
+    mask: list[bool] = []
+
+    def emit(token_id: int, learn: bool) -> None:
+        ids.append(token_id)
+        mask.append(learn)
+
+    def emit_text(text: str, learn: bool) -> None:
+        enc = tok.encode(text).ids
+        ids.extend(enc)
+        mask.extend([learn] * len(enc))
+
+    def field(seg: dict, key: str) -> str:  # clear error on malformed data, not a bare KeyError
+        if key not in seg:
+            raise ValueError(f"{seg.get('type')!r} segment missing required field {key!r}")
+        value = seg[key]
+        if not isinstance(value, str):
+            raise ValueError(
+                f"{seg.get('type')!r} segment field {key!r} must be a string, got {type(value).__name__}"
+            )
+        return value
+
+    for i, seg in enumerate(segments):
+        if not isinstance(seg, dict):
+            raise ValueError(f"segment {i} must be a dict, got {type(seg).__name__}")
+        stype = seg.get("type")
+        if stype == "think":
+            emit(tir[THINK_OPEN], True)
+            emit_text(field(seg, "text"), True)
+            emit(tir[THINK_CLOSE], True)
+        elif stype == "text":
+            emit_text(field(seg, "text"), True)
+        elif stype == "tool":
+            runtime = seg.get("runtime")
+            if runtime not in TOOL_OPEN:
+                raise ValueError(
+                    f"unknown tool runtime {runtime!r}; expected one of {list(TOOL_OPEN)}"
+                )
+            emit(tir[TOOL_OPEN[runtime]], True)
+            emit_text(field(seg, "code"), True)
+            emit(tir[TOOL_CLOSE], True)
+        elif stype == "tool_result":
+            emit(tir[TOOL_RESULT], False)
+            emit_text(field(seg, "output"), False)
+            emit(sids["<|end|>"], False)  # result closer — masked
+        else:
+            raise ValueError(
+                f"unknown segment type {stype!r}; expected one of {list(_SEGMENT_TYPES)}"
+            )
+    return ids, mask
+
+
+def _encode_turn(
+    msg: dict, tok: TokenizerLike, sids: dict[str, int]
+) -> tuple[list[int], list[bool]]:
+    """Encode one message to (ids, mask): role header (masked) + body + ``<|end|>``.
+    An assistant turn carries either flat ``content`` or a TIR ``segments`` list."""
+    role = msg["role"]
+    if role not in ROLE_TOKEN:
+        raise ValueError(f"unknown role {role!r}; expected one of {list(ROLE_TOKEN)}")
+    has_segments, has_content = "segments" in msg, "content" in msg
+    if has_segments and role != "assistant":
+        raise ValueError(f"{role!r} turn cannot have 'segments' — segments are assistant-only")
+    if has_segments and has_content:
+        raise ValueError("assistant turn has both 'content' and 'segments'; use exactly one")
+    if not has_segments and not has_content:
+        raise ValueError(f"{role!r} turn missing 'content'")
+    ids: list[int] = [sids[ROLE_TOKEN[role]]]
+    mask: list[bool] = [False]  # role header — always masked (supplied at inference)
+    if has_segments:
+        segments = msg["segments"]
+        if not isinstance(segments, list):
+            raise ValueError(f"'segments' must be a list, got {type(segments).__name__}")
+        seg_ids, seg_mask = _encode_segments(segments, tok, tir_token_ids(tok), sids)
+        ids.extend(seg_ids)
+        mask.extend(seg_mask)
+        ids.append(sids["<|end|>"])
+        mask.append(True)  # turn terminator — learned (the model learns to stop)
+    else:
+        learn = role == "assistant"
+        content_ids = tok.encode(msg["content"]).ids
+        ids.extend(content_ids)
+        mask.extend([learn] * len(content_ids))
+        ids.append(sids["<|end|>"])
+        mask.append(learn)
+    return ids, mask
+
+
 def render_conversation(
     messages: list[dict[str, str]], tok: TokenizerLike, *, add_bos: bool = True
 ) -> Rendered:
     """Render a full conversation for **training** (every turn present).
 
-    Loss falls only on assistant content + the ``<|end|>`` that closes each
-    assistant turn; everything else (BOS, role headers, system/user turns) is
-    masked.
+    Loss falls only on assistant tokens the model should produce — flat content,
+    or TIR think/tool/answer segments — plus each assistant turn's closing
+    ``<|end|>``. BOS, role headers, system/user turns, and injected tool results
+    are masked. See docs/tir-format.md §4.
     """
     sids = special_ids(tok)
     out: list[int] = []
@@ -82,20 +206,9 @@ def render_conversation(
         out.append(sids["<bos>"])
         mask.append(False)
     for msg in messages:
-        role = msg["role"]
-        if role not in ROLE_TOKEN:
-            raise ValueError(f"unknown role {role!r}; expected one of {list(ROLE_TOKEN)}")
-        learn = role == "assistant"
-        content_ids = tok.encode(msg["content"]).ids
-        # role header — always masked (supplied at inference)
-        out.append(sids[ROLE_TOKEN[role]])
-        mask.append(False)
-        # content — learned only for assistant turns
-        out.extend(content_ids)
-        mask.extend([learn] * len(content_ids))
-        # turn terminator — learned for assistant (so the model learns to stop)
-        out.append(sids["<|end|>"])
-        mask.append(learn)
+        turn_ids, turn_mask = _encode_turn(msg, tok, sids)
+        out.extend(turn_ids)
+        mask.extend(turn_mask)
     return Rendered(out, mask)
 
 
@@ -109,11 +222,7 @@ def render_prompt(
     sids = special_ids(tok)
     out: list[int] = [sids["<bos>"]] if add_bos else []
     for msg in messages:
-        role = msg["role"]
-        if role not in ROLE_TOKEN:
-            raise ValueError(f"unknown role {role!r}; expected one of {list(ROLE_TOKEN)}")
-        out.append(sids[ROLE_TOKEN[role]])
-        out.extend(tok.encode(msg["content"]).ids)
-        out.append(sids["<|end|>"])
+        turn_ids, _ = _encode_turn(msg, tok, sids)
+        out.extend(turn_ids)
     out.append(sids["<|assistant|>"])  # open the assistant turn; model continues
     return out
