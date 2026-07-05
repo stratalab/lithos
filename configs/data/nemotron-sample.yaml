@@ -22,9 +22,6 @@ add_bos: true
 add_eos: true
 exact_dedup: true
 
-filters:
-  min_chars: 50
-  max_chars: 100000
 
 license_notes:
   - "nvidia/Nemotron-Pretraining-Dataset-sample (NVIDIA Open Data License)."

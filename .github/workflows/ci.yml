@@ -21,10 +21,9 @@ jobs:
           enable-cache: true
 
       # CPU torch keeps CI fast; unit/shape tests don't need a GPU (PRD §26.1).
-      # data + eval extras cover the extractor / export / benchmark tests + mypy;
-      # pdf (docling) is intentionally excluded to keep installs quick.
+      # The eval extra (transformers / lm-eval) covers the export/benchmark tests + mypy.
       - name: Sync dependencies
-        run: uv sync --extra data --extra eval
+        run: uv sync --extra eval
         env:
           UV_TORCH_BACKEND: cpu
 

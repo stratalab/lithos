@@ -22,9 +22,9 @@ The **full lifecycle is built and validated end-to-end at 100M scale**, not a sk
 
 - **Model** — the transformer + KV-cache generation.
 - **Tokenizer** — an owned 32k BPE + evaluation harness.
-- **Data pipeline** — canonical document schema, extractors (HTML/CNXML, PDF/Docling,
-  StackExchange, OpenStax, The-Stack code), dedup, decontam, quality classifier,
-  packing, sharding.
+- **Data pipeline** (consumer tier) — canonical document reader, dedup, decontam,
+  quality-threshold, packing, sharding. Sourcing, extraction, and curation live in
+  **Chisel** (see [`docs/chisel-producer-migration.md`](docs/chisel-producer-migration.md)).
 - **Training** — loop, optimizer, scheduler, checkpointing, distributed, tracking.
 - **Evaluation** — bpb/perplexity, a frozen benchmark battery, ablation, scorecards.
 - **Post-training** — packed SFT, verifier-labeled DPO, and **GRPO/RLVR with
@@ -40,9 +40,9 @@ The **full lifecycle is built and validated end-to-end at 100M scale**, not a sk
 # Install uv: https://docs.astral.sh/uv/getting-started/installation/
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Full dev environment (adds the data/eval extras; on Linux+NVIDIA torch is CUDA-enabled).
-make install                    # == uv sync --extra data --extra eval
-uv sync --all-extras            # everything, incl. pdf (docling) and serve
+# Full dev environment (adds the eval extra; on Linux+NVIDIA torch is CUDA-enabled).
+make install                    # == uv sync --extra eval
+uv sync --all-extras            # everything (eval, cloud, serve, tracking)
 
 # CPU-only (a machine without a GPU):
 UV_TORCH_BACKEND=cpu uv sync
@@ -81,14 +81,15 @@ make check      # ruff + mypy + pytest   (or: make lint / typecheck / test)
 lithos/            # the Python package
   model/           # modernized-Llama / Qwen3-envelope transformer + generation
   tokenizer/       # owned 32k BPE tokenizer + eval harness
-  data/            # documents → extract → filter → dedup → tokenize → packed shards
+  data/            # canonical records → dedup → tokenize → packed shards (consumer tier)
   train/           # optimizer, scheduler, loop, checkpointing, distributed, logging
   evals/           # bpb/perplexity, benchmark battery, ablation, scorecards
   posttrain/       # SFT, DPO, GRPO/RLVR, TIR rollout, verifier, sandbox
   serve/           # generation, HF/Qwen3 export/import
+  cli.py           # the `lithos` command
   utils/           # config, seed, device, io, storage, checks
 configs/           # YAML configs (model / tokenizer / data / train / eval / sft / dpo / grpo)
-corpus/            # the Canon (seed_index.csv) + acquisition specs + task banks
+corpus/            # decontam probes (the Canon + sourcing moved to Chisel)
 scripts/           # runnable entrypoints
 tests/             # unit + integration tests
 docs/              # see docs/README.md for the index

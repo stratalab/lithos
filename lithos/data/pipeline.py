@@ -1,4 +1,8 @@
-"""Corpus build pipeline: documents -> filter -> dedup -> tokenize -> shards.
+"""Corpus build pipeline: documents -> dedup -> tokenize -> shards.
+
+Heuristic content filtering moved to Chisel with the producer tier (it cleans before
+the corpus lands); this consumer pipeline keeps only the training-coupled stages —
+optional quality-*threshold*, dedup, and decontam-against-the-eval-battery.
 
 Ties together the §8.2 data stages and writes a reproducible corpus manifest
 (PRD §8.6). Driven by ``scripts/tokenize_corpus.py``.
@@ -15,7 +19,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from lithos.data.decontam import DecontaminationFilter, read_probes
 from lithos.data.dedup import ExactDocumentDeduper
 from lithos.data.documents import DocumentSource, iter_documents
-from lithos.data.filters import DocumentFilter, FilterConfig
 from lithos.data.manifest import corpus_manifest
 from lithos.data.minhash import MinHashConfig, MinHashDeduper
 from lithos.data.quality import QualityConfig, QualityFilter
@@ -53,7 +56,6 @@ class CorpusBuildConfig(BaseModel):
     minhash: MinHashConfig = Field(default_factory=MinHashConfig)
     decontam: DecontamConfig = Field(default_factory=DecontamConfig)
     quality: QualityConfig = Field(default_factory=QualityConfig)
-    filters: FilterConfig = Field(default_factory=FilterConfig)
     license_notes: list[str] = Field(default_factory=list)
 
 
@@ -64,7 +66,6 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
     tokenizer_name = Path(cfg.tokenizer_path).parent.name
     doctok = DocumentTokenizer.from_tokenizer(tokenizer, add_bos=cfg.add_bos, add_eos=cfg.add_eos)
 
-    filt = DocumentFilter(cfg.filters)
     qual = QualityFilter(cfg.quality) if cfg.quality.enabled else None
     dedup = ExactDocumentDeduper() if cfg.exact_dedup else None
     near = MinHashDeduper(cfg.minhash) if cfg.near_dedup else None
@@ -98,8 +99,6 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
     n_held = 0
     for source in cfg.sources:
         for doc in iter_documents(source):
-            if not filt.keep(doc):
-                continue
             if qual is not None and not qual.keep(doc):
                 continue
             if dedup is not None and dedup.is_duplicate(doc["text"]):
@@ -128,7 +127,7 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
         num_tokens=writer.total_tokens,
         sources=[s.source_name for s in cfg.sources],
         mixture=dict(mixture),
-        filters={"config": cfg.filters.model_dump(), "stats": filt.stats()},
+        filters={},  # heuristic content filtering moved to Chisel (producer tier)
         dedup={
             "exact": dedup.stats() if dedup is not None else {},
             "near": near.stats() if near is not None else {},

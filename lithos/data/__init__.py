@@ -1,9 +1,12 @@
-"""Data: documents -> filters -> dedup -> tokenized shards -> packed loader (Phase 3)."""
+"""Data (consumer tier): documents -> dedup -> tokenized shards -> packed loader.
+
+The producer tier (extractors + curation) moved to Chisel; see
+docs/chisel-producer-migration.md. What remains is the training-coupled path.
+"""
 
 from lithos.data.dataloader import PackedDataLoader, PackedDataset
 from lithos.data.dedup import ExactDocumentDeduper, ExactLineDeduper
 from lithos.data.documents import DocumentSource, iter_documents, normalize
-from lithos.data.filters import DocumentFilter, FilterConfig, check_document
 from lithos.data.manifest import corpus_manifest
 from lithos.data.packing import get_sequence, num_sequences
 from lithos.data.pipeline import CorpusBuildConfig, build_corpus
@@ -12,17 +15,14 @@ from lithos.data.tokenize import DocumentTokenizer, tokenize_documents
 
 __all__ = [
     "CorpusBuildConfig",
-    "DocumentFilter",
     "DocumentSource",
     "DocumentTokenizer",
     "ExactDocumentDeduper",
     "ExactLineDeduper",
-    "FilterConfig",
     "PackedDataLoader",
     "PackedDataset",
     "ShardWriter",
     "build_corpus",
-    "check_document",
     "corpus_manifest",
     "dtype_for_vocab",
     "get_sequence",

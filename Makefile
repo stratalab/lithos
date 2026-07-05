@@ -7,8 +7,8 @@ help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-11s\033[0m %s\n", $$1, $$2}'
 
-install:  ## Sync the dev environment (core + data + eval extras)
-	$(UV) sync --extra data --extra eval
+install:  ## Sync the dev environment (core + eval extras)
+	$(UV) sync --extra eval
 
 test:  ## Run the test suite
 	$(UV) run pytest

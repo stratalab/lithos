@@ -6,12 +6,12 @@ with production discipline: every change lands green on lint, types, and tests.
 ## Environment
 
 ```bash
-uv sync --extra data --extra eval     # or: make install
+uv sync --extra eval                  # or: make install
 uv run pre-commit install             # optional: run the gates on every commit
 ```
 
-Extras: `data` (extractors: lxml/py7zr), `eval` (transformers/lm-eval), `pdf` (docling),
-`cloud` (s3fs/gcsfs), `serve`, `tracking` (wandb). `uv sync --all-extras` installs all.
+Extras: `eval` (transformers/lm-eval), `cloud` (s3fs/gcsfs), `serve`, `tracking` (wandb).
+`uv sync --all-extras` installs all. (Sourcing/extraction extras live in Chisel now.)
 
 ## Quality gates (must pass before you push)
 
