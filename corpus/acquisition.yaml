@@ -46,7 +46,7 @@ specs:
     route: hf
     repo: nvidia/Nemotron-CC-Math-v1
     est_gb: 270
-    notes: GATED - needs approved access on the stratalab account first
+    notes: access approved (stratalab); 270GB bulk — DEFERRED to the larger /data drive
   megamath:
     route: hf
     repo: LLM360/MegaMath
@@ -105,6 +105,7 @@ specs:
     route: hf
     repo: nvidia/Nemotron-CC-Code-v1
     est_gb: 40
+    notes: GATED - awaiting approved access on the stratalab account
   pes2o:
     route: hf
     repo: allenai/peS2o
