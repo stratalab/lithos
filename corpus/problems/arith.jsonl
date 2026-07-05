@@ -1,0 +1,16 @@
+{"id": "a01", "prompt": "Compute 2 + 3. Answer with just the number.", "kind": "numeric", "answer": "5"}
+{"id": "a02", "prompt": "Compute 7 + 6. Answer with just the number.", "kind": "numeric", "answer": "13"}
+{"id": "a03", "prompt": "Compute 9 - 4. Answer with just the number.", "kind": "numeric", "answer": "5"}
+{"id": "a04", "prompt": "Compute 8 - 3. Answer with just the number.", "kind": "numeric", "answer": "5"}
+{"id": "a05", "prompt": "Compute 3 * 4. Answer with just the number.", "kind": "numeric", "answer": "12"}
+{"id": "a06", "prompt": "Compute 6 * 2. Answer with just the number.", "kind": "numeric", "answer": "12"}
+{"id": "a07", "prompt": "Compute 5 + 5. Answer with just the number.", "kind": "numeric", "answer": "10"}
+{"id": "a08", "prompt": "Compute 10 - 6. Answer with just the number.", "kind": "numeric", "answer": "4"}
+{"id": "a09", "prompt": "Compute 4 + 4. Answer with just the number.", "kind": "numeric", "answer": "8"}
+{"id": "a10", "prompt": "Compute 7 - 2. Answer with just the number.", "kind": "numeric", "answer": "5"}
+{"id": "a11", "prompt": "Compute 2 * 5. Answer with just the number.", "kind": "numeric", "answer": "10"}
+{"id": "a12", "prompt": "Compute 6 + 3. Answer with just the number.", "kind": "numeric", "answer": "9"}
+{"id": "a13", "prompt": "Compute 9 - 5. Answer with just the number.", "kind": "numeric", "answer": "4"}
+{"id": "a14", "prompt": "Compute 3 + 8. Answer with just the number.", "kind": "numeric", "answer": "11"}
+{"id": "a15", "prompt": "Compute 4 * 3. Answer with just the number.", "kind": "numeric", "answer": "12"}
+{"id": "a16", "prompt": "Compute 5 + 7. Answer with just the number.", "kind": "numeric", "answer": "12"}

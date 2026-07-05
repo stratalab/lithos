@@ -12,6 +12,7 @@ construction).
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
@@ -57,9 +58,16 @@ class Task:
 
 
 def task_from_record(rec: dict[str, Any]) -> Task:
-    """Coerce a JSONL record into a ``Task`` (defaults fill missing optional keys)."""
+    """Coerce a JSONL record into a ``Task`` (defaults fill missing optional keys).
+
+    ``id`` is optional: when absent it is derived from the prompt (stable + unique
+    per prompt), so hand-written or generated banks don't need to assign one.
+    """
+    if "prompt" not in rec:
+        raise ValueError(f"task record missing required 'prompt' field: {rec!r}")
+    tid = rec.get("id") or "auto-" + hashlib.sha1(rec["prompt"].encode("utf-8")).hexdigest()[:12]
     return Task(
-        id=str(rec["id"]),
+        id=str(tid),
         prompt=rec["prompt"],
         kind=rec.get("kind", "numeric"),
         answer=str(rec.get("answer", "")),

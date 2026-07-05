@@ -17,15 +17,16 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from types import TracebackType
 from typing import Any
 
-from lithos.utils.io import ensure_dir, ensure_new_dir
+from lithos.utils.io import ensure_dir, ensure_new_dir, write_json
 
-__all__ = ["JsonlWriter", "RunDir", "create_run_dir"]
+__all__ = ["JsonlWriter", "RunDir", "create_run_dir", "git_commit", "write_run_manifest"]
 
 RUN_SUBDIRS = ("samples", "checkpoints", "evals")
 
@@ -78,6 +79,44 @@ def create_run_dir(
     for sub in RUN_SUBDIRS:
         ensure_dir(root / sub)
     return RunDir(root=root)
+
+
+def git_commit() -> str | None:
+    """Current HEAD commit SHA, or ``None`` outside a git repo."""
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False
+        )
+    except OSError:
+        return None
+    return out.stdout.strip() or None
+
+
+def write_run_manifest(
+    run: RunDir,
+    *,
+    stage: str,
+    num_parameters: int,
+    device: str,
+    extra: dict[str, Any] | None = None,
+) -> None:
+    """Write ``run_manifest.json`` for a run.
+
+    The pretrain/SFT loop writes its own richer manifest; the DPO and GRPO trainers
+    call this so every run directory carries the same provenance record (run id,
+    commit, resolved config, parameter count) instead of silently omitting it.
+    """
+    manifest: dict[str, Any] = {
+        "run_id": run.root.name,
+        "stage": stage,
+        "git_commit": git_commit(),
+        "resolved_config": str(run.resolved_config),
+        "num_parameters": num_parameters,
+        "device": device,
+    }
+    if extra:
+        manifest.update(extra)
+    write_json(run.manifest, manifest)
 
 
 class JsonlWriter:

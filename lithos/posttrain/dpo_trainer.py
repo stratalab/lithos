@@ -22,7 +22,7 @@ from lithos.posttrain.preference_dataset import PreferenceDataset
 from lithos.train.checkpoint import load_model_weights, save_checkpoint
 from lithos.train.config import TrainConfig
 from lithos.train.distributed import cleanup_distributed, setup_distributed
-from lithos.train.logging import JsonlWriter, RunDir, create_run_dir
+from lithos.train.logging import JsonlWriter, RunDir, create_run_dir, write_run_manifest
 from lithos.train.optim import build_optimizer
 from lithos.train.scheduler import cosine_lr, set_lr
 from lithos.train.tracking import Reporter, init_reporter
@@ -100,6 +100,11 @@ def train_dpo(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | N
     if dist.is_main:
         run = create_run_dir(cfg.run_name, base=cfg.runs_dir)
         save_resolved_config(cfg, run.resolved_config)
+        write_run_manifest(
+            run, stage="dpo", num_parameters=policy.num_parameters(), device=device,
+            extra={"init_from": cfg.init_from, "prefs": cfg.data.corpus_manifest,
+                   "seq_len": cfg.data.seq_len, "seed": cfg.seed, "precision": cfg.precision},
+        )
         metrics = JsonlWriter(run.metrics)
         gpu = torch.cuda.get_device_name(0) if device.startswith("cuda") else None
         reporter = init_reporter(
