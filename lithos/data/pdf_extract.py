@@ -42,10 +42,17 @@ log = logging.getLogger("lithos.pdf_extract")
 
 def pdf_to_markdown(pdf_path: str | Path, *, ocr: bool = False) -> tuple[str, int, str]:
     """Convert a PDF to math-aware markdown. Returns (markdown, n_pages, docling_version)."""
-    import docling
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _pkg_version
+
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions
     from docling.document_converter import DocumentConverter, PdfFormatOption
+
+    try:
+        dv = _pkg_version("docling")
+    except PackageNotFoundError:
+        dv = "unknown"
 
     opts = PdfPipelineOptions()
     opts.do_ocr = ocr                    # digital PDFs have a text layer; OCR only for scans
@@ -58,7 +65,7 @@ def pdf_to_markdown(pdf_path: str | Path, *, ocr: bool = False) -> tuple[str, in
     result = conv.convert(str(pdf_path))
     markdown = result.document.export_to_markdown()
     n_pages = len(getattr(result.document, "pages", []) or [])
-    return markdown, n_pages, getattr(docling, "__version__", "unknown")
+    return markdown, n_pages, dv
 
 
 def make_record(markdown: str, *, source_id: str, title: str, domain: str, license: str,
