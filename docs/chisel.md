@@ -9,7 +9,10 @@ parity-frontier benchmarks (the dogfooding proof). Until then Chisel has
 exactly one customer: Lithos. Companions: `docs/strata-gpu-hot-tier.md`,
 `docs/moho.md` (other legs, recorded in the same pass); doctrine in
 `docs/data-construction.md`; internal epics in
-`docs/post-training-implementation-plan.md` Wave 4.
+`docs/post-training-implementation-plan.md` Wave 4. The **Chisel→Lithos handoff** is
+specified in `docs/chisel-producer-migration.md` (which producer-side code moves out
+of Lithos) and `docs/chisel-lithos-r2-contract.md` (what Chisel writes to R2, in what
+format, and the end-to-end run flow).
 
 ## 1. The two framing decisions
 
