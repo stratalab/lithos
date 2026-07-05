@@ -113,6 +113,10 @@ specs:
     notes: DEFERRED — superseded by the-stack-stem (real code > synthetic); gated-manual
   # Real GitHub code (the StarCoder v1 source), per-language dirs, permissive-licensed
   # + secret-scanned. Split by size so the small STEM langs land on the current drive.
+  # GATE: bigcode/the-stack-dedup needs its access terms accepted once on the
+  # stratalab account (https://huggingface.co/datasets/bigcode/the-stack-dedup —
+  # "Agree and access"; auto-approved, instant). Metadata reads without it; content
+  # download does not.
   the-stack-stem-small:
     route: hf
     repo: bigcode/the-stack-dedup
