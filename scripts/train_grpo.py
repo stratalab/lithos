@@ -1,32 +1,9 @@
-#!/usr/bin/env python
-"""GRPO / RLVR entrypoint (Phase 11).
+#!/usr/bin/env python3
+"""Entrypoint for `lithos grpo` — a shim over lithos.cli, kept so torchrun and direct
+`python scripts/train_grpo.py` invocations keep working. Prefer `lithos grpo`."""
+import sys
 
-    python scripts/train_grpo.py --config configs/grpo/lithos-100m-arith.yaml
-
-Starts from the SFT checkpoint (config ``init_from``), ``data.kind: grpo``. Samples
-rollouts from the policy, scores them with a verifier, and updates via group-relative
-policy gradient + a KL leash to the frozen reference.
-"""
-
-from __future__ import annotations
-
-import argparse
-
-from lithos.posttrain.grpo_trainer import train_grpo
-from lithos.train.config import TrainConfig
-from lithos.utils.config import load_and_validate
-
-
-def main() -> None:
-    ap = argparse.ArgumentParser(description="GRPO / RL with verifiable rewards.")
-    ap.add_argument("--config", required=True, help="Path to a GRPO YAML config.")
-    ap.add_argument("--override", nargs="*", default=[], help="Dotted-key overrides.")
-    args = ap.parse_args()
-
-    cfg = load_and_validate(args.config, TrainConfig, args.override)
-    run = train_grpo(cfg)
-    print(f"GRPO run -> {run.root if run else '(non-main rank)'}")
-
+from lithos.cli import main
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(["grpo", *sys.argv[1:]]))

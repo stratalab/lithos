@@ -1,32 +1,9 @@
-#!/usr/bin/env python
-"""Direct Preference Optimization entrypoint (Phase 11).
+#!/usr/bin/env python3
+"""Entrypoint for `lithos dpo` — a shim over lithos.cli, kept so torchrun and direct
+`python scripts/train_dpo.py` invocations keep working. Prefer `lithos dpo`."""
+import sys
 
-    python scripts/train_dpo.py --config configs/dpo/lithos-100m-dolly.yaml
-
-Starts from the SFT checkpoint (config ``init_from``), with ``data.kind: dpo``
-pointing at a preferences-JSONL. Custom step (policy vs frozen reference); reuses
-the shared scaffolding.
-"""
-
-from __future__ import annotations
-
-import argparse
-
-from lithos.posttrain.dpo_trainer import train_dpo
-from lithos.train.config import TrainConfig
-from lithos.utils.config import load_and_validate
-
-
-def main() -> None:
-    ap = argparse.ArgumentParser(description="Direct Preference Optimization (DPO).")
-    ap.add_argument("--config", required=True, help="Path to a DPO YAML config.")
-    ap.add_argument("--override", nargs="*", default=[], help="Dotted-key overrides.")
-    args = ap.parse_args()
-
-    cfg = load_and_validate(args.config, TrainConfig, args.override)
-    run = train_dpo(cfg)
-    print(f"DPO run -> {run.root if run else '(non-main rank)'}")
-
+from lithos.cli import main
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(["dpo", *sys.argv[1:]]))

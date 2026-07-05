@@ -51,11 +51,14 @@ UV_TORCH_BACKEND=cpu uv sync
 ## Quickstart
 
 ```bash
-uv run python scripts/train_tokenizer.py --config configs/tokenizer/bpe-32k.yaml
-uv run python scripts/train_model.py     --config configs/train/100m.yaml
-uv run python scripts/run_evals.py       --config configs/eval/lithos-100m.yaml --checkpoint <ckpt>
-uv run python scripts/train_sft.py       --config configs/sft/lithos-100m-packed.yaml
+uv run lithos tokenizer --config configs/tokenizer/bpe-32k.yaml
+uv run lithos train     --config configs/train/100m.yaml
+uv run lithos eval      --config configs/eval/lithos-100m.yaml --checkpoint <ckpt>
+uv run lithos sft       --config configs/sft/lithos-100m-packed.yaml
 ```
+
+`lithos <command>` is the unified entrypoint (`lithos --help` lists them). Distributed
+runs still launch the shim directly: `torchrun --nproc_per_node=N scripts/train_model.py …`.
 
 ## Storage & secrets
 
