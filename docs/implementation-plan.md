@@ -1,6 +1,6 @@
 # Lithos Implementation Plan
 
-Companion to `lithos-prd.md`. This turns the PRD (esp. §19 milestones, §21 build order, §26 resolved decisions) into an ordered, buildable sequence. Each phase is a vertical slice that runs on the local dev GPU (RTX 4070 Super, 12GB) — CPU-capable for the fast unit tests — before anything scales to cloud.
+Companion to `prd.md`. This turns the PRD (esp. §19 milestones, §21 build order, §26 resolved decisions) into an ordered, buildable sequence. Each phase is a vertical slice that runs on the local dev GPU (RTX 4070 Super, 12GB) — CPU-capable for the fast unit tests — before anything scales to cloud.
 
 > **Reconciled 2026-06-14** to reflect actual execution (FineWeb-Edu corpus, DDP-not-FSDP, W&B, R2, remote-provisioning scripts) and the **data-centric pivot**: owning a high-quality dataset is a co-equal foundation to the model, and we build a *scale-invariant* pipeline at small scale so the 3B is a config flip. **Part I** (walking skeleton + first real run) is built; the **100M run is live**. **Part II** (the data-centric era) is the forward plan.
 

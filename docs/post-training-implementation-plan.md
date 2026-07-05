@@ -3,7 +3,7 @@
 Turns `docs/post-training-review.md` into sequenced, dependency-aware work: the
 buildout that takes Phase 12's post-training from *validated test bench* to
 *flagship recipe*. Part A fixes the gaps; Part B tests the unknowns. Companion
-to `lithos-implementation-plan.md` (Phase 12), `docs/eval-plan.md` (gates),
+to `implementation-plan.md` (Phase 12), `docs/eval-plan.md` (gates),
 `docs/tokenizer.md` (the freeze the spine runs through).
 
 Each item tags its **review §**, **deps**, **size** (S ≤1 day · M ≤1 week · L
@@ -228,7 +228,7 @@ trace-length distribution across the harvested P0 datasets to set the target
 context (8k vs 16k — headroom vs cost), which also sets E2's SFT `seq_len` and
 feeds Part-B P1. **Done:** a 500M (or 100M proxy) trains stably at the extended
 context with intact short-context bpb; target length recorded. Belongs to the
-pretraining plan (`lithos-implementation-plan.md` Phase 12 Track S) — tracked
+pretraining plan (`implementation-plan.md` Phase 12 Track S) — tracked
 here because it fell out of this review chain.
 
 **Architecture decisions (settled 2026-07-04, from the Qwen-options discussion):**
@@ -364,7 +364,7 @@ it also sets E2's `seq_len`.
 
 - Source reviews: `docs/post-training-review.md` (machinery gaps → Waves 0–3),
   `docs/post-training-review-2.md` (integration seams + feedstock → Wave 4).
-- Phase context: `lithos-implementation-plan.md` Phase 12 (the family + TIR
+- Phase context: `implementation-plan.md` Phase 12 (the family + TIR
   recipe this operationalizes), Phase 11 (the test-bench lessons).
 - Gates & experiments frame: `docs/eval-plan.md`. Format→freeze dependency:
   `docs/tokenizer.md` §3.3.

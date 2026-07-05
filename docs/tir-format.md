@@ -197,4 +197,4 @@ change it.
   downstream epics E1/E3/E4/E7 all reference this spec.
 - Feeds: `docs/tokenizer.md` §3.3 (the reserved block this fills). Chat/mask
   precedent: `lithos/posttrain/chat_template.py`. Tools/runtime: Phase 12 in
-  `lithos-implementation-plan.md`.
+  `implementation-plan.md`.

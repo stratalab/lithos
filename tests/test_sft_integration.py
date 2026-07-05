@@ -98,10 +98,10 @@ def test_load_model_weights_roundtrip(tmp_path):
 
     torch.manual_seed(1)  # a differently-initialised destination
     dst = LithosForCausalLM(_tiny_model_cfg())
-    assert not all(torch.equal(a, b) for a, b in zip(src.parameters(), dst.parameters()))
+    assert not all(torch.equal(a, b) for a, b in zip(src.parameters(), dst.parameters(), strict=False))
 
     load_model_weights(ckpt, dst)  # loads weights only — no optimizer/RNG/data state
-    assert all(torch.equal(a, b) for a, b in zip(src.parameters(), dst.parameters()))
+    assert all(torch.equal(a, b) for a, b in zip(src.parameters(), dst.parameters(), strict=False))
 
 
 def test_checkpoint_embeds_arch_and_loads_size_agnostic(tmp_path):
@@ -118,4 +118,4 @@ def test_checkpoint_embeds_arch_and_loads_size_agnostic(tmp_path):
 
     # the loader rebuilds the right model + weights WITHOUT being told the shape
     loaded = load_model_from_checkpoint(ckpt)
-    assert all(torch.equal(a, b) for a, b in zip(src.parameters(), loaded.parameters()))
+    assert all(torch.equal(a, b) for a, b in zip(src.parameters(), loaded.parameters(), strict=False))

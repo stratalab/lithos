@@ -1,6 +1,6 @@
 # Lithos Data Construction — Working Reference
 
-Consolidates the data strategy (pre- **and** post-training) for the STEM-domain flagship. Companion to `lithos-implementation-plan.md` (Phases 9–12).
+Consolidates the data strategy (pre- **and** post-training) for the STEM-domain flagship. Companion to `implementation-plan.md` (Phases 9–12).
 
 > **Scope / status.** This is a *living working reference*, grounded in the open recipes named in §1.4 and §2 — it captures the consolidated knowledge and a roadmap, not yet the deep per-report extraction (concrete thresholds, exact mixes). That deeper digest — reading each report and pulling its specific filter constants and ablation results — is the future deepening flagged at the end. **All dataset names below need a per-dataset license + provenance check before they touch a keeper run**; sizes are approximate. Two provenance rules, at different layers: **raw pretraining text follows the §1.5 sourcing doctrine** (publicly available = ingestible; leaked/private = never); **generated data is open-teacher / human / self-generated only — nothing with proprietary-model provenance in the chain.**
 
@@ -227,7 +227,7 @@ In a verifiable domain we can **generate most of our own post-training data**: p
 
 ## Pointers
 
-- Plan: `lithos-implementation-plan.md` — Phase 9 (eval), Phase 10 (corpus + mix machinery), Phase 11 (post-training), Phase 12 (mix-sweep → 500M → 1B).
+- Plan: `implementation-plan.md` — Phase 9 (eval), Phase 10 (corpus + mix machinery), Phase 11 (post-training), Phase 12 (mix-sweep → 500M → 1B).
 - Design docs: `docs/eval-plan.md` (the measuring stick), `docs/quality-classifiers.md` (stage-4 rubrics + classifiers), `docs/tokenizer.md` (stage-11 STEM tokenizer design + retrain gates), `docs/post-training-review.md` + `docs/post-training-review-2.md` (Part-2 pipeline reviews: machinery gaps, then integration seams/feedstock), `corpus/math_overlap_report.md` (measured web-math overlap).
 - Code: `lithos/data/{pipeline,minhash,decontam,quality,documents,topicgraph}.py`, `lithos/evals/{benchmarks,scorecard,ablation}.py`, `scripts/{run_topic_graph,validate_seed_index}.py`.
 - **Future deepening:** read each §1.4 report and extract its concrete filter constants, dedup scoping, and ablation deltas into this doc (tagged adopt / adapt / skip).

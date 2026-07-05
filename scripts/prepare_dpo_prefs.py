@@ -20,17 +20,17 @@ Two modes (both self-contained / sovereign — no external labels, no GPT taint)
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import random
 from collections import Counter
 from pathlib import Path
 
 import torch
-from tokenizers import Tokenizer
-
 from lithos.model.generation import generate
 from lithos.posttrain.chat_template import render_prompt, special_ids
 from lithos.train.checkpoint import load_model_from_checkpoint
+from tokenizers import Tokenizer
 
 TOKENIZER = "artifacts/tokenizer/fineweb-edu-32k/tokenizer.json"
 _REP_WEIGHT = 0.3   # how much looping is penalised
@@ -56,7 +56,7 @@ def _repetition(s: str) -> float:
     t = _toks(s)
     if len(t) < 2:
         return 0.0
-    bigrams = list(zip(t, t[1:]))
+    bigrams = list(itertools.pairwise(t))
     return 1.0 - len(set(bigrams)) / len(bigrams)  # fraction of duplicate bigrams
 
 

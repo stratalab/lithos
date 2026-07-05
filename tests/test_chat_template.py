@@ -2,7 +2,6 @@
 
 import pytest
 from lithos.posttrain.chat_template import (
-    ROLE_TOKEN,
     Rendered,
     render_conversation,
     render_prompt,
@@ -65,14 +64,14 @@ def test_multi_turn_learns_every_assistant_turn_only():
     ]
     r = render_conversation(msgs, tok)
     # the only learned tokens are the two assistant contents (b, d) and their <|end|>s
-    learned = [tid for tid, m in zip(r.input_ids, r.loss_mask) if m]
+    learned = [tid for tid, m in zip(r.input_ids, r.loss_mask, strict=False) if m]
     assert learned == [
         *tok.encode("b").ids, _id("<|end|>"),
         *tok.encode("d").ids, _id("<|end|>"),
     ]
     # no system/user token is ever learned
     assert not any(
-        m and tid in (_id("<|system|>"), _id("<|user|>")) for tid, m in zip(r.input_ids, r.loss_mask)
+        m and tid in (_id("<|system|>"), _id("<|user|>")) for tid, m in zip(r.input_ids, r.loss_mask, strict=False)
     )
 
 

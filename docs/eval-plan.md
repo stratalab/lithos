@@ -1,7 +1,7 @@
 # Lithos Eval Plan — the measuring stick
 
 How we test every model in the family, at every lifecycle stage. Companion to
-`lithos-implementation-plan.md` (Phase 9 built the harness skeleton; Phase 12
+`implementation-plan.md` (Phase 9 built the harness skeleton; Phase 12
 adds the TIR battery) and `docs/data-construction.md` (Part 3 cross-refs here;
 the corpus build produces the bpb sets and problem banks this plan consumes).
 

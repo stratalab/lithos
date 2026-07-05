@@ -56,7 +56,7 @@ def test_roundtrip_code(tok):
 
 
 def test_roundtrip_math_symbols(tok):
-    s = "∑_{i=1}^{n} i = n(n+1)/2,  α+β ≤ γ,  π ≈ 3.14159,  ∫ f dx"  # noqa: RUF001
+    s = "∑_{i=1}^{n} i = n(n+1)/2,  α+β ≤ γ,  π ≈ 3.14159,  ∫ f dx"
     assert _roundtrip(tok, s) == s
 
 

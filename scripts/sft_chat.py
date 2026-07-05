@@ -15,11 +15,10 @@ from __future__ import annotations
 import argparse
 
 import torch
-from tokenizers import Tokenizer
-
 from lithos.model.generation import generate
 from lithos.posttrain.chat_template import render_prompt, special_ids
 from lithos.train.checkpoint import load_model_from_checkpoint
+from tokenizers import Tokenizer
 
 TOKENIZER = "artifacts/tokenizer/fineweb-edu-32k/tokenizer.json"
 PROMPTS = [

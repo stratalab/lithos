@@ -29,6 +29,7 @@ import hashlib
 import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -59,7 +60,7 @@ URL_FIELD_CANDIDATES = ("url", "URL", "uri", "source_url", "metadata.url")
 
 def get_field(doc: dict, dotted: str):
     """Fetch a possibly-nested field ("metadata.url")."""
-    cur = doc
+    cur: Any = doc
     for part in dotted.split("."):
         if not isinstance(cur, dict):
             return None

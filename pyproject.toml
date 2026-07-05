@@ -1,6 +1,6 @@
 [project]
 name = "lithos"
-version = "0.0.0"
+version = "0.1.0"
 description = "Lithos — a from-scratch family of small general-purpose language models (Strata ecosystem)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -64,11 +64,14 @@ src = ["lithos", "tests", "scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
-# Line length is enforced by the formatter; long config strings are allowed.
-ignore = ["E501"]
+# E501: line length is enforced by the formatter. RUF001-003: the ambiguous-unicode
+# checks fire on intentional math notation (σ, μ, …) in docstrings and comments.
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+"tests/**" = ["RUF012"]     # mutable class attrs are idiomatic in test fixtures
+"scripts/**" = ["SIM115"]   # entrypoint scripts may stream-open without a context manager
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

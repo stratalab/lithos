@@ -1,27 +1,38 @@
 # Lithos
 
-Lithos is a foundation-model engineering project in the Strata ecosystem: a from-scratch
-family of small, general-purpose language models built to **own and understand the full
-model lifecycle** — tokenizer, corpus, pretraining, evaluation, post-training, inference,
-and reproducible artifacts. It is explicitly *not* a frontier-scale effort.
+**Lithos is a from-scratch family of small, general-purpose language models** — the
+model foundry of the [Strata](docs/chisel.md) ecosystem. It exists to *own and
+understand the full model lifecycle*: tokenizer, corpus, pretraining, evaluation,
+post-training (incl. RL), inference, and reproducible artifacts. It is explicitly
+**not** a frontier-scale effort — the bet is a compact, cross-domain **STEM reasoner**
+(code · math · physics · engineering) that a small team can build, audit, and run on
+the edge.
 
-The architecture is a **modernized Llama** decoder-only transformer (RoPE, RMSNorm, SwiGLU,
-GQA-native, optional QK-norm, KV cache), trained across a size ladder: toy → 100M → 300M → 1B.
+The architecture is a **modernized-Llama / Qwen3-envelope** decoder-only transformer —
+RoPE, RMSNorm, SwiGLU, GQA-native, QK-norm, KV cache — trained across a size ladder:
 
-- **Requirements:** [`lithos-prd.md`](lithos-prd.md)
-- **Build plan:** [`lithos-implementation-plan.md`](lithos-implementation-plan.md)
+> **100M** (validated) → **500M** flagship → **1B** → **3B** (Qwen3-4B continued-pretrain hero)
+
+The from-scratch models and the Qwen-lineage hero share **one deployment recipe** — the
+same train loop, generation, and RLVR driver — verified by bit-exact Qwen3 weight import.
 
 ## Status
 
-**Phase 0 — repo & tooling skeleton.** Package layout, the configuration system, core
-utilities (seeding, device/dtype, atomic I/O, run-dir + JSONL logging), and lint/test/CI are
-in place. The model, data pipeline, training loop, evaluation, and inference land in later
-phases (see the build plan).
+The **full lifecycle is built and validated end-to-end at 100M scale**, not a skeleton:
 
-## Requirements
+- **Model** — the transformer + KV-cache generation.
+- **Tokenizer** — an owned 32k BPE + evaluation harness.
+- **Data pipeline** — canonical document schema, extractors (HTML/CNXML, PDF/Docling,
+  StackExchange, OpenStax, The-Stack code), dedup, decontam, quality classifier,
+  packing, sharding.
+- **Training** — loop, optimizer, scheduler, checkpointing, distributed, tracking.
+- **Evaluation** — bpb/perplexity, a frozen benchmark battery, ablation, scorecards.
+- **Post-training** — packed SFT, verifier-labeled DPO, and **GRPO/RLVR with
+  tool-integrated-reasoning** (reason → run code in a sandbox → use the result), all
+  exercised end-to-end.
+- **Serving** — generation + HF/Qwen3 export (bit-exact parity).
 
-- Python ≥ 3.11 (developed on 3.12)
-- [uv](https://docs.astral.sh/uv/) for dependency management
+~400 tests, green on `ruff` + `mypy` + `pytest`.
 
 ## Setup
 
@@ -29,54 +40,65 @@ phases (see the build plan).
 # Install uv: https://docs.astral.sh/uv/getting-started/installation/
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Create the environment and install dependencies.
-# On Linux with an NVIDIA GPU, the default torch wheel is CUDA-enabled.
-# Use --all-extras for the full dev env (eval = transformers, cloud = s3fs/gcsfs,
-# serve = fastapi). A single --extra installs ONLY that extra and drops the others.
-uv sync --all-extras
+# Full dev environment (adds the data/eval extras; on Linux+NVIDIA torch is CUDA-enabled).
+make install                    # == uv sync --extra data --extra eval
+uv sync --all-extras            # everything, incl. pdf (docling) and serve
 
-# CPU-only environment (CI, or a machine without a GPU):
+# CPU-only (a machine without a GPU):
 UV_TORCH_BACKEND=cpu uv sync
+```
+
+## Quickstart
+
+```bash
+uv run python scripts/train_tokenizer.py --config configs/tokenizer/bpe-32k.yaml
+uv run python scripts/train_model.py     --config configs/train/100m.yaml
+uv run python scripts/run_evals.py       --config configs/eval/lithos-100m.yaml --checkpoint <ckpt>
+uv run python scripts/train_sft.py       --config configs/sft/lithos-100m-packed.yaml
 ```
 
 ## Storage & secrets
 
-Durable artifacts (shards, checkpoints, exports) live in an object store
-configured by `configs/storage.yaml` (local by default). For a cloud bucket,
-copy `.env.example` to `.env` (git-ignored) and set the R2/S3 credentials +
-`LITHOS_STORAGE_BASE_URI`; the storage layer loads `.env` automatically. Move
-data with `python scripts/sync.py push|pull <src> <dst>`.
+Durable artifacts (shards, checkpoints, exports) live in an object store configured by
+`configs/storage.yaml` (local by default). For a cloud bucket, copy `.env.example` to
+`.env` (git-ignored) and set the R2/S3 credentials + `LITHOS_STORAGE_BASE_URI`; the
+storage layer loads `.env` automatically. Move data with `python scripts/sync.py`. The
+end-to-end storage tiering (local HDD → NVMe → R2) is in
+[`docs/chisel-lithos-r2-contract.md`](docs/chisel-lithos-r2-contract.md).
 
 ## Quality gates
 
 ```bash
-uv run ruff check .
-uv run pytest
-uv run mypy lithos   # optional
+make check      # ruff + mypy + pytest   (or: make lint / typecheck / test)
 ```
 
 ## Repository layout
 
 ```text
 lithos/            # the Python package
-  model/           # modernized-Llama transformer (Phase 1)
-  tokenizer/       # byte-level BPE 32k tokenizer (Phase 2)
-  data/            # documents → filters → tokenized shards → packed loader (Phase 3)
-  train/           # optimizer, scheduler, loop, checkpointing, logging (Phases 3–4)
-  evals/           # perplexity, samples, lm-eval-harness path (Phase 5)
-  posttrain/       # supervised fine-tuning (Phase 10)
-  serve/           # generation, FastAPI, HF/Qwen3 export (Phase 7)
-  utils/           # config, seed, device, io, checks
-configs/           # YAML configs (model / tokenizer / data / train / eval / posttrain)
-corpus/            # corpus recipes and manifests
+  model/           # modernized-Llama / Qwen3-envelope transformer + generation
+  tokenizer/       # owned 32k BPE tokenizer + eval harness
+  data/            # documents → extract → filter → dedup → tokenize → packed shards
+  train/           # optimizer, scheduler, loop, checkpointing, distributed, logging
+  evals/           # bpb/perplexity, benchmark battery, ablation, scorecards
+  posttrain/       # SFT, DPO, GRPO/RLVR, TIR rollout, verifier, sandbox
+  serve/           # generation, HF/Qwen3 export/import
+  utils/           # config, seed, device, io, storage, checks
+configs/           # YAML configs (model / tokenizer / data / train / eval / sft / dpo / grpo)
+corpus/            # the Canon (seed_index.csv) + acquisition specs + task banks
 scripts/           # runnable entrypoints
 tests/             # unit + integration tests
-docs/              # architecture, corpus, training, evaluation, ...
-model_cards/       # per-model cards
+docs/              # see docs/README.md for the index
 runs/              # training run outputs (git-ignored)
 ```
 
+## Documentation
+
+See [`docs/README.md`](docs/README.md) for the full index — the PRD, the build plan,
+architecture/design notes, the post-training specs, and the Strata-ecosystem handoffs
+(Chisel, the R2 contract, Moho).
+
 ## License
 
-Apache-2.0. Training-data licensing and provenance (incl. the Nemotron-CC synthetic-data
-disclosure) are tracked in the PRD (§14, §26.2).
+[Apache-2.0](LICENSE). Training-data licensing and provenance are tracked in the PRD
+([`docs/prd.md`](docs/prd.md)) and the Canon (`corpus/seed_index.csv`).

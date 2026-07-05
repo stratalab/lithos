@@ -225,6 +225,6 @@ transformers.
   `configs/{sft,dpo,grpo}/*.yaml`.
 - Doctrine: `docs/data-construction.md` Part 2 (stages, inventory, sovereignty
   filter, self-generation engine); banked Phase-11 lessons in
-  `lithos-implementation-plan.md`.
+  `implementation-plan.md`.
 - Gates: `docs/eval-plan.md` (regression gates, parity frontier, reward-hacking
   audit). Tokenizer dependency: `docs/tokenizer.md` §3.3 (reserved block).
