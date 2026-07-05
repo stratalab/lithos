@@ -152,6 +152,20 @@ role) and are **excluded from RL reward banks** unless a deterministic check
 exists. Related: registry `common_mistakes` instantiated as realistic wrong
 solutions are natural **DPO negatives** (E8 preference pairs).
 
+**CH-12 · Canon-anchored provenance (the Lithos Canon).** `corpus/seed_index.csv`
+— the version-controlled bibliography of every source allowed into the corpus —
+is the **Lithos Canon**, and Chisel's referent. Every record's `source_id`
+(CH-10) MUST resolve to a Canon entry (the book/source it was mined or generated
+from), so **every problem and reasoning trace is auditable back to one or more
+canonical references** — a provenance property essentially no open model can show.
+Consequences: the sourcing tier (CH-5) flows automatically from the Canon entry's
+`tier` column (the export gate is mechanical, not re-judged per record); the
+coverage ledger (CH-8) rolls up by Canon entry, so "which books are under-mined"
+is a query; and a record whose `source_id` doesn't resolve to a Canon entry
+defaults to `reference_only` — nothing enters training unanchored. The Canon is
+then the single enforcement surface: to allow a source is to add a row; to audit
+a trace is to follow its `source_id` home.
+
 ## 4. Non-functional requirements
 
 - **Unit economics visibility:** cost per verified problem and per kept trace,

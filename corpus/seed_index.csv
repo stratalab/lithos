@@ -231,3 +231,8 @@ naturalproofs,corpus,expository,math,proofs,research,NaturalProofs NL theorem st
 knzhou-physics,problems,problems,physics,problem-solving,ug,Kevin Zhou physics olympiad handouts + solutions,Zhou,https://knzhou.github.io/,grey,official-free online; ~1000 problems,3M,P1,4,free-web,indexed
 openfoam,corpus,code,eng,cfd,research,OpenFOAM CFD solver + tutorials/docs,OpenFOAM Foundation,https://github.com/OpenFOAM/OpenFOAM-dev,green,GPL; physics-via-code,0.3B,P2,-,scrape,indexed
 su2,corpus,code,eng,cfd-multiphysics,research,SU2 multiphysics simulation suite + tutorials,SU2,https://github.com/su2code/SU2,green,LGPL,0.15B,P2,-,scrape,indexed
+harris-quant-analysis,book,expository,chem,analytical,ug,Quantitative Chemical Analysis,Harris,isbn:TBD,grey,analytical-chem gap fill,0.35M,P1,4,lawful-copy,indexed
+skoog-instrumental,book,expository,chem,instrumental-analysis,ug,Principles of Instrumental Analysis,Skoog/Holler/Crouch,isbn:TBD,grey,,0.3M,P2,4,lawful-copy,indexed
+carey-sundberg-organic,book,expository,chem,organic,grad,Advanced Organic Chemistry,Carey & Sundberg,isbn:TBD,grey,grad organic depth,0.4M,P2,4,lawful-copy,indexed
+nptel,dump,mixed,xdomain,course-materials,mixed,NPTEL free courses (IIT lectures + assignments + solutions; eng-heavy),NPTEL,https://nptel.ac.in,grey,free-to-view; IIT copyright,5B,P1,4,scrape,indexed
+stanford-online,dump,mixed,xdomain,course-materials,mixed,Stanford Engineering Everywhere + online course materials,Stanford,https://online.stanford.edu,grey,free-to-view,1B,P2,4,scrape,indexed
