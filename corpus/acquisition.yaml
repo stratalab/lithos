@@ -27,8 +27,13 @@ waves:
   physeng:
     - pes2o
     - openstax
+  # Code wave. Real-code source = The Stack v1 dedup STEM-language slice (raw GitHub
+  # code, per-language, permissive-licensed) — NOT nemotron-pretraining-code-v2, which
+  # is deferred (gated-manual + largely synthetic; see its spec). Split: small STEM
+  # langs fit the current drive now; Python + notebooks are bulk (larger drive).
   p1:
-    - nemotron-pretraining-code-v2
+    - the-stack-stem-small
+    - the-stack-stem-python
     - nemotron-cc-code
     - mathpile
 
@@ -101,6 +106,33 @@ specs:
     route: hf
     repo: nvidia/Nemotron-Pretraining-Code-v2
     est_gb: 650
+    # DEFERRED — superseded by the-stack-stem for real code. This one is gated-manual
+    # AND largely synthetic (Synthetic-QA/Review/Rewriting/Transpilation configs, not
+    # raw code) AND not language-partitioned. Revisit later as code-REASONING data for
+    # the SFT/RLVR track, filtered by its language field. Not in a wave.
+    notes: DEFERRED — superseded by the-stack-stem (real code > synthetic); gated-manual
+  # Real GitHub code (the StarCoder v1 source), per-language dirs, permissive-licensed
+  # + secret-scanned. Split by size so the small STEM langs land on the current drive.
+  the-stack-stem-small:
+    route: hf
+    repo: bigcode/the-stack-dedup
+    include:
+      - "data/r/*"
+      - "data/matlab/*"
+      - "data/julia/*"
+      - "data/fortran/*"
+    est_gb: 20
+    index_ids: [the-stack-stem]
+    notes: small STEM langs (R/MATLAB/Julia/Fortran) — fits the current drive now
+  the-stack-stem-python:
+    route: hf
+    repo: bigcode/the-stack-dedup
+    include:
+      - "data/python/*"
+      - "data/jupyter-notebook/*"
+    est_gb: 350
+    index_ids: [the-stack-stem]
+    notes: DEFERRED — Python (144 shards) + notebooks (312); larger drive + scientific-import filter
   nemotron-cc-code:
     route: hf
     repo: nvidia/Nemotron-CC-Code-v1

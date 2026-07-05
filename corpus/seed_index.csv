@@ -236,3 +236,4 @@ skoog-instrumental,book,expository,chem,instrumental-analysis,ug,Principles of I
 carey-sundberg-organic,book,expository,chem,organic,grad,Advanced Organic Chemistry,Carey & Sundberg,isbn:TBD,grey,grad organic depth,0.4M,P2,4,lawful-copy,indexed
 nptel,dump,mixed,xdomain,course-materials,mixed,NPTEL free courses (IIT lectures + assignments + solutions; eng-heavy),NPTEL,https://nptel.ac.in,grey,free-to-view; IIT copyright,5B,P1,4,scrape,indexed
 stanford-online,dump,mixed,xdomain,course-materials,mixed,Stanford Engineering Everywhere + online course materials,Stanford,https://online.stanford.edu,grey,free-to-view,1B,P2,4,scrape,indexed
+the-stack-stem,corpus,code,code,stem-code,mixed,The Stack v1 dedup: real GitHub code STEM-language slice (Python/R/MATLAB/Julia/Fortran/notebooks),BigCode/Software Heritage,hf:bigcode/the-stack-dedup,green,permissive-licensed; secret-scanned; per-language dirs,80B,P1,-,hf,indexed
