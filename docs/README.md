@@ -5,6 +5,7 @@
 - [Implementation plan](implementation-plan.md) — the phased build plan
 
 ## Architecture & design
+- [Architecture audit](architecture-audit.md) — Lithos vs Qwen3, component-by-component + the applied default fixes
 - [Tokenizer](tokenizer.md) — the 32k STEM BPE design
 - [TIR format](tir-format.md) — tool-integrated-reasoning tokens + loss masking (read before writing TIR data)
 - [Evaluation plan](eval-plan.md) — the frozen battery + parity-frontier anchors

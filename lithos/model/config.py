@@ -38,11 +38,11 @@ class ModelConfig(BaseModel):
     head_dim: int = 0  # 0 -> auto (hidden // n_heads); set to decouple (e.g. Qwen3-0.6B: 128)
     intermediate_size: int = 0  # 0 -> auto (~8/3 * hidden, rounded to 256)
     seq_len: int = 512
-    rope_theta: float = 10000.0
-    qk_norm: bool = False
+    rope_theta: float = 1000000.0  # Qwen3 default (1e6); set 1e4 for short-context experiments
+    qk_norm: bool = True  # Qwen3 envelope has qk-norm; False exports as Llama (serve/export.py)
     tie_embeddings: bool = True
-    dropout: float = 0.0
-    rms_eps: float = 1e-5
+    dropout: float = 0.0  # Qwen3 uses none; a nonzero value diverges from the envelope
+    rms_eps: float = 1e-6  # Qwen3 value (classic Llama is 1e-5)
     init_std: float = 0.02
     pad_vocab_to: int = 128
     attn_backend: Literal["sdpa", "eager"] = "sdpa"

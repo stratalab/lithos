@@ -15,7 +15,7 @@ from torch import nn
 class RotaryEmbedding(nn.Module):
     inv_freq: torch.Tensor  # registered buffer; annotated for type checkers
 
-    def __init__(self, head_dim: int, theta: float = 10000.0) -> None:
+    def __init__(self, head_dim: int, theta: float = 1000000.0) -> None:
         super().__init__()
         inv_freq = 1.0 / (theta ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim))
         self.register_buffer("inv_freq", inv_freq, persistent=False)
