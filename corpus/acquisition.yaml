@@ -27,6 +27,12 @@ waves:
   physeng:
     - pes2o
     - openstax
+  # Wave B1 — the executed pretraining gap-fill on the 2 TB /data2 volume (2026-07-05).
+  # Balance-first: cross-domain papers + the one premium math add; skips the redundant
+  # megamath whale. the-stack-stem-python joins once its scientific-import filter exists.
+  b1:
+    - pes2o
+    - nemotron-cc-math
   # Code wave. Real-code source = The Stack v1 dedup STEM-language slice (raw GitHub
   # code, per-language, permissive-licensed) — NOT nemotron-pretraining-code-v2, which
   # is deferred (gated-manual + largely synthetic; see its spec). Split: small STEM
@@ -51,7 +57,7 @@ specs:
     route: hf
     repo: nvidia/Nemotron-CC-Math-v1
     est_gb: 270
-    notes: access approved (stratalab); 270GB bulk — DEFERRED to the larger /data drive
+    notes: access approved (stratalab); Wave B1 — the one big math add, queued after pes2o, on /data2
   megamath:
     route: hf
     repo: LLM360/MegaMath
@@ -136,7 +142,7 @@ specs:
       - "data/jupyter-notebook/*"
     est_gb: 350
     index_ids: [the-stack-stem]
-    notes: DEFERRED — Python (144 shards) + notebooks (312); larger drive + scientific-import filter
+    notes: Wave B1 (last) — needs the scientific-import filter first; land ~150 of ~350 GB on /data2
   nemotron-cc-code:
     route: hf
     repo: nvidia/Nemotron-CC-Code-v1
@@ -145,12 +151,12 @@ specs:
   pes2o:
     route: hf
     repo: allenai/peS2o
-    # ~40M full-text papers — the real footprint is ~280 GB, NOT 80 GB. It filled
-    # the current /data on 2026-07-04 (763 GB drive). DEFERRED until the larger
-    # /data drive is installed; then pull locally. Same hold applies to the other
-    # bulk sources (megamath ~600 GB, nemotron-cc-math ~270 GB, Stack v2).
+    # ~40M full-text papers, ~280 GB — cross-domain STEM (physics/chem/eng/bio/CS/math),
+    # the biggest filler for the physics/eng gap. Filled the old 763 GB /data on
+    # 2026-07-04; now acquired locally to the 2 TB /data2 pretraining volume
+    # (Samsung 990 Pro, installed 2026-07-05). Wave B1, first pull.
     est_gb: 280
-    notes: DEFERRED — needs the larger /data drive (being installed); too big for the current drive
+    notes: Wave B1 — acquiring to /data2 (2 TB pretraining volume)
   openstax:
     # physics/chem/math CC-BY textbooks: GitHub osbooks-* tarballs (pinned to the
     # approved commit) -> CNXML -> EX-1 (lithos/data/markup_text). Output is
