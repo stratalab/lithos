@@ -10,6 +10,12 @@ authors = [{ name = "Strata Labs" }]
 dependencies = [
     "torch>=2.4",
     "numpy>=1.26",
+    # sympy: used by posttrain.verifier.check_symbolic (core). scipy: guaranteed member
+    # of the kind=code CHECKER_IMPORT_SET (Chisel authors harness tests against it).
+    # Both were previously only transitively present — pinned explicitly so a bump can't
+    # drop them and silently ImportError every RLVR rollout. (docs/chisel-f7-response.md §3)
+    "scipy>=1.11",
+    "sympy>=1.13",
     "safetensors>=0.4",
     "tokenizers>=0.20",
     "datasets>=3.0",

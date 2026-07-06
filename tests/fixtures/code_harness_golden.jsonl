@@ -1,0 +1,11 @@
+{"name": "happy_path_passes", "solution": "def add(a, b):\n    return a + b", "tests": "assert add(2, 3) == 5\nassert add(-1, 1) == 0", "expect": "pass"}
+{"name": "empty_stub_fails", "solution": "def add(a, b):\n    pass", "tests": "assert add(2, 3) == 5", "expect": "fail"}
+{"name": "wrong_answer_fails", "solution": "def add(a, b):\n    return a + b + 1", "tests": "assert add(2, 3) == 5", "expect": "fail"}
+{"name": "assert_with_message_passes", "solution": "def add(a, b):\n    return a + b", "tests": "assert add(2, 3) == 5, 'expected 5'", "expect": "pass"}
+{"name": "exception_in_solution_fails", "solution": "def solve():\n    raise ValueError('boom')", "tests": "solve()", "expect": "fail"}
+{"name": "shared_namespace_passes", "solution": "GRAVITY = 9.81", "tests": "assert abs(GRAVITY - 9.81) < 1e-9", "expect": "pass"}
+{"name": "numpy_available_passes", "solution": "import math\ndef circle_area(r):\n    return math.pi * r * r", "tests": "import numpy as np\nassert np.isclose(circle_area(2.0), np.pi * 4.0, atol=1e-9)", "expect": "pass"}
+{"name": "scipy_available_passes", "solution": "def f(x):\n    return x", "tests": "from scipy import integrate\nval, _ = integrate.quad(f, 0.0, 1.0)\nassert abs(val - 0.5) < 1e-9", "expect": "pass"}
+{"name": "sympy_available_passes", "solution": "EXPR = '(x - 1) * (x + 1)'", "tests": "import sympy\nx = sympy.Symbol('x')\nassert sympy.simplify(sympy.sympify(EXPR) - (x**2 - 1)) == 0", "expect": "pass"}
+{"name": "seeded_determinism_passes", "solution": "", "tests": "import random\nrandom.seed(0)\na = [random.random() for _ in range(5)]\nrandom.seed(0)\nb = [random.random() for _ in range(5)]\nassert a == b", "expect": "pass"}
+{"name": "infinite_loop_times_out", "solution": "", "tests": "while True:\n    pass", "timeout_s": 1.0, "expect": "fail"}

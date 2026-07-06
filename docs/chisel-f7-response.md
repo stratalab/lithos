@@ -124,8 +124,13 @@ Pinned by `verifier.check_code` → `sandbox.run_python`:
   single-threaded BLAS. **Process-isolation only — no network / filesystem jail** (the model's
   solution is adversarial-for-reward, not assumed adversarial-for-exploit). So tests must not
   touch network/fs and must be deterministic (seed any randomness). Output truncated at 8192 chars.
-- **Allowed imports = the GRPO runtime's libs** — stdlib + numpy/scipy/sympy today. **Pin the
-  exact set with us before authoring code tests** so a test can't import what the runner lacks.
+- **`CHECKER_IMPORT_SET` (PINNED, ask #6 settled):** `{stdlib, numpy, scipy, sympy}`. Installed
+  versions today: numpy 2.4.x, scipy 1.17.x, sympy 1.14.x (record these in `verify_seam`; floors
+  are pinned in `pyproject.toml`). This **resolves the scipy discrepancy in your doc** — §3 was
+  right (scipy is in), the earlier ask-#6 answer (`numpy + sympy`) was too narrow; **widen your
+  `CHECKER_IMPORT_SET` to add scipy** and tell G3 teachers scipy is available (`scipy.optimize`/
+  `integrate`/`linalg` are exactly what engineering keys want). scipy + sympy were previously only
+  *transitively* present — now explicit deps, so a bump can't silently drop them.
 
 **Two honest gaps to design around:**
 - `check_units` verifies **magnitude only** (not the response's own dimension, Pa vs kPa), and
