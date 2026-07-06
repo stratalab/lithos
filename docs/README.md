@@ -26,5 +26,6 @@
 - [Chisel](chisel.md) — the data factory (Lithos's one customer)
 - [Chisel → Lithos: producer migration](chisel-producer-migration.md) — what data code moves to Chisel
 - [Chisel → Lithos: R2 output contract](chisel-lithos-r2-contract.md) — the storage tiers + what Chisel writes to R2
+- [Chisel F7 response](chisel-f7-response.md) — Lithos-side decisions on the generation back-half (teacher doctrine, verifier seam, code harness, TIR schema, splits)
 - [Strata GPU hot tier](strata-gpu-hot-tier.md)
 - [Moho](moho.md) — the kernel/boundary leg

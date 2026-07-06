@@ -83,9 +83,15 @@ Lithos's `p0-sources.yaml` selects from this (the *mix weights* stay Lithos's em
 ```
 
 ### 3.4 TIR-SFT traces
-Same messages-JSONL, but assistant turns carry **`segments`** (`think` / `text` / `tool` / `tool_result`) using the exact string tokens `<think>`, `<|python|>`, `<|octave|>`, `<|/tool|>`, `<|tool_result|>`. **Authoritative schema: `docs/tir-format.md` §5** — write to that spec verbatim; Lithos renders + masks by token ID, so tool-result payloads must be their own segment (they're excluded from the loss).
+Same messages-JSONL, but assistant turns carry **`segments`** instead of flat `content`:
+```jsonc
+{"type":"think","text":str} | {"type":"text","text":str}       // learned
+{"type":"tool","runtime":"python|octave","code":str}           // learned
+{"type":"tool_result","output":str}                            // MASKED (Lithos appends + masks <|end|>)
+```
+**Authoritative schema: `docs/tir-format.md` §7** (the producer record) + **§2–§4** (the wire format it renders to). The **executable spec is `lithos/posttrain/tir_validate.validate_tir_record`** — import it and gate every trace. Lithos renders + masks by token ID, so the `tool_result` payload is its own segment (excluded from the loss).
 
-> **Lithos-side guard (to build before the first TIR trace is ingested):** because Lithos masks by token ID, a malformed `tool_result` segment would silently poison the loss mask — the worst kind of data bug, invisible until it degrades the model. Lithos will **validate incoming TIR traces at ingestion and fail loud** on malformed/mistyped segments rather than trust the producer. The validator is a backstop, not a license to be sloppy: write to §5 exactly.
+> **Shared ingestion gate (built):** because Lithos masks the `tool_result` span by token ID, a malformed/misplaced segment would silently poison the loss mask — invisible until it degrades the model. Both repos call `validate_tir_record` (Chisel before emitting, Lithos before rendering); golden fixtures at `tests/fixtures/tir_golden.jsonl`. The validator is a backstop, not a license to be sloppy: write to §7 exactly.
 
 ### 3.5 Preferences (`{prompt, chosen, rejected}` per line)
 ```jsonc
@@ -96,9 +102,9 @@ Same messages-JSONL, but assistant turns carry **`segments`** (`think` / `text` 
 ```jsonc
 { "id": "opt", "prompt": "str", "kind": "numeric|symbolic|code|units",
   "answer": "str", "tests": "code-harness (kind=code)", "units": "kPa (kind=units)",
-  "tol": 1e-6, "level": "opt", "year": 2024, "metadata": {} }
+  "tol": 1e-6, "level": "opt", "year": 2024, "family_id": "opt", "metadata": {} }
 ```
-`id` is optional (Lithos derives one from the prompt); `year` drives the RLVR-pool / eval-set split, so **stamp it** if you want contamination-safe eval separation.
+`id` is optional (Lithos derives one from the prompt). **`year`** drives the RLVR-pool / eval-set split (≤cutoff → train, >cutoff → eval); **`family_id`** keeps near-duplicates on one side of it — `taskbank.split_by_year` is family-aware (any family with a post-cutoff member goes wholly to eval) and `assert_disjoint` rejects a family that straddles the split. **Stamp both** for contamination-safe eval separation. `kind=code` `tests` are **Python**, run in `lithos/posttrain/sandbox` (solution + tests share one namespace, 5 s wall-clock, process-isolation only — no network/fs jail).
 
 ---
 

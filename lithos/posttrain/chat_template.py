@@ -20,6 +20,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from lithos.posttrain.tir_validate import validate_tir_message
+
 CHAT_TEMPLATE_VERSION = "lithos-chat-v1"
 
 # message role -> the special token that opens that turn
@@ -91,16 +93,14 @@ def tir_token_ids(tok: TokenizerLike) -> dict[str, int]:
     return {name: int(tid) for name, tid in ids.items()}  # type: ignore[arg-type]
 
 
-_SEGMENT_TYPES = ("think", "text", "tool", "tool_result")
-
-
 def _encode_segments(
     segments: list[dict], tok: TokenizerLike, tir: dict[str, int], sids: dict[str, int]
 ) -> tuple[list[int], list[bool]]:
     """Encode an assistant turn's TIR segments to (ids, mask), per docs/tir-format.md
     §4: think/text/tool are learned; the tool_result span (incl. its closing
     ``<|end|>``) is masked — the sandbox wrote it, the model must not learn to
-    predict it. All tokens inserted by ID (never string-parsed)."""
+    predict it. All tokens inserted by ID (never string-parsed). Segment structure is
+    guaranteed by the caller's ``validate_tir_message`` (the shared standalone gate)."""
     ids: list[int] = []
     mask: list[bool] = []
 
@@ -113,43 +113,22 @@ def _encode_segments(
         ids.extend(enc)
         mask.extend([learn] * len(enc))
 
-    def field(seg: dict, key: str) -> str:  # clear error on malformed data, not a bare KeyError
-        if key not in seg:
-            raise ValueError(f"{seg.get('type')!r} segment missing required field {key!r}")
-        value = seg[key]
-        if not isinstance(value, str):
-            raise ValueError(
-                f"{seg.get('type')!r} segment field {key!r} must be a string, got {type(value).__name__}"
-            )
-        return value
-
-    for i, seg in enumerate(segments):
-        if not isinstance(seg, dict):
-            raise ValueError(f"segment {i} must be a dict, got {type(seg).__name__}")
-        stype = seg.get("type")
+    for seg in segments:  # structure validated by validate_tir_message before we get here
+        stype = seg["type"]
         if stype == "think":
             emit(tir[THINK_OPEN], True)
-            emit_text(field(seg, "text"), True)
+            emit_text(seg["text"], True)
             emit(tir[THINK_CLOSE], True)
         elif stype == "text":
-            emit_text(field(seg, "text"), True)
+            emit_text(seg["text"], True)
         elif stype == "tool":
-            runtime = seg.get("runtime")
-            if runtime not in TOOL_OPEN:
-                raise ValueError(
-                    f"unknown tool runtime {runtime!r}; expected one of {list(TOOL_OPEN)}"
-                )
-            emit(tir[TOOL_OPEN[runtime]], True)
-            emit_text(field(seg, "code"), True)
+            emit(tir[TOOL_OPEN[seg["runtime"]]], True)
+            emit_text(seg["code"], True)
             emit(tir[TOOL_CLOSE], True)
-        elif stype == "tool_result":
+        else:  # tool_result (validated)
             emit(tir[TOOL_RESULT], False)
-            emit_text(field(seg, "output"), False)
+            emit_text(seg["output"], False)
             emit(sids["<|end|>"], False)  # result closer — masked
-        else:
-            raise ValueError(
-                f"unknown segment type {stype!r}; expected one of {list(_SEGMENT_TYPES)}"
-            )
     return ids, mask
 
 
@@ -157,24 +136,14 @@ def _encode_turn(
     msg: dict, tok: TokenizerLike, sids: dict[str, int]
 ) -> tuple[list[int], list[bool]]:
     """Encode one message to (ids, mask): role header (masked) + body + ``<|end|>``.
-    An assistant turn carries either flat ``content`` or a TIR ``segments`` list."""
+    An assistant turn carries either flat ``content`` or a TIR ``segments`` list.
+    Envelope + segment structure are gated by ``validate_tir_message`` (shared)."""
+    validate_tir_message(msg)
     role = msg["role"]
-    if role not in ROLE_TOKEN:
-        raise ValueError(f"unknown role {role!r}; expected one of {list(ROLE_TOKEN)}")
-    has_segments, has_content = "segments" in msg, "content" in msg
-    if has_segments and role != "assistant":
-        raise ValueError(f"{role!r} turn cannot have 'segments' — segments are assistant-only")
-    if has_segments and has_content:
-        raise ValueError("assistant turn has both 'content' and 'segments'; use exactly one")
-    if not has_segments and not has_content:
-        raise ValueError(f"{role!r} turn missing 'content'")
     ids: list[int] = [sids[ROLE_TOKEN[role]]]
     mask: list[bool] = [False]  # role header — always masked (supplied at inference)
-    if has_segments:
-        segments = msg["segments"]
-        if not isinstance(segments, list):
-            raise ValueError(f"'segments' must be a list, got {type(segments).__name__}")
-        seg_ids, seg_mask = _encode_segments(segments, tok, tir_token_ids(tok), sids)
+    if "segments" in msg:
+        seg_ids, seg_mask = _encode_segments(msg["segments"], tok, tir_token_ids(tok), sids)
         ids.extend(seg_ids)
         mask.extend(seg_mask)
         ids.append(sids["<|end|>"])

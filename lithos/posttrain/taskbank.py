@@ -35,7 +35,8 @@ VALID_KINDS = frozenset({"numeric", "symbolic", "code", "units"})
 class Task:
     """A verifiable problem. ``kind`` selects the checker; the fields it needs
     depend on the kind (``answer`` for numeric/symbolic/units, ``tests`` for code,
-    ``units`` for units). ``level``/``year`` drive the difficulty ladder + split."""
+    ``units`` for units). ``level``/``year`` drive the difficulty ladder + split;
+    ``family_id`` keeps near-duplicates on one side of that split."""
 
     id: str
     prompt: str
@@ -46,6 +47,7 @@ class Task:
     tol: float = 1e-6  # numeric/units relative tolerance
     level: str | None = None  # difficulty ladder rung
     year: int | None = None  # for the train/eval year split
+    family_id: str | None = None  # near-duplicate lineage; keeps a family whole across the split
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -76,6 +78,7 @@ def task_from_record(rec: dict[str, Any]) -> Task:
         tol=float(rec.get("tol", 1e-6)),
         level=rec.get("level"),
         year=rec.get("year"),
+        family_id=rec.get("family_id"),
         metadata=rec.get("metadata", {}),
     )
 
@@ -133,23 +136,46 @@ def filter_by_level(tasks: Iterable[Task], levels: Iterable[str]) -> list[Task]:
 def split_by_year(tasks: Iterable[Task], cutoff_year: int) -> tuple[list[Task], list[Task]]:
     """Split into (train ≤ cutoff, eval > cutoff). Tasks without a ``year`` go to
     train — only *dated* problems are eligible for the contamination-proof eval
-    pool (`eval-plan.md` principle 5)."""
+    pool (`eval-plan.md` principle 5).
+
+    **Family-aware:** if any member of a ``family_id`` lands in eval, the *whole*
+    family goes to eval — otherwise a pre-cutoff near-duplicate of a held-out problem
+    would leak into the training pool. Tasks without a ``family_id`` are their own
+    singleton family (behaviour unchanged)."""
+    tasks = list(tasks)
+    eval_families = {
+        t.family_id
+        for t in tasks
+        if t.family_id is not None and t.year is not None and t.year > cutoff_year
+    }
     train: list[Task] = []
     hold: list[Task] = []
     for t in tasks:
-        (hold if (t.year is not None and t.year > cutoff_year) else train).append(t)
+        post_cutoff = t.year is not None and t.year > cutoff_year
+        in_eval_family = t.family_id is not None and t.family_id in eval_families
+        (hold if (post_cutoff or in_eval_family) else train).append(t)
     return train, hold
 
 
 def assert_disjoint(train: Iterable[Task], evalset: Iterable[Task]) -> None:
-    """Structural guarantee that no problem leaks from eval into the RLVR pool.
-    Raises with the offending ids if the id sets intersect. Call it wherever an
-    RLVR pool and an eval set are built from the same acquisition."""
-    train_ids = {t.id for t in train}
-    overlap = train_ids & {t.id for t in evalset}
+    """Structural guarantee that no problem — and no near-duplicate *family* — leaks
+    from eval into the RLVR pool. Raises with the offending ids/families if the id
+    sets *or* the ``family_id`` sets intersect. Call it wherever an RLVR pool and an
+    eval set are built from the same acquisition."""
+    train = list(train)
+    evalset = list(evalset)
+    overlap = {t.id for t in train} & {t.id for t in evalset}
     if overlap:
         sample = sorted(overlap)[:5]
         raise ValueError(
             f"RLVR/eval pools share {len(overlap)} task id(s), e.g. {sample} — "
             "eval problems must never enter the training pool (eval-plan §5)"
+        )
+    train_fams = {t.family_id for t in train if t.family_id is not None}
+    fam_overlap = train_fams & {t.family_id for t in evalset if t.family_id is not None}
+    if fam_overlap:
+        sample = sorted(fam_overlap)[:5]
+        raise ValueError(
+            f"RLVR/eval pools share {len(fam_overlap)} family_id(s), e.g. {sample} — "
+            "near-duplicate lineage must not cross the split (eval-plan §5)"
         )

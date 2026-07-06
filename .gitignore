@@ -39,3 +39,8 @@ wandb/
 # Local credentials / env
 .env
 models/
+
+# Petra (mechanistic-interpretability leg) — kept local/exploratory for now
+docs/petra/
+docs/petra.md
+docs/petra-implementation-plan.md

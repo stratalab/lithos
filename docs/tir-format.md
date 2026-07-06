@@ -189,6 +189,49 @@ final inclusion (a tokenizer-freeze call, §2); the anti-gaming judge's rules
 (E1e); RLVR reward shaping (E1b/E4). Those consume this format; they don't
 change it.
 
+## 7. The producer record schema (`segments` JSONL) — authoritative for Chisel
+
+§2–§4 define the *wire* format (tokens, grammar, masking) the tokenizer sees. This section is
+the **producer JSONL** Chisel writes — the structured form `chat_template.render_conversation`
+turns into that wire format + loss mask. The **executable spec is
+`lithos/posttrain/tir_validate.validate_tir_record`**; both repos call it as the shared
+ingestion gate (R2 contract §3.4).
+
+An SFT/TIR line is one conversation:
+
+```
+{ "messages": [ message, ... ] }          # non-empty; extra top-level keys (e.g. source_id) ignored
+```
+
+A message is either a flat turn or a segmented assistant turn (**exactly one** of
+`content`/`segments`; `segments` are assistant-only):
+
+```
+{ "role": "system"|"user"|"assistant", "content": str }
+{ "role": "assistant", "segments": [ segment, ... ] }
+```
+
+A segment is one of four typed shapes — every declared field a **string**:
+
+```
+{ "type": "think",       "text": str }                          # learned
+{ "type": "text",        "text": str }                          # learned
+{ "type": "tool",        "runtime": "python"|"octave", "code": str }   # learned
+{ "type": "tool_result", "output": str }                        # MASKED (Lithos appends + masks its <|end|>)
+```
+
+The validator fails loud (never silently drops) on: both/neither of `content`/`segments`;
+`segments` on a non-assistant turn; unknown segment `type` or tool `runtime`; a missing or
+non-string field. **Ordering (grammar, §3):** a `tool_result` answers the immediately
+preceding `tool` call — emit them in call→result order (the validator checks structure, not
+this pairing, so keep it correct at the producer).
+
+*Why a standalone validator and not just "trust the schema":* the `tool_result` span is masked
+from the loss **by token ID**. A mistyped or misplaced segment would train the model on the
+sandbox's own output — an invisible corruption that only surfaces as a degraded model. So the
+gate runs at *both* ends against the same `validate_tir_record` (Chisel before emitting, Lithos
+before rendering); golden fixtures live at `tests/fixtures/tir_golden.jsonl`, tested by both.
+
 ## Pointers
 
 - Closes: `docs/post-training-review.md` §2.1 (tool turn), §2.2 (reasoning
