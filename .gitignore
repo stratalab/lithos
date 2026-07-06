@@ -44,4 +44,5 @@ models/
 docs/petra/
 docs/petra.md
 docs/petra-implementation-plan.md
-docs/petra-provenance-lithos.md
+# NB: docs/petra-provenance-lithos.md is TRACKED — it's the Lithos->Petra data-pipeline
+# contract (docindex schema, frozen-dedup, TracIn), consumed by Petra. Not exploratory.

@@ -79,7 +79,7 @@ Lithos's `p0-sources.yaml` selects from this (the *mix weights* stay Lithos's em
 ### 3.3 SFT (`{"messages": [...]}` per line)
 ```jsonc
 { "messages": [ {"role":"user","content":"..."}, {"role":"assistant","content":"..."} ],
-  "source_id": "<canon row>" }        // extra keys ignored by Lithos; keep source_id for provenance
+  "metadata": { "source_id": "<canon row>" } }   // Lithos reads only `messages`; source_id in metadata for provenance
 ```
 
 ### 3.4 TIR-SFT traces
@@ -169,4 +169,4 @@ Two gaps raised by Chisel and resolved into this doc: **(a)** page-level bibliog
 
 ---
 
-*Written from the Lithos repo at `d4fd97f`. Formats verified against the actual consumers (`sft_dataset`, `preference_dataset`, `taskbank`, `documents`); the TIR schema defers to `docs/tir-format.md` §5 as authoritative.*
+*Formats verified against the actual consumers (`sft_dataset`, `preference_dataset`, `taskbank`, `documents`, `tir_validate`). The TIR schema is authoritative in `docs/tir-format.md` **§7** (the producer record) + §2–§4 (wire + masking) — §5 is cross-family compatibility, not the schema.*
