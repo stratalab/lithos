@@ -126,12 +126,86 @@ Ordered by evidence strength, not by elegance.
 | | Leg | Impossibility | Status | Why here |
 |---|---|---|---|---|
 | **1** | **TIR / sandbox** | exact | **Live (MVP)** | Untouched by any of this. A calculator beats parametric arithmetic forever. Strongest leg. |
-| **2** | **R2** — KV/state offload | per-tenant | **Promote to first research track** | **Immune to the entire sweep.** All four negative results concern *fact retrieval into the output distribution*. R2 approximates *the same attention* — its success criterion is memory and latency, not bpb. It is a systems bet, and it fails only for engineering reasons. Moho serves R2. |
+| **2** | **R2** — KV/state offload | per-tenant | **Promote to first research track** | **Immune to the entire sweep.** All four negative results concern *fact retrieval into the output distribution*. R2 approximates *the same attention* — its success criterion is memory and latency, not bpb. It is a systems bet, and it fails only for engineering reasons. Moho serves R2 (§5.5 for the arithmetic). |
 | **3** | **In-context RAG over StrataDB** | mutable | **Build; gated on C-CTX for the reasoner** | Positive evidence, cheap, no kernels, ~1 GB index. Delivers mutability + citation-by-construction. |
 | **4** | **Verity** | a guarantee | Parked; seam landed | The **final authority on the support**. Applied *first*, to the raw logits — and final because every later stage (temperature/top-k/top-p) is monotone, i.e. can only *remove* mass. See §8.1. |
 | **5** | **Decode-loop retrieval** (kNN-LM / RETRO) | — | **Deferred. Resurrectable only by C-CTX (b).** | Four negative results. Do not build on a scarce-resource argument we have not yet measured. |
 
 **R2 before R1 was already banked as a possibility. The sweep makes it the decision.**
+
+---
+
+## 5.5 What StrataDB buys R1 — and what it doesn't
+
+§5 says "Moho serves R2 only" without saying what StrataDB is *for* in R1. It is for four
+things, and **none of them is speed.**
+
+### The arithmetic, because the answer is counterintuitive
+
+> **The cost of R1 is denominated in context tokens, not milliseconds. A kernel makes
+> milliseconds cheaper. It cannot make a token cheaper.**
+
+On the edge target, a 500M in fp16 is ~1 GB of weights, and decode is memory-bandwidth
+bound — every generated token reads the whole model. At 100–400 GB/s that is ~3–10 ms per
+token, so a 100-token answer costs **250 ms – 1 s**.
+
+Retrieval, by contrast, happens **once per request**, over text, before prefill:
+
+| | bytes touched | latency (100–400 GB/s) | share of a 100-token request |
+|---|---|---|---|
+| exact search, 10⁶ chunks × 512 d, fp32 | 2.05 GB, read once | 5.1–20.5 ms | **2.05 %** |
+| exact search, 10⁵ chunks (realistic on-device) | 205 MB | 0.5–2.1 ms | **0.20 %** |
+| generating 100 tokens | ~100 GB (weights × 100) | **0.25 – 1.0 s** | 100 % |
+
+**Retrieval is a fifth of a percent of request latency at realistic on-device scale, and
+about two percent even at a million chunks.** A custom kernel for it is Amdahl's law with
+the numerator filled in. Worse: a GPU hot tier means putting the index in VRAM, where it
+competes with the weights — spending the *scarcest resource on the device* to save ~7 ms out
+of ~300. That is **Gate 5 failing on our own infrastructure**, which is a decent sign the
+gates were worth writing down.
+
+The thing worth optimising is not the search. It is the **query embedding**: a trained
+encoder means shipping a *second model* to the edge, costing the same VRAM. The move worth
+testing is reusing the LM itself as the encoder rather than carrying a second set of
+weights. Untested; but that is the constraint that binds, not ANN throughput.
+
+### What StrataDB does buy
+
+| | Why numpy-and-files cannot |
+|---|---|
+| **Versioning / branching** | `datastore_version` is currently a content hash recomputed over every chunk. As a branch pointer, Petra's counterfactual **`scope: datastore`** (the defect caught in the handoff) becomes a cheap branch op instead of a full index rebuild. |
+| **Incremental mutability** | **This is the product.** After the sweep, R1 survives on the *mutable* clause — facts that change, or facts never seen. With files, changing one fact rebuilds the whole index. That is the opposite of the feature. |
+| **Graph expansion** | One-hop expansion after similarity top-k: retrieve a chunk, pull in its section siblings or cited references. Pure similarity starves relational recall. An R1 capability, above the token stream, needing **no kernel**. |
+| **Persistence past RAM** | Memory-mapped, SSD-backed — which is what an edge device actually has a lot of. |
+
+### Why Moho belongs to R2, in one sentence
+
+**R1 touches the database once per request and hands the model *text*. R2 touches it per
+token, per layer, per head, inside the attention path, and hands the model *tensors*.**
+That is where a gather sits on the critical path hundreds of times per token, where memory
+bandwidth is genuinely the wall, and where paged gather-attention, page-summary top-k, and
+one-hop CSR expansion pay for themselves.
+
+### The conditional, which is the interesting part
+
+**If C-CTX returns `displacement`, the GPU-hot-tier picture becomes right after all.** In
+that branch prepending is too expensive in the currency that matters, a context-free fact
+channel is the only route, kNN-LM comes back — and kNN-LM *is* per-token retrieval in the
+decode loop. Then the GPU-resident vectors and the custom gather are necessary, and Moho
+serves both legs.
+
+If C-CTX returns `capability`, none of that machinery is ever needed for facts.
+
+> **The experiment does not only pick the model architecture. It picks whether Moho has one
+> customer or two.**
+
+### Today's backing store
+
+`lithos/retrieval/index.py`: numpy + files (`vectors.npy`, `chunks.jsonl`,
+`datastore_manifest.json`). No StrataDB, no FAISS, no vector DB — the same thin-seam
+decision Chisel v0 made, for the same reason (StrataDB is too green to debug both sides of
+the fence at once). **`VectorIndex` is the seam**: the only thing that touches vectors.
+StrataDB's hot tier, or an ANN index, implements `search` and nothing above it changes.
 
 ---
 
@@ -144,7 +218,7 @@ Struck, with the reason, so we do not rediscover them:
   four published negative results.
 - **The frequency discriminator** (`composite-instrumentation.md` §6). Refuted; already retracted.
 - **The softmax-bottleneck justification for R1.** Partly absorbed by Xu 2023. Stop citing it.
-- **Moho as an R1 dependency.** Moho serves R2.
+- **Moho as an R1 dependency.** Moho serves R2. R1's search is 0.2–2% of request latency, and no kernel makes a *context token* cheaper (§5.5). What StrataDB buys R1 is versioning, mutability, graph expansion, and persistence — none of them speed.
 - **The token-level (15 TB) datastore.** Document chunks, not token keys.
 - **Per-token kNN instrumentation** — `p_knn_true`, neighbour lists, IVF-Flat, the λ-sweep-as-query.
   All of it was machinery for a mechanism we are not building. `runs` + `episodes` + a

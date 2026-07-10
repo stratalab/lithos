@@ -1,5 +1,19 @@
 # Moho — Requirements (2026-07-04)
 
+> **AMENDMENT (2026-07-10) — Moho serves R2, not R1.** Rev B moved retrieval *above* the
+> token stream (`docs/composite-plan.md` §1, §5.5), so R1 touches the datastore **once per
+> request** and hands the model *text*. At ~10⁵ document chunks that search is <2 ms against
+> a 250 ms–1 s generation: **0.2% of request latency (2% even at 10⁶ chunks), and no kernel
+> makes a context token cheaper.** Putting the index in VRAM would spend the device's scarcest resource to save
+> ~7 ms — Gate 5 failing on our own infrastructure. R2 is different in kind: it touches the
+> store **per token, per layer, per head, inside the attention path**, and hands the model
+> *tensors*. That is where §2's kernels earn their keep.
+>
+> **The one conditional:** if C-CTX returns `displacement`, decode-loop retrieval (kNN-LM)
+> returns — and *that* is per-token — so Moho would serve both legs after all. The
+> experiment picks whether Moho has one customer or two. Read §5.5 of the composite plan
+> before building anything here. References to R1 below stand only in that branch.
+
 **Moho is the boundary layer where model compute meets deep memory** — named
 for the Mohorovičić discontinuity between crust and mantle. In the stack's
 systems framing (Lithos = processor, StrataDB = memory hierarchy, tools =
