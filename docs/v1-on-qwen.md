@@ -166,9 +166,16 @@ of the following may leak into code or data:
    mask on the assistant turn). `assert_tokenizer_matches_model` guards the vocab contract.
    *Remaining:* run it against the real Qwen `tokenizer.json` (needs HF access) and repoint the
    configs — an ops step, not code. The decontam probes retokenize the same way.
-3. **E2.5 — retrieval-aware SFT**: reference blocks in the mix, plus **distractor** examples
-   the model must ignore. Required before any C-CTX `capability` verdict is believable
-   (`docs/composite-plan.md` §3 cause (c)).
+3. ✅ **DONE (converter)** — `lithos/posttrain/retrieval_sft.py`. Renders (query, contexts,
+   answer) examples into messages-JSONL through the **shared** `reference.build_messages`, so
+   the model trains on byte-identical the format it is served (a test asserts the SFT user turn
+   == the composite's). Three kinds: **grounded** (extract from the block), **distractor** (all
+   noise → abstain, `ABSTAIN_ANSWER` — the attributable behaviour), **mixed** (relevant + noise,
+   answer uses only the relevant, noise placed *after* the signal so it can't learn "use [1]").
+   Meets the tier gate: the block is a loss-masked *prompt* (`prompt_tier="restricted"` OK), the
+   answer is the target (`synthetic-verified` + `grounded_on`, which excludes distractor sources
+   — grounding on noise would be false provenance). *Remaining:* mine/generate the actual
+   examples and set the mix ratio — a data task, on the STEM task bank (§6 item 7).
 4. Vocab trim (§3).
 
 **Composite**
