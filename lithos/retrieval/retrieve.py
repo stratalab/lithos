@@ -49,6 +49,18 @@ class DocumentRetriever:
         by_budget = max(1, token_budget // per_chunk)
         return min(self.top_k, by_budget)
 
+    def _to_passage(self, row: int, score: float) -> Passage:
+        c = self.store.chunks[row]
+        return Passage(
+            text=c.text,
+            source_id=c.source_id,
+            record_id=c.record_id,
+            text_sha256=c.text_sha256,
+            tier=c.tier,
+            score=score,
+            chunk_sha256=c.chunk_sha256,
+        )
+
     def retrieve(self, query: str, *, token_budget: int) -> RetrievedContext:
         if token_budget <= 0 or len(self.store.chunks) == 0:
             return RetrievedContext()
@@ -61,17 +73,39 @@ class DocumentRetriever:
         for i, score in hits:
             if score <= self.min_score:
                 continue  # a zero/negative match is noise; prepending it only costs context
-            c = self.store.chunks[i]
-            passages.append(
-                Passage(
-                    text=c.text,
-                    source_id=c.source_id,
-                    record_id=c.record_id,
-                    text_sha256=c.text_sha256,
-                    tier=c.tier,
-                    score=score,
-                    chunk_sha256=c.chunk_sha256,
-                )
-            )
-            tokens += c.n_tokens
+            passages.append(self._to_passage(i, score))
+            tokens += self.store.chunks[i].n_tokens
         return RetrievedContext(passages=tuple(passages), tokens_used=tokens)
+
+
+class DistractorRetriever(DocumentRetriever):
+    """Returns the **least** similar chunks — the C-CTX control arm.
+
+    ``prepend`` differs from ``oracle`` only in whether the context is charged against the
+    completion budget, so their gap isolates *displacement*. But it does not tell you
+    whether the passage's **content** helped at all. Swapping in an irrelevant passage of
+    comparable length does: if ``prepend ≈ distractor``, retrieval is buying nothing and we
+    are only measuring the price of the tokens.
+
+    Implemented through the ``VectorIndex`` seam, not around it: searching ``-q`` ranks by
+    *most negative* similarity, and the reported score is negated back to the true value.
+
+    Caveat: chunks share ``max_tokens`` but not exact length, so the arms are matched on
+    context cost only approximately. ``EpisodeRecord.context_tokens`` records what each
+    actually spent — compare that, do not assume it.
+    """
+
+    def __init__(self, store: Datastore, embedder: Embedder, *, top_k: int = 4) -> None:
+        super().__init__(store, embedder, top_k=top_k, min_score=float("-inf"))
+        self.version = f"distractor-{embedder.version}-k{top_k}"
+
+    def retrieve(self, query: str, *, token_budget: int) -> RetrievedContext:
+        if token_budget <= 0 or len(self.store.chunks) == 0:
+            return RetrievedContext()
+
+        qvec = self.embedder.encode([query])[0]
+        hits = self.store.index.search(-qvec, self._budgeted_k(token_budget))
+
+        passages = tuple(self._to_passage(i, -score) for i, score in hits)
+        tokens = sum(self.store.chunks[i].n_tokens for i, _ in hits)
+        return RetrievedContext(passages=passages, tokens_used=tokens)

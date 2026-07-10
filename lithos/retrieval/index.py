@@ -18,9 +18,17 @@ Three properties earn their keep here, and each has a test:
    is necessary and *not sufficient* — it does not remove n-gram overlap — so C-CTX also
    reports gain bucketed by overlap.
 
-``NumpyExactIndex`` is exact inner-product search. At document-chunk scale (~1e6 chunks ×
-512 dims ≈ 2 GB fp32, or far less quantised) exact search is fast enough and has no recall
-knob to get wrong. An ANN index drops in behind the same call.
+**What backs the datastore today: numpy and files.** No StrataDB, no FAISS, no vector DB.
+Same reasoning as Chisel v0 — StrataDB is too green to debug both sides of the fence at
+once, so we go through a thin seam with a local backend and migrate when it is ready.
+``VectorIndex`` is that seam: the *only* thing that touches vectors. An ANN index, or
+StrataDB's hot tier, implements ``search`` and nothing above it changes.
+
+``NumpyExactIndex`` is exact inner-product search. Note that rev B changed what a datastore
+*is*: retrieval moved above the token stream, so this indexes **document chunks** (1e4–1e6),
+not the token-level KV store the original R1 imagined. At that scale exact search is
+milliseconds and has no recall knob to get wrong. The thing that genuinely needs StrataDB
+and Moho is **R2** (KV/state offload), which none of this touches.
 """
 
 from __future__ import annotations
@@ -29,7 +37,7 @@ import hashlib
 import json
 from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 
@@ -37,6 +45,17 @@ from lithos.retrieval.chunk import Chunk, chunk_document
 from lithos.retrieval.embed import Embedder
 from lithos.retrieval.types import assert_datastore_tier
 from lithos.utils.io import ensure_dir, write_json
+
+
+@runtime_checkable
+class VectorIndex(Protocol):
+    """The only thing that touches vectors. StrataDB / FAISS implement this and stop."""
+
+    def __len__(self) -> int: ...
+
+    def search(self, query: np.ndarray, k: int) -> list[tuple[int, float]]:
+        """Top-``k`` ``(row, score)`` by descending score. Rows index into ``Datastore.chunks``."""
+        ...
 
 
 class NumpyExactIndex:

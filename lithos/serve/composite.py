@@ -13,7 +13,8 @@ Per `docs/composite-plan.md` (rev B, post-literature-sweep) the architecture is:
   the server pauses, the sandbox executes, the result is injected and decoding
   resumes. The *judgment* to call the tool is trained in; the *execution* never can
   be. That single clause is why TIR survives the absorption test.
-- **The decode policy (Verity) is the last write to the logits.** Enforced in
+- **The decode policy (Verity) fixes the support.** Applied first, to the raw logits, and
+  final because every later stage only removes mass. Enforced in
   `lithos/model/generation._apply_decode_policy`, not by convention.
 
 Retrieval costs **context**, the scarcest resource a 500M has. ``CompositeResult``
@@ -152,6 +153,9 @@ class CompositeResult:
     prompt_tokens: int = 0
     #: Of ``prompt_tokens``, how many the retrieved passages ate. **The C-CTX instrument.**
     context_tokens: int = 0
+    #: Tokens the model was *allowed* to generate. Under a total budget L this is
+    #: ``L - prompt_tokens`` — so prepended passages shrink it, and that is displacement.
+    completion_budget: int = 0
     truncated: bool = False
 
     @property
@@ -176,6 +180,7 @@ class CompositeResult:
                 {"runtime": t.runtime, "code": t.code, "output": t.output} for t in self.tool_calls
             ],
             "context_tokens": self.context_tokens,
+            "completion_budget": self.completion_budget,
             "reasoning_tokens": self.reasoning_tokens,
         }
 
@@ -268,12 +273,25 @@ class CompositeModel:
         system: str | None = None,
         context_token_budget: int = 0,
         max_new: int = 128,
+        total_token_budget: int | None = None,
+        charge_context: bool = True,
         max_tool_calls: int = 2,
         temperature: float = 1.0,
         top_p: float | None = 0.95,
         generator: torch.Generator | None = None,
         use_cache: bool = True,
     ) -> CompositeResult:
+        """Generate one composite response.
+
+        ``total_token_budget`` (*L*) caps ``prompt + completion``, as a real deployment's
+        sequence length does. When set, the completion budget is ``L - prompt_tokens`` —
+        so retrieved passages, being part of the prompt, **displace** reasoning tokens.
+
+        ``charge_context=False`` is the **oracle arm** of C-CTX: the fact is delivered at
+        zero context cost, which is what a context-free fact channel (kNN-LM) would buy.
+        No mechanism can actually do this by prepending — that is the point. It is an
+        upper bound, and the gap between it and the prepend arm *is* the displacement.
+        """
         passages: tuple[Passage, ...] = ()
         context_tokens = 0
         if self.retriever is not None and context_token_budget > 0:
@@ -284,6 +302,12 @@ class CompositeModel:
 
         messages = self._build_messages(query, passages, system)
         prompt_ids = render_prompt(messages, self.tok)
+
+        if total_token_budget is not None:
+            spent = len(prompt_ids) - (0 if charge_context else context_tokens)
+            # A prompt that fills L leaves nothing to think with. That is not an error —
+            # it is the displacement result, and it must be observable rather than raised.
+            max_new = max(0, total_token_budget - spent)
 
         roll = tir_rollout(
             self.model,
@@ -335,5 +359,6 @@ class CompositeModel:
             ],
             prompt_tokens=len(prompt_ids),
             context_tokens=context_tokens,
+            completion_budget=max_new,
             truncated=roll.truncated,
         )

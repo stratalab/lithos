@@ -12,8 +12,8 @@ one with negative evidence lives below it (`docs/composite-plan.md` §1).
 
 from lithos.retrieval.chunk import Chunk, chunk_document
 from lithos.retrieval.embed import Embedder, HashingEmbedder
-from lithos.retrieval.index import Datastore, NumpyExactIndex
-from lithos.retrieval.retrieve import DocumentRetriever
+from lithos.retrieval.index import Datastore, NumpyExactIndex, VectorIndex
+from lithos.retrieval.retrieve import DistractorRetriever, DocumentRetriever
 from lithos.retrieval.types import (
     Passage,
     RetrievedContext,
@@ -25,6 +25,7 @@ from lithos.retrieval.types import (
 __all__ = [
     "Chunk",
     "Datastore",
+    "DistractorRetriever",
     "DocumentRetriever",
     "Embedder",
     "HashingEmbedder",
@@ -33,6 +34,7 @@ __all__ = [
     "RetrievedContext",
     "Retriever",
     "StubRetriever",
+    "VectorIndex",
     "assert_datastore_tier",
     "chunk_document",
 ]
