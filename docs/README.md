@@ -5,6 +5,8 @@
 - [Implementation plan](implementation-plan.md) — the phased build plan
 
 ## Architecture & design
+- [Composite model layer](composite-model-layer.md) — the absorption test; which of R1/R2/TIR/Verity are moats and which are scaffolding
+- [Composite instrumentation](composite-instrumentation.md) — the measurement apparatus: three capture points, three tables, C0–C5 as queries
 - [Architecture audit](architecture-audit.md) — Lithos vs Qwen3, component-by-component + the applied default fixes
 - [Tokenizer](tokenizer.md) — the 32k STEM BPE design
 - [TIR format](tir-format.md) — tool-integrated-reasoning tokens + loss masking (read before writing TIR data)
@@ -27,5 +29,7 @@
 - [Chisel → Lithos: producer migration](chisel-producer-migration.md) — what data code moves to Chisel
 - [Chisel → Lithos: R2 output contract](chisel-lithos-r2-contract.md) — the storage tiers + what Chisel writes to R2
 - [Chisel F7 response](chisel-f7-response.md) — Lithos-side decisions on the generation back-half (teacher doctrine, verifier seam, code harness, TIR schema, splits)
+- [Lithos → Petra: provenance](petra-provenance-lithos.md) — docindex schema, frozen dedup, TracIn reconstructibility
+- [Lithos → Petra: composite attribution](petra-composite-attribution.md) — the counterfactual `scope` defect, `provenance_channel`, and the attribution-calibration offer
 - [Strata GPU hot tier](strata-gpu-hot-tier.md)
 - [Moho](moho.md) — the kernel/boundary leg
