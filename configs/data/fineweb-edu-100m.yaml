@@ -14,6 +14,7 @@ sources:
     text_field: text
     quality_field: score      # FineWeb-Edu carries the edu-classifier score (0-5) per doc
     source_name: fineweb-edu
+    tier: open
     language: en
     license: odc-by
 

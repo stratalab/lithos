@@ -28,6 +28,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from lithos.data.shard import dtype_for_vocab
+from lithos.data.tiers import TIER_UNKNOWN, Tier, assert_prompt_source, assert_trainable
 from lithos.posttrain.chat_template import render_conversation
 from lithos.posttrain.decontam_gate import PostTrainDecontaminator, messages_text
 from lithos.tokenizer.inspect_tokenizer import load_tokenizer
@@ -45,8 +46,23 @@ class SFTSourceSpec(BaseModel):
 
     path: str  # messages-JSONL ({"messages": [{"role","content"}, ...]})
     name: str
+    # Acquisition tier of the **assistant targets** — the only spans that receive a
+    # gradient (`lithos.data.tiers`). Fail-closed.
+    tier: Tier = TIER_UNKNOWN
+    # Acquisition tier of the **prompts**, which the loss mask zeroes. May be
+    # `restricted`: a textbook problem statement is a stimulus, never a target, so the
+    # model is never trained to reproduce it. Defaults to `tier`.
+    prompt_tier: Tier | None = None
+    # Required when tier='synthetic-verified': the source_ids this was derived from.
+    grounded_on: list[str] = Field(default_factory=list)
     max_examples: int | None = Field(default=None, gt=0)  # None = no cap
     repeats: int = Field(default=1, ge=1)  # >=1; 0 would silently drop the source
+
+    def target_tier(self) -> str:
+        return self.tier
+
+    def masked_prompt_tier(self) -> str:
+        return self.prompt_tier or self.tier
 
 
 class SFTCorpusBuildConfig(BaseModel):
@@ -64,6 +80,7 @@ class SFTCorpusBuildConfig(BaseModel):
     # divert this fraction of each source to a disjoint val set; <1 so train is non-empty
     val_fraction: float = Field(default=0.0, ge=0.0, lt=1.0)
     decontam_probes: str | None = None  # probe JSONL (decontam.write_probes) for F2 screening
+    enforce_tiers: bool = True  # acquisition gate; disabling is deliberate and auditable
     license_notes: list[str] = Field(default_factory=list)
 
 
@@ -102,7 +119,9 @@ class SFTShardWriter:
         self._tok_buf.extend(token_ids)
         self._mask_buf.extend(1 if m else 0 for m in loss_mask)
         while len(self._tok_buf) >= self.tokens_per_shard:
-            self._write(self._tok_buf[: self.tokens_per_shard], self._mask_buf[: self.tokens_per_shard])
+            self._write(
+                self._tok_buf[: self.tokens_per_shard], self._mask_buf[: self.tokens_per_shard]
+            )
             del self._tok_buf[: self.tokens_per_shard]
             del self._mask_buf[: self.tokens_per_shard]
 
@@ -235,7 +254,9 @@ def _render_source(
     return examples, accounting
 
 
-def build_sft_corpus(cfg: SFTCorpusBuildConfig, *, now: dt.datetime | None = None) -> dict[str, Any]:
+def build_sft_corpus(
+    cfg: SFTCorpusBuildConfig, *, now: dt.datetime | None = None
+) -> dict[str, Any]:
     """Render + blend + pack the sources into dual-stream shards; write the train
     (and optional val) SFT manifests. Returns the train manifest.
 
@@ -246,6 +267,22 @@ def build_sft_corpus(cfg: SFTCorpusBuildConfig, *, now: dt.datetime | None = Non
     global shuffle is needed. Val is split per-source (stratified, exact).
     Reservoir-sampling an *uncapped* giant source is the next scale-up step.
     """
+    # Acquisition gate, before any work. It applies to the **assistant targets** — the
+    # only gradient-bearing spans — not to the prompts, which the loss mask zeroes. So a
+    # `restricted` textbook problem may be a prompt; it may not be a target. All sources
+    # are checked up front so a bad blend fails before a single token is rendered.
+    if cfg.enforce_tiers:
+        for src in cfg.sources:
+            assert_trainable(
+                {
+                    "id": src.name,
+                    "source": src.path,
+                    "tier": src.target_tier(),
+                    "metadata": {"grounded_on": src.grounded_on},
+                }
+            )
+            assert_prompt_source(src.masked_prompt_tier(), where=f"prompt of {src.name!r}")
+
     out = ensure_dir(cfg.output_dir)
     tokenizer = load_tokenizer(cfg.tokenizer_path)
     tokenizer_name = Path(cfg.tokenizer_path).parent.name
@@ -258,14 +295,20 @@ def build_sft_corpus(cfg: SFTCorpusBuildConfig, *, now: dt.datetime | None = Non
     )
 
     train_writer = SFTShardWriter(
-        out / "tokenized", tokens_per_shard=cfg.tokens_per_shard, dtype=dtype,
-        tokenizer_name=tokenizer_name, rel_base=out,
+        out / "tokenized",
+        tokens_per_shard=cfg.tokens_per_shard,
+        dtype=dtype,
+        tokenizer_name=tokenizer_name,
+        rel_base=out,
     )
     val_out = ensure_dir(out / "val") if cfg.val_fraction > 0 else None
     val_writer = (
         SFTShardWriter(
-            val_out / "tokenized", tokens_per_shard=cfg.tokens_per_shard, dtype=dtype,
-            tokenizer_name=tokenizer_name, rel_base=val_out,
+            val_out / "tokenized",
+            tokens_per_shard=cfg.tokens_per_shard,
+            dtype=dtype,
+            tokenizer_name=tokenizer_name,
+            rel_base=val_out,
         )
         if val_out is not None
         else None
@@ -292,10 +335,18 @@ def build_sft_corpus(cfg: SFTCorpusBuildConfig, *, now: dt.datetime | None = Non
     train_shards = train_writer.close()
     decontam_report = decon.report() if decon is not None else {}
     manifest = sft_corpus_manifest(
-        name=cfg.name, version=cfg.version, tokenizer=tokenizer_name, seq_len=cfg.seq_len,
-        num_examples=n_train, num_tokens=train_writer.total_tokens,
-        num_loss_tokens=train_writer.total_loss_tokens, mixture=mixture, shards=train_shards,
-        decontam=decontam_report, license_notes=cfg.license_notes, now=now,
+        name=cfg.name,
+        version=cfg.version,
+        tokenizer=tokenizer_name,
+        seq_len=cfg.seq_len,
+        num_examples=n_train,
+        num_tokens=train_writer.total_tokens,
+        num_loss_tokens=train_writer.total_loss_tokens,
+        mixture=mixture,
+        shards=train_shards,
+        decontam=decontam_report,
+        license_notes=cfg.license_notes,
+        now=now,
     )
     write_json(out / "sft_manifest.json", manifest)
 
@@ -304,10 +355,18 @@ def build_sft_corpus(cfg: SFTCorpusBuildConfig, *, now: dt.datetime | None = Non
         write_json(
             val_out / "sft_manifest.json",
             sft_corpus_manifest(
-                name=f"{cfg.name}-val", version=cfg.version, tokenizer=tokenizer_name,
-                seq_len=cfg.seq_len, num_examples=n_val, num_tokens=val_writer.total_tokens,
-                num_loss_tokens=val_writer.total_loss_tokens, mixture=mixture, shards=val_shards,
-                decontam=decontam_report, license_notes=cfg.license_notes, now=now,
+                name=f"{cfg.name}-val",
+                version=cfg.version,
+                tokenizer=tokenizer_name,
+                seq_len=cfg.seq_len,
+                num_examples=n_val,
+                num_tokens=val_writer.total_tokens,
+                num_loss_tokens=val_writer.total_loss_tokens,
+                mixture=mixture,
+                shards=val_shards,
+                decontam=decontam_report,
+                license_notes=cfg.license_notes,
+                now=now,
             ),
         )
     return manifest

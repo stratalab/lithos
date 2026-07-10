@@ -25,6 +25,7 @@ def corpus_manifest(
     shards: list[dict[str, Any]],
     license_notes: list[str],
     decontamination: dict[str, Any] | None = None,
+    tiers: dict[str, Any] | None = None,
     now: dt.datetime | None = None,
 ) -> dict[str, Any]:
     created = (now or dt.datetime.now(dt.UTC)).strftime("%Y-%m-%d")
@@ -40,6 +41,8 @@ def corpus_manifest(
         "filters": filters,
         "dedup": dedup,
         "decontamination": decontamination or {},
+        # Acquisition-tier attestation (lithos.data.tiers): what entered the weights.
+        "tiers": tiers or {},
         "license_notes": license_notes,
         "shards": shards,
     }

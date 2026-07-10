@@ -9,6 +9,7 @@ sources:
   - kind: jsonl
     paths: ["data/smoke/corpus.jsonl"]
     source_name: smoke
+    tier: open
     language: en
     license: synthetic
 

@@ -92,7 +92,7 @@ def test_packing_beats_dense_loss_fraction(tmp_path):
     seq_len = 64
     cfg = SFTCorpusBuildConfig(
         tokenizer_path=TOKENIZER, output_dir=str(tmp_path / "out"),
-        sources=[SFTSourceSpec(path=str(src), name="a")], seq_len=seq_len, tokens_per_shard=100_000,
+        sources=[SFTSourceSpec(path=str(src), name="a", tier="open")], seq_len=seq_len, tokens_per_shard=100_000,
     )
     packed_manifest = build_sft_corpus(cfg)
 

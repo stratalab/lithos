@@ -1,8 +1,12 @@
 """Document reading and the canonical record schema (PRD §8.3-8.4).
 
-Canonical record: ``{id, text, source, subset, language, license, metadata}``.
+Canonical record: ``{id, text, source, subset, language, license, tier, metadata}``.
 Readers stream raw dicts from JSONL(.zst), Parquet, or an HF dataset; ``normalize``
 fills defaults and drops records without usable text.
+
+``license`` is what the rightsholder granted; ``tier`` is how the bytes reached us and
+whether they may enter the weights (``lithos.data.tiers``). They are independent, and
+the second is the one with teeth.
 """
 
 from __future__ import annotations
@@ -17,6 +21,8 @@ from typing import Any, Literal
 
 import zstandard
 from pydantic import BaseModel, ConfigDict, Field
+
+from lithos.data.tiers import TIER_UNKNOWN, Tier
 
 
 class DocumentSource(BaseModel):
@@ -35,6 +41,9 @@ class DocumentSource(BaseModel):
     subset: str | None = None
     language: str = "en"
     license: str = "unknown"
+    # Acquisition tier. Undeclared -> "unknown" -> barred from the weights (fail-closed).
+    # Pydantic's Literal rejects a typo'd tier at config-load time, not mid-build.
+    tier: Tier = TIER_UNKNOWN
     limit: int | None = None
 
 
@@ -45,6 +54,7 @@ def normalize(
     subset: str | None,
     language: str,
     license: str,
+    tier: str = TIER_UNKNOWN,
     text_field: str = "text",
     quality_field: str | None = None,
 ) -> dict[str, Any] | None:
@@ -59,6 +69,7 @@ def normalize(
         "subset": record.get("subset", subset),
         "language": record.get("language", language),
         "license": record.get("license", license),
+        "tier": record.get("tier", tier),
         "metadata": record.get("metadata", {}),
     }
     if quality_field is not None:
@@ -137,6 +148,7 @@ def iter_documents(source: DocumentSource) -> Iterator[dict[str, Any]]:
             subset=source.subset,
             language=source.language,
             license=source.license,
+            tier=source.tier,
             text_field=source.text_field,
             quality_field=source.quality_field,
         )

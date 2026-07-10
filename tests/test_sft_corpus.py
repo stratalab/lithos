@@ -79,7 +79,7 @@ def _build(tmp_path, sources, **kw):
 def test_build_writes_manifest_and_shards(tmp_path):
     src = tmp_path / "a.jsonl"
     _write_jsonl(src, [_convo(f"question {i}", f"answer {i}") for i in range(20)])
-    _, manifest = _build(tmp_path, [SFTSourceSpec(path=str(src), name="a")])
+    _, manifest = _build(tmp_path, [SFTSourceSpec(path=str(src), name="a", tier="open")])
 
     assert manifest["kind"] == "sft_packed"
     assert manifest["num_examples"] == 20
@@ -101,8 +101,8 @@ def test_mixer_cap_and_repeats(tmp_path):
     _, manifest = _build(
         tmp_path,
         [
-            SFTSourceSpec(path=str(big), name="big", max_examples=10),
-            SFTSourceSpec(path=str(gems), name="gems", max_examples=5, repeats=4),
+            SFTSourceSpec(path=str(big), name="big", tier="open", max_examples=10),
+            SFTSourceSpec(path=str(gems), name="gems", tier="open", max_examples=5, repeats=4),
         ],
     )
     mix = manifest["mixture"]
@@ -114,7 +114,7 @@ def test_mixer_cap_and_repeats(tmp_path):
 def test_build_drops_overlong(tmp_path):
     src = tmp_path / "a.jsonl"
     _write_jsonl(src, [_convo("short", "ok"), _convo("x " * 500, "y " * 500)])
-    _, manifest = _build(tmp_path, [SFTSourceSpec(path=str(src), name="a")], seq_len=64)
+    _, manifest = _build(tmp_path, [SFTSourceSpec(path=str(src), name="a", tier="open")], seq_len=64)
     assert manifest["mixture"]["a"]["dropped_overlong"] == 1
     assert manifest["num_examples"] == 1
 
@@ -122,7 +122,7 @@ def test_build_drops_overlong(tmp_path):
 def test_build_val_split_is_disjoint(tmp_path):
     src = tmp_path / "a.jsonl"
     _write_jsonl(src, [_convo(f"q{i}", f"a{i}") for i in range(100)])
-    _, manifest = _build(tmp_path, [SFTSourceSpec(path=str(src), name="a")], val_fraction=0.2)
+    _, manifest = _build(tmp_path, [SFTSourceSpec(path=str(src), name="a", tier="open")], val_fraction=0.2)
     out = tmp_path / "out"
     val_manifest = json.loads((out / "val" / "sft_manifest.json").read_text())
     assert manifest["num_examples"] == 80
@@ -151,7 +151,7 @@ def test_build_screens_decontam_leak(tmp_path):
         ],
     )
     _, manifest = _build(
-        tmp_path, [SFTSourceSpec(path=str(src), name="a")], decontam_probes=str(probes)
+        tmp_path, [SFTSourceSpec(path=str(src), name="a", tier="open")], decontam_probes=str(probes)
     )
     assert manifest["mixture"]["a"]["decontam_dropped"] == 1
     assert manifest["num_examples"] == 2
@@ -178,4 +178,4 @@ def test_build_empty_raises(tmp_path):
     src = tmp_path / "a.jsonl"
     _write_jsonl(src, [{"messages": [{"role": "user", "content": "only a question"}]}])
     with pytest.raises(ValueError, match="no usable SFT examples"):
-        _build(tmp_path, [SFTSourceSpec(path=str(src), name="a")])
+        _build(tmp_path, [SFTSourceSpec(path=str(src), name="a", tier="open")])

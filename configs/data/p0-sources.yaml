@@ -13,6 +13,7 @@
 sources:
   # ---- math (the scarce, precious slice) ----
   - source_name: openwebmath
+    tier: open
     domain: math
     kind: parquet
     paths: ["/data/corpus-staging/openwebmath/data/*.parquet"]
@@ -20,6 +21,7 @@ sources:
     license: "mixed (CC-mined; per-doc)"
 
   - source_name: finemath-3plus
+    tier: open
     domain: math
     kind: parquet
     paths: ["/data/corpus-staging/finemath/finemath-3plus/*.parquet"]
@@ -28,6 +30,7 @@ sources:
     license: odc-by
 
   - source_name: proof-pile-2-algebraic-stack
+    tier: open
     domain: math
     kind: jsonl
     paths: ["/data/corpus-staging/proof-pile-2/algebraic-stack/train/*.zst"]
@@ -35,6 +38,7 @@ sources:
     license: "mixed (permissive code/math)"
 
   - source_name: proof-pile-2-arxiv
+    tier: lawful
     domain: math  # arXiv math+physics; Llemma's math-leaning arXiv slice
     kind: jsonl
     paths: ["/data/corpus-staging/proof-pile-2/arxiv/train/*.zst"]
@@ -43,6 +47,7 @@ sources:
 
   # ---- general-English glue (~15% target) ----
   - source_name: fineweb-edu
+    tier: open
     domain: glue
     kind: parquet
     paths: ["/data/corpus-staging/fineweb-edu/sample/100BT/*.parquet"]
@@ -52,6 +57,7 @@ sources:
 
   # ---- STEM Q&A (Stack Exchange, CC-BY-SA; extracted to canonical JSONL) ----
   - source_name: se-math.stackexchange.com
+    tier: open
     domain: math
     kind: jsonl
     paths: ["/data/corpus-staging/stackexchange-extracted/math.stackexchange.com/*.jsonl.zst"]
@@ -59,6 +65,7 @@ sources:
     license: cc-by-sa-4.0
 
   - source_name: se-mathoverflow.net
+    tier: open
     domain: math
     kind: jsonl
     paths: ["/data/corpus-staging/stackexchange-extracted/mathoverflow.net/*.jsonl.zst"]
@@ -66,6 +73,7 @@ sources:
     license: cc-by-sa-4.0
 
   - source_name: se-physics.stackexchange.com
+    tier: open
     domain: physics
     kind: jsonl
     paths: ["/data/corpus-staging/stackexchange-extracted/physics.stackexchange.com/*.jsonl.zst"]
@@ -73,6 +81,7 @@ sources:
     license: cc-by-sa-4.0
 
   - source_name: se-electronics.stackexchange.com
+    tier: open
     domain: eng
     kind: jsonl
     paths: ["/data/corpus-staging/stackexchange-extracted/electronics.stackexchange.com/*.jsonl.zst"]
@@ -80,6 +89,7 @@ sources:
     license: cc-by-sa-4.0
 
   - source_name: se-stats.stackexchange.com
+    tier: open
     domain: xdomain
     kind: jsonl
     paths: ["/data/corpus-staging/stackexchange-extracted/stats.stackexchange.com/*.jsonl.zst"]
@@ -87,6 +97,7 @@ sources:
     license: cc-by-sa-4.0
 
   - source_name: se-scicomp.stackexchange.com
+    tier: open
     domain: xdomain
     kind: jsonl
     paths: ["/data/corpus-staging/stackexchange-extracted/scicomp.stackexchange.com/*.jsonl.zst"]
@@ -94,6 +105,7 @@ sources:
     license: cc-by-sa-4.0
 
   - source_name: se-cstheory.stackexchange.com
+    tier: open
     domain: xdomain
     kind: jsonl
     paths: ["/data/corpus-staging/stackexchange-extracted/cstheory.stackexchange.com/*.jsonl.zst"]
@@ -101,6 +113,7 @@ sources:
     license: cc-by-sa-4.0
 
   - source_name: se-stackoverflow.com
+    tier: open
     domain: code
     kind: jsonl
     paths: ["/data/corpus-staging/stackexchange-extracted/stackoverflow.com/*.jsonl.zst"]

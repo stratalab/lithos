@@ -7,11 +7,13 @@ sources:
   - kind: jsonl
     paths: ["data/nemotron-sample/raw/hq_synthetic.jsonl"]
     source_name: nemotron-cc-hq-synthetic
+    tier: open
     language: en
     license: nvidia-open-data
   - kind: jsonl
     paths: ["data/nemotron-sample/raw/hq.jsonl"]
     source_name: nemotron-cc-hq
+    tier: open
     language: en
     license: nvidia-open-data
 

@@ -18,9 +18,11 @@ val_fraction: 0.02
 sources:
   - path: data/sft/dolly/train.jsonl
     name: dolly-general
+    tier: open   # Dolly: CC-BY-SA 3.0
     max_examples: 10000        # cap the giant general set
     repeats: 1
   - path: data/sft/dolly/val.jsonl
     name: gems-upsampled       # stand-in "small excellent" set for the smoke build
+    tier: open   # Dolly: CC-BY-SA 3.0
     max_examples: 500
     repeats: 3                 # upsample the gems so they aren't drowned

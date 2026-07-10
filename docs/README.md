@@ -32,6 +32,7 @@
 - [Chisel → Lithos: producer migration](chisel-producer-migration.md) — what data code moves to Chisel
 - [Chisel → Lithos: R2 output contract](chisel-lithos-r2-contract.md) — the storage tiers + what Chisel writes to R2
 - [Chisel F7 response](chisel-f7-response.md) — Lithos-side decisions on the generation back-half (teacher doctrine, verifier seam, code harness, TIR schema, splits)
+- [Chisel → Lithos: the tier gate](chisel-tier-gate.md) — acquisition (not license) decides what enters the weights; the gate follows the **gradient**, so restricted text may be a prompt but never a target
 - [Lithos → Petra: provenance](petra-provenance-lithos.md) — docindex schema, frozen dedup, TracIn reconstructibility
 - [Lithos → Petra: composite attribution](petra-composite-attribution.md) — the counterfactual `scope` defect, `provenance_channel`, and the attribution-calibration offer
 - [Strata GPU hot tier](strata-gpu-hot-tier.md)

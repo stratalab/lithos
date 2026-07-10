@@ -23,6 +23,7 @@ from lithos.data.manifest import corpus_manifest
 from lithos.data.minhash import MinHashConfig, MinHashDeduper
 from lithos.data.quality import QualityConfig, QualityFilter
 from lithos.data.shard import ShardWriter, dtype_for_vocab
+from lithos.data.tiers import WEIGHTS_ALLOWED_TIERS, assert_trainable, tier_of
 from lithos.data.tokenize import DocumentTokenizer
 from lithos.tokenizer.inspect_tokenizer import load_tokenizer
 from lithos.utils.io import ensure_dir, write_json
@@ -36,6 +37,20 @@ class DecontamConfig(BaseModel):
     enabled: bool = False
     probes_path: str | None = None  # JSONL of probe texts (see decontam.load_benchmark_probes)
     n: int = 13
+
+
+class TierPolicy(BaseModel):
+    """Which acquisition tiers may enter the weights (``lithos.data.tiers``).
+
+    On by default and fail-closed: an undeclared source cannot be trained on. Disabling
+    this is a deliberate, auditable act — hence ``enforce`` rather than an ``enabled``
+    flag that reads as optional.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enforce: bool = True
+    allowed: set[str] = Field(default_factory=lambda: set(WEIGHTS_ALLOWED_TIERS))
 
 
 class CorpusBuildConfig(BaseModel):
@@ -56,6 +71,7 @@ class CorpusBuildConfig(BaseModel):
     minhash: MinHashConfig = Field(default_factory=MinHashConfig)
     decontam: DecontamConfig = Field(default_factory=DecontamConfig)
     quality: QualityConfig = Field(default_factory=QualityConfig)
+    tiers: TierPolicy = Field(default_factory=TierPolicy)
     license_notes: list[str] = Field(default_factory=list)
 
 
@@ -95,10 +111,21 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
     )
 
     mixture: Counter[str] = Counter()
+    tier_counts: Counter[str] = Counter()
+    n_grounded = 0
     n_docs = 0
     n_held = 0
+    allowed = frozenset(cfg.tiers.allowed)
     for source in cfg.sources:
         for doc in iter_documents(source):
+            # The tier gate runs FIRST: a restricted or undeclared record reaching the
+            # tokenizer is a config error, not a filtering decision, and must not be
+            # silently rescued by dedup or quality dropping it later.
+            if cfg.tiers.enforce:
+                assert_trainable(doc, allowed=allowed)
+            tier_counts[tier_of(doc)] += 1
+            if doc.get("metadata", {}).get("grounded_on"):
+                n_grounded += 1
             if qual is not None and not qual.keep(doc):
                 continue
             if dedup is not None and dedup.is_duplicate(doc["text"]):
@@ -136,6 +163,13 @@ def build_corpus(cfg: CorpusBuildConfig, *, now: Any = None) -> dict[str, Any]:
         },
         shards=shards,
         license_notes=cfg.license_notes,
+        # The attestation: a manifest that proves the corpus carries zero `restricted`
+        # documents, and says plainly how many synthetics were grounded on a source.
+        tiers={
+            "policy": {"enforce": cfg.tiers.enforce, "allowed": sorted(allowed)},
+            "counts": dict(tier_counts),
+            "synthetic_grounded": n_grounded,
+        },
         now=now,
     )
     write_json(out / "corpus_manifest.json", manifest)
