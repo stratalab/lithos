@@ -499,7 +499,7 @@
             <div class="node node--parked">
               <span class="who">Verity · policy</span>
               <span class="what">mask logits</span>
-              <span class="how">deterministic · the last write</span>
+              <span class="how">deterministic · fixes the support</span>
               <div class="chips"><span class="chip chip--substrate">a guarantee</span></div>
             </div>
             <span class="arrow">▸</span>
@@ -510,8 +510,12 @@
             </div>
           </div>
           <p class="rule-note">
-            <b>Verity must still be the last write.</b> A guarantee that anything downstream can
-            overturn is not a guarantee.
+            <b>Verity fixes the support</b> — applied <em>first</em>, to the raw logits, and final
+            because every later stage (temperature, top-k, top-p) is <b>monotone</b>: each can only
+            <em>remove</em> mass, never add it. Applying it last is equally safe and strictly worse —
+            nucleus sampling would collapse the support onto the very token the policy is about to
+            ban. The doctrine said “last write”; building it proved the property is <b>mass-removal</b>,
+            and a test now enforces it.
           </p>
 
           <p class="eyebrow" style="margin:.5rem 0 -.4rem">The tool loop — per segment · <span style="color:var(--accent)">untouched by the sweep</span></p>

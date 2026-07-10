@@ -19,6 +19,8 @@ skipped where unavailable.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import shutil
 import signal
@@ -28,11 +30,52 @@ import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from typing import Any, Final
 
 DEFAULT_TIMEOUT_S = 5.0
 DEFAULT_MEMORY_MB = 2048  # generous — numpy/scipy reserve large virtual address space
 MAX_OUTPUT_CHARS = 8192  # truncate captured output (context safety + a reward-hacking surface)
+
+#: The libraries a `kind=code` checker (and a TIR tool call) may rely on. Pinned with
+#: Chisel — a key computed in the data factory must match the key GRPO checks and the
+#: answer the server serves. See `docs/chisel-f7-response.md` §3.
+CHECKER_IMPORT_SET: Final[frozenset[str]] = frozenset({"stdlib", "numpy", "scipy", "sympy"})
+
+_PINNED_PACKAGES: Final[tuple[str, ...]] = ("numpy", "scipy", "sympy")
+
+
+def _package_version(name: str) -> str:
+    try:
+        return version(name)
+    except PackageNotFoundError:  # pragma: no cover - a missing core dep is a broken install
+        return "MISSING"
+
+
+def tool_env_fingerprint() -> dict[str, Any]:
+    """Everything that can change a tool call's *answer*, in one dict.
+
+    A composite model's identity includes ``tool_env_sha`` (`docs/composite-model-layer.md`
+    §7.1) because a number computed by the sandbox is part of the model's output. Bump
+    any of these and the served model is a different model, whatever the weights say.
+    """
+    return {
+        "python": ".".join(str(v) for v in sys.version_info[:3]),
+        "packages": {p: _package_version(p) for p in _PINNED_PACKAGES},
+        "import_set": sorted(CHECKER_IMPORT_SET),
+        "timeout_s": DEFAULT_TIMEOUT_S,
+        "memory_mb": DEFAULT_MEMORY_MB,
+        "max_output_chars": MAX_OUTPUT_CHARS,
+        # Determinism knobs: the reason a key computed in Chisel matches one computed here.
+        "env": {"PYTHONHASHSEED": "0", "OPENBLAS_NUM_THREADS": "1"},
+    }
+
+
+def tool_env_sha() -> str:
+    """Stable sha256 of :func:`tool_env_fingerprint` — the identity tuple's 4th component."""
+    blob = json.dumps(tool_env_fingerprint(), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True)

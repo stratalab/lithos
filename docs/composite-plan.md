@@ -128,7 +128,7 @@ Ordered by evidence strength, not by elegance.
 | **1** | **TIR / sandbox** | exact | **Live (MVP)** | Untouched by any of this. A calculator beats parametric arithmetic forever. Strongest leg. |
 | **2** | **R2** — KV/state offload | per-tenant | **Promote to first research track** | **Immune to the entire sweep.** All four negative results concern *fact retrieval into the output distribution*. R2 approximates *the same attention* — its success criterion is memory and latency, not bpb. It is a systems bet, and it fails only for engineering reasons. Moho serves R2. |
 | **3** | **In-context RAG over StrataDB** | mutable | **Build; gated on C-CTX for the reasoner** | Positive evidence, cheap, no kernels, ~1 GB index. Delivers mutability + citation-by-construction. |
-| **4** | **Verity** | a guarantee | Parked, unchanged | Still the last write to the logits. |
+| **4** | **Verity** | a guarantee | Parked; seam landed | The **final authority on the support**. Applied *first*, to the raw logits — and final because every later stage (temperature/top-k/top-p) is monotone, i.e. can only *remove* mass. See §8.1. |
 | **5** | **Decode-loop retrieval** (kNN-LM / RETRO) | — | **Deferred. Resurrectable only by C-CTX (b).** | Four negative results. Do not build on a scarce-resource argument we have not yet measured. |
 
 **R2 before R1 was already banked as a possibility. The sweep makes it the decision.**
@@ -166,6 +166,31 @@ Struck, with the reason, so we do not rediscover them:
 
 Sequence: **E1 → E2 → E3 → E4.** E1 and E2 pay for themselves independent of every composite
 decision, which is the mark of an experiment worth running first.
+
+---
+
+## 7.5 Correction found by building it (2026-07-10)
+
+`docs/composite-model-layer.md` and Plate 01 both said **"Verity must be the last write to
+the logits"**, reasoning that anything applied afterwards could reintroduce a forbidden
+token. Building the walking skeleton (`lithos/serve/composite.py`) proved the *mechanism*
+wrong, and a test caught it:
+
+- **The failure.** Applied last, the policy runs after nucleus sampling. Against a
+  confident model, `top_p` collapses the support to exactly one token — and if the policy
+  bans that token, the constraint is unsatisfiable, even though the model had a whole
+  vocabulary of allowed alternatives. (`test_banning_the_models_favourite_token_does_not_
+  empty_the_nucleus`.)
+- **The fix.** Apply the policy **first**, to the raw logits. It is still final, because
+  every later stage — temperature, top-k, top-p — is **monotone**: each can only *remove*
+  probability mass, never add it. Nothing downstream can reintroduce a banned token.
+- **The invariant that makes it true** is now enforced, not assumed: a processor that
+  *raises* any logit raises `ValueError` (`_apply_decode_policy`). Mass-removal is the
+  property; "last" was only ever a proxy for it.
+
+The original worry was sound and aimed at the wrong stage: the thing that could *add* mass
+was **kNN-LM interpolation**, and rev B moved retrieval above the token stream, so no
+mass-adding stage remains in the decode chain at all.
 
 ---
 

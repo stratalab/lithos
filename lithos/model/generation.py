@@ -3,13 +3,61 @@
 Decoding methods: greedy, temperature, top-k, top-p. Uses the KV cache by
 default; ``use_cache=False`` recomputes the full sequence each step and is the
 reference path the cache is tested against.
+
+``logits_processor`` is the **decode-policy seam** (Verity). It is the *final authority
+on the support*: a token it forbids can never be emitted
+(``docs/composite-model-layer.md`` §7.1).
+
+Note the mechanism, which is subtler than "apply it last". It is applied **first**, to
+the raw logits, and it holds because every later stage — temperature, top-k, top-p — is
+**monotone**: each can only *remove* probability mass, never add it. So no downstream
+stage can reintroduce a forbidden token. Applying the policy last would be *equally*
+safe but strictly worse, because nucleus sampling truncates first: against a confident
+model, top-p can collapse the support to the single token the policy then bans, turning
+a satisfiable constraint into an empty one. Running the policy first lets top-k/top-p
+renormalize over the *allowed* set.
+
+Two invariants are enforced: the processor may only remove mass (an attempt to raise a
+logit raises), and it may not mask everything.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import torch
 
 from lithos.model.transformer import LithosForCausalLM
+
+#: ``(logits, generated) -> logits``. Both (B, vocab) and (B, T). May only mask.
+LogitsProcessor = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
+
+
+def _apply_decode_policy(
+    logits: torch.Tensor, generated: torch.Tensor, processor: LogitsProcessor | None
+) -> torch.Tensor:
+    """Apply the decode policy and enforce its two invariants.
+
+    1. **It may only remove mass.** This is what makes the policy final despite running
+       first: every later stage is monotone (mass-removing), so nothing can reintroduce
+       a token the policy forbade. A processor that *raised* a logit would break that
+       and could smuggle a forbidden token back in.
+    2. **It may not mask everything.** An all-``-inf`` row is an unsatisfiable
+       constraint, not a sample; say so loudly rather than emit NaN.
+    """
+    if processor is None:
+        return logits
+    out = processor(logits, generated)
+    if out.shape != logits.shape:
+        raise ValueError(f"decode policy changed logits shape {logits.shape} -> {out.shape}")
+    if bool((out > logits).any()):
+        raise ValueError(
+            "decode policy may only remove probability mass (it raised a logit); "
+            "a policy that can add mass can reintroduce a forbidden token"
+        )
+    if bool(torch.isneginf(out).all(dim=-1).any()):
+        raise ValueError("decode policy masked every token: the constraint is unsatisfiable")
+    return out
 
 
 def _sample_next(
@@ -20,8 +68,18 @@ def _sample_next(
     top_p: float | None,
     greedy: bool,
     generator: torch.Generator | None,
+    logits_processor: LogitsProcessor | None = None,
+    generated: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """logits: (B, vocab) -> next token ids (B, 1)."""
+    ctx = generated if generated is not None else logits.new_empty((logits.size(0), 0))
+
+    # THE POLICY FIXES THE SUPPORT, and it fixes it here — on the raw logits. Every
+    # stage below only removes mass, so none of them can reintroduce a forbidden token;
+    # running the policy first is what lets top-k/top-p renormalize over the ALLOWED set
+    # instead of collapsing the nucleus onto a token the policy is about to ban.
+    logits = _apply_decode_policy(logits, ctx, logits_processor)
+
     if greedy or temperature == 0:
         return logits.argmax(dim=-1, keepdim=True)
 
@@ -60,6 +118,7 @@ def generate(
     stop_token_ids: set[int] | None = None,
     use_cache: bool = True,
     generator: torch.Generator | None = None,
+    logits_processor: LogitsProcessor | None = None,
 ) -> torch.Tensor:
     """Generate up to ``max_new_tokens`` tokens; returns prompt + completion.
 
@@ -105,6 +164,8 @@ def generate(
                 top_p=top_p,
                 greedy=greedy,
                 generator=generator,
+                logits_processor=logits_processor,
+                generated=generated,
             )
             if eos_token_id is not None:
                 keep_eos = torch.full_like(next_token, eos_token_id)
