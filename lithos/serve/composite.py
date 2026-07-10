@@ -31,15 +31,31 @@ import hashlib
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol, runtime_checkable
+from typing import Any
 
 import torch
 
-from lithos.data.tiers import DATASTORE_ALLOWED_TIERS
 from lithos.model.generation import LogitsProcessor
 from lithos.posttrain.chat_template import render_prompt, special_ids, tir_token_ids
 from lithos.posttrain.sandbox import tool_env_sha
 from lithos.posttrain.tir_rollout import tir_rollout
+
+# Re-exported: the retrieval seam lives in `lithos.retrieval` so the dependency runs one
+# way (serve -> retrieval). A retriever never needs to know it is being served.
+from lithos.retrieval.types import Passage, RetrievedContext, Retriever, StubRetriever
+
+__all__ = [
+    "Citation",
+    "CompositeModel",
+    "CompositeResult",
+    "DenyTokensPolicy",
+    "Passage",
+    "RetrievedContext",
+    "Retriever",
+    "ServedModelId",
+    "StubRetriever",
+    "ToolCallRecord",
+]
 
 # ── identity ──────────────────────────────────────────────────────────────────
 
@@ -79,66 +95,6 @@ class ServedModelId:
         )
 
 
-# ── retrieval (above the token stream) ────────────────────────────────────────
-
-
-@dataclass(frozen=True)
-class Passage:
-    """One retrieved chunk. The three provenance keys are the join to Chisel and Petra."""
-
-    text: str
-    source_id: str
-    record_id: str
-    text_sha256: str
-    tier: str
-    score: float = 0.0
-
-
-@dataclass(frozen=True)
-class RetrievedContext:
-    passages: tuple[Passage, ...] = ()
-    #: Tokens the passages will consume once rendered into the prompt. Measured by the
-    #: composite (BPE can merge across the seam), not guessed by the retriever.
-    tokens_used: int = 0
-
-
-@runtime_checkable
-class Retriever(Protocol):
-    """Anything that turns a query into passages, under a **token budget**."""
-
-    version: str
-
-    def retrieve(self, query: str, *, token_budget: int) -> RetrievedContext: ...
-
-
-class StubRetriever:
-    """Fixed passages, truncated to the budget. Enough to exercise every seam.
-
-    Enforces the datastore half of the tier gate: `restricted` passages are welcome —
-    the model *cites* what it consults, which is the whole point of moving books out of
-    the weights (`docs/chisel-tier-gate.md`). `unknown` is not.
-    """
-
-    version = "stub-v0"
-
-    def __init__(self, passages: Sequence[Passage]) -> None:
-        for p in passages:
-            if p.tier not in DATASTORE_ALLOWED_TIERS:
-                raise ValueError(
-                    f"passage {p.source_id!r} has tier={p.tier!r}; the datastore accepts "
-                    f"{sorted(DATASTORE_ALLOWED_TIERS)} (restricted is allowed here — it is "
-                    f"cited, never trained on)"
-                )
-        self._passages = tuple(passages)
-
-    def retrieve(self, query: str, *, token_budget: int) -> RetrievedContext:
-        if token_budget <= 0:
-            return RetrievedContext()
-        # A real retriever ranks by similarity to `query`; the stub preserves order and
-        # lets the composite do the budget accounting, since only it owns the tokenizer.
-        return RetrievedContext(passages=self._passages)
-
-
 # ── decode policy (Verity) ────────────────────────────────────────────────────
 
 
@@ -170,9 +126,10 @@ class Citation:
 
     source_id: str
     record_id: str
-    text_sha256: str
+    text_sha256: str  # the parent document: the join key to Chisel and Petra
     tier: str
     tokens: int  # what this passage cost the context budget
+    chunk_sha256: str = ""  # the exact span, when the retriever provides one
 
 
 @dataclass(frozen=True)
@@ -251,6 +208,10 @@ class CompositeModel:
         policy_version: str = "none",
         device: str = "cpu",
     ) -> None:
+        # A retriever that knows its own content hash supplies it; nobody should have to
+        # restate a derived value, and a hand-written one can lie.
+        if retriever is not None and datastore_version is None:
+            datastore_version = getattr(retriever, "datastore_version", None)
         if retriever is not None and datastore_version is None:
             raise ValueError(
                 "a retriever without a datastore_version is unevaluable: pin the version "
@@ -349,13 +310,15 @@ class CompositeModel:
                 upto = len(
                     render_prompt(self._build_messages(query, passages[:i], system), self.tok)
                 )
+                p = passages[i - 1]
                 cites.append(
                     Citation(
-                        source_id=passages[i - 1].source_id,
-                        record_id=passages[i - 1].record_id,
-                        text_sha256=passages[i - 1].text_sha256,
-                        tier=passages[i - 1].tier,
+                        source_id=p.source_id,
+                        record_id=p.record_id,
+                        text_sha256=p.text_sha256,
+                        tier=p.tier,
                         tokens=upto - running,
+                        chunk_sha256=p.chunk_sha256,
                     )
                 )
                 running = upto

@@ -390,3 +390,100 @@ def test_result_accounting_is_self_consistent(tok):
 def test_retrieved_context_defaults_are_empty():
     ctx = RetrievedContext()
     assert ctx.passages == () and ctx.tokens_used == 0
+
+
+# ── the real retriever, inside the composite ──────────────────────────────────
+
+
+def _real_store(tok, texts, tier="restricted"):
+    import hashlib
+
+    from lithos.retrieval import Datastore, HashingEmbedder
+
+    embedder = HashingEmbedder(dim=256)
+    docs = [
+        {
+            "id": f"rec:{i}",
+            "text": t,
+            "source": f"src:{i}",
+            "tier": tier,
+            "metadata": {
+                "source_id": f"src:{i}",
+                "record_id": f"rec:{i}",
+                "text_sha256": hashlib.sha256(t.encode()).hexdigest(),
+            },
+        }
+        for i, t in enumerate(texts)
+    ]
+    store = Datastore.build(
+        docs, tok, embedder, tokenizer_name="roundtrip", max_tokens=256, overlap_tokens=16
+    )
+    return store, embedder
+
+
+def test_composite_with_a_real_retriever_cites_the_right_source(tok):
+    from lithos.retrieval import DocumentRetriever
+
+    end = tok.token_to_id("<|end|>")
+    store, embedder = _real_store(
+        tok,
+        [
+            "bernoulli principle relates pressure and velocity in a fluid",
+            "the mitochondrion is the powerhouse of the cell",
+        ],
+    )
+    retriever = DocumentRetriever(store, embedder, top_k=1)
+    cm = CompositeModel(
+        ScriptedModel([end], tok.vocab), tok, weights_sha256="w" * 64, retriever=retriever
+    )
+
+    res = cm.generate(
+        "what does bernoulli say about fluid pressure?",
+        context_token_budget=512,
+        max_new=4,
+        use_cache=False,
+    )
+    assert len(res.citations) == 1
+    c = res.citations[0]
+    assert c.source_id == "src:0", "retrieved the mitochondrion passage"
+    assert c.tier == "restricted"  # cited on every use; never in the weights
+    assert c.chunk_sha256 and c.tokens > 0
+    assert res.context_tokens > 0
+
+
+def test_a_real_retriever_pins_the_datastore_version_without_being_asked(tok):
+    """Nobody should have to restate a derived value, and a hand-written one can lie."""
+    from lithos.retrieval import DocumentRetriever
+
+    store, embedder = _real_store(tok, ["alpha beta gamma"])
+    cm = CompositeModel(
+        ScriptedModel([tok.token_to_id("<|end|>")], tok.vocab),
+        tok,
+        weights_sha256="w" * 64,
+        retriever=DocumentRetriever(store, embedder),
+    )
+    assert cm.id.datastore_version == store.version
+    assert cm.id.datastore_version.startswith("ds:")
+
+
+def test_editing_one_document_changes_the_served_model_identity(tok):
+    """C5, in miniature: a corpus-caused change is visible in the model's identity, so a
+    regression can be bisected to the corpus rather than blamed on the weights."""
+    from lithos.retrieval import DocumentRetriever
+
+    def _id_for(texts):
+        store, embedder = _real_store(tok, texts)
+        return CompositeModel(
+            ScriptedModel([tok.token_to_id("<|end|>")], tok.vocab),
+            tok,
+            weights_sha256="w" * 64,
+            retriever=DocumentRetriever(store, embedder),
+        ).id
+
+    a = _id_for(["alpha beta", "gamma delta"])
+    b = _id_for(["alpha beta", "gamma delta"])
+    c = _id_for(["alpha beta", "gamma DELTA"])
+
+    assert a.digest() == b.digest()  # same weights, same corpus -> same model
+    assert a.digest() != c.digest()  # same weights, one edited doc -> different model
+    assert a.weights_sha256 == c.weights_sha256  # and it was NOT the weights that moved
