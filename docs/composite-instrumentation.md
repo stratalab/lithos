@@ -191,7 +191,23 @@ single highest-value line of code in this spec.
 
 ---
 
-## 6. The cheap discriminator (independent of C0)
+## 6. The cheap discriminator — ⚠️ **REFUTED, retained for the record**
+
+> **This section is wrong.** Nishida et al., *Long-Tail Crisis in Nearest Neighbor Language Models*
+> (NAACL 2025 Findings, [2503.22426](https://arxiv.org/abs/2503.22426)) measures the opposite of
+> what it predicts: *"kNN-LM does not improve prediction performance for low-frequency tokens but
+> mainly benefits high-frequency tokens."* Under the rule below, published kNN-LM classifies as a
+> crutch. Either the rule is wrong or kNN-LM is a crutch — we do not get to assume which.
+>
+> **Frequency stratification is demoted from *discriminator* to *descriptive diagnostic*.** It is
+> still recorded (`freq_bucket`), still reported, and it now has one mandatory control: the same
+> paper names **product-quantization approximation error** as a candidate cause of the tail failure,
+> so the datastore must use **IVF-Flat, not IVF-PQ** — PQ would manufacture the artifact. See
+> `docs/c0-spec.md` §1.1 and §5.3. Two further findings kill the bpb-only design: gains do not
+> transfer to generation, and the aggregate is carried by a minority of tokens while the majority
+> regress ([2305.14625](https://arxiv.org/abs/2305.14625)).
+>
+> Kept verbatim below because a retracted hypothesis is worth more on the page than deleted.
 
 The two hypotheses of §10.3 have **different signatures in the token distribution**:
 

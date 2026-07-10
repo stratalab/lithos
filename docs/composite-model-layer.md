@@ -278,10 +278,17 @@ predicted equally by two hypotheses:
 - **Crutch** (scaffolding — fails the absorption test): the model is undertrained or badly fed,
   and retrieval papers over a deficiency more tokens would have fixed.
 
-Varying *model size* cannot separate them. **Varying the token budget at fixed size can.** Measure
-Δbpb from retrieval on the 100M at 2B / 10B / 40B tokens seen:
+Varying *model size* cannot separate them. **Varying the training budget at fixed size can.** Measure
+Δbpb from retrieval on the 100M at **1 / 2 / 4 / 8 epochs over a fixed corpus**:
 
-- Δ **decays** with token budget → **crutch**. A bigger training run is absorbing it in front of
+> **The axis is epochs, not raw tokens** — forced by §5. A 2B-token checkpoint of a 9.84B-token
+> corpus has seen only ~20% of it, so a corpus-internal datastore would contain text the model
+> never saw and we would be measuring mutability. Holding the corpus fixed also holds the
+> **datastore identical across checkpoints**, which the paired comparison requires, and isolates
+> *absorption by optimization* from *absorption by more data*. (A separate C0b could vary unique
+> tokens, but the datastore must then grow with the corpus — a confound, not a control.)
+
+- Δ **decays** with epochs → **crutch**. A bigger training run is absorbing it in front of
   you. Kill it.
 - Δ **plateaus at a floor** → **substitution**. That floor is the irreducible capacity deficit,
   and it is exactly what R1 harvests.
@@ -327,7 +334,7 @@ Ordered by cost. C0 gates everything downstream.
 
 | # | Question | Experiment | What a negative result kills |
 |---|---|---|---|
-| **C0** | Is the retrieval gain *absorbed* by more training? | Fixed 100M; Δbpb from corpus-internal kNN-LM at 2B / 10B / 40B tokens seen (§10.3) | **R1 entirely** — a decaying Δ means retrieval is scaffolding |
+| **C0** | Is the retrieval gain *absorbed* by more training? | Fixed 100M, fixed corpus; Δbpb from a corpus-internal kNN-LM at **1 / 2 / 4 / 8 epochs** (§10.3) | **R1 entirely** — a decaying Δ means retrieval is scaffolding |
 | **C1** | Does the *plateau floor* rise as params shrink? | Same as C0 at 100M and 500M, saturated; compare floors, not peaks | R1's small-model premise (§5) — but only readable once C0 says "plateau" |
 | **C2** | Where is the datastore size/gain knee? | Δbpb vs datastore entries, log-spaced | On-device R1 viability (§5 case-against) |
 | **C3** | Is per-token ANN cheaper than the 500M forward pass on the target device? | Benchmark ANN latency vs forward latency | kNN-LM as a *per-token* method — forces RETRO-style per-chunk |
@@ -359,6 +366,28 @@ Ordered by cost. C0 gates everything downstream.
 
 **Unresolved.**
 - §5: the edge/datastore-size tension. This is R1's central risk, not a detail.
+
+---
+
+## 12.5 Post-sweep amendment (2026-07-09)
+
+A literature sweep changed the experiment, not the doctrine. See **`docs/c0-spec.md`** — it
+supersedes §10 and §11 where they conflict. In brief:
+
+- **Part of the kNN-LM gain was already absorbed into parametric LMs** by Xu, Alon & Neubig (ICML
+  2023): *"we incorporate these insights into the model architecture or the training procedure of the
+  standard parametric LM, improving its results without the need for an explicit retrieval
+  component."* **The absorption test was run on our own mechanism, by someone else, and partly
+  passed.** Consequence: the baseline must first *absorb what is absorbable* (arm A0), and the only
+  quantity that can justify R1 is the **residual** over that baseline.
+- **§10.3's frequency discriminator is refuted** — kNN-LM gains concentrate on *high*-frequency
+  tokens, not the tail. Demoted to a diagnostic; forces IVF-Flat over IVF-PQ.
+- **The two channels of §10.4 point in opposite directions.** The *architecture* channel
+  (corpus-internal) has accumulated negative evidence; the *mutability* channel (corpus-external)
+  has positive evidence. **R1's justification is the mutable clause, not the softmax bottleneck.**
+- **The gate moved.** C0 (architecture channel) becomes a calibration run. The real gate is **C0-B**:
+  can a small model *use* retrieved STEM facts in multi-step reasoning? The strongest published
+  retrieval wins concentrate on factual lookup and are weak on reasoning — and Lithos is a reasoner.
 
 ---
 

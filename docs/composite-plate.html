@@ -1,0 +1,804 @@
+<title>The Composite Model Layer — Strata</title>
+
+<style>
+  /* ─────────────────────────────────────────────────────────────
+     Palette: basalt + olivine. The mantle is peridotite, dominated
+     by olivine — so depth is green, not fire. Brass carries the
+     semantic "absorbed / negative evidence / deferred".
+     ───────────────────────────────────────────────────────────── */
+  :root {
+    --bg:            #EFF2EF;
+    --surface:       #FBFCFA;
+    --surface-2:     #F4F6F3;
+    --ink:           #141816;
+    --ink-2:         #454E49;
+    --ink-3:         #6E7872;
+    --rule:          #D3DAD5;
+    --rule-strong:   #A7B1AB;
+
+    --accent:        #4E7A24;
+    --accent-vivid:  #6DA236;
+    --accent-soft:   #E5EFD6;
+
+    --brass:         #7A5D12;
+    --brass-soft:    #F3EAD0;
+
+    --crust:         #43555F;
+    --crust-soft:    #DEE5E9;
+
+    --shadow: 0 1px 2px rgba(20,24,22,.05), 0 6px 20px -12px rgba(20,24,22,.28);
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0D110F; --surface:#141917; --surface-2:#1A211D;
+      --ink:#E7EBE7; --ink-2:#A9B2AC; --ink-3:#7C857F;
+      --rule:#262E29; --rule-strong:#3B453F;
+      --accent:#A7D163; --accent-vivid:#8FBE45; --accent-soft:#1D2915;
+      --brass:#C9A63F; --brass-soft:#2A2312;
+      --crust:#93A9B4; --crust-soft:#1A2227;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0D110F; --surface:#141917; --surface-2:#1A211D;
+    --ink:#E7EBE7; --ink-2:#A9B2AC; --ink-3:#7C857F;
+    --rule:#262E29; --rule-strong:#3B453F;
+    --accent:#A7D163; --accent-vivid:#8FBE45; --accent-soft:#1D2915;
+    --brass:#C9A63F; --brass-soft:#2A2312;
+    --crust:#93A9B4; --crust-soft:#1A2227;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.8);
+  }
+  :root[data-theme="light"] {
+    --bg:#EFF2EF; --surface:#FBFCFA; --surface-2:#F4F6F3;
+    --ink:#141816; --ink-2:#454E49; --ink-3:#6E7872;
+    --rule:#D3DAD5; --rule-strong:#A7B1AB;
+    --accent:#4E7A24; --accent-vivid:#6DA236; --accent-soft:#E5EFD6;
+    --brass:#7A5D12; --brass-soft:#F3EAD0;
+    --crust:#43555F; --crust-soft:#DEE5E9;
+    --shadow: 0 1px 2px rgba(20,24,22,.05), 0 6px 20px -12px rgba(20,24,22,.28);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .plate {
+    max-width: 80rem;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 3vw, 2.5rem) 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2rem, 4vw, 3.5rem);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .69rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 4.4vw, 3.1rem);
+    font-weight: 660;
+    letter-spacing: -.022em;
+    line-height: 1.05;
+    text-wrap: balance;
+    margin: .55rem 0 0;
+  }
+
+  h2 {
+    font-family: var(--mono);
+    font-size: .78rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--ink-2);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+  }
+  h2::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+
+  .thesis {
+    font-family: var(--serif);
+    font-size: clamp(1.05rem, 2vw, 1.32rem);
+    line-height: 1.5;
+    color: var(--ink);
+    max-width: 56ch;
+    margin: 1.3rem 0 0;
+    padding-left: 1.1rem;
+    border-left: 3px solid var(--accent-vivid);
+  }
+  .thesis em { font-style: italic; color: var(--accent); }
+
+  .subthesis {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: .96rem;
+    line-height: 1.55;
+    color: var(--ink-3);
+    max-width: 60ch;
+    margin: .9rem 0 0;
+    padding-left: 1.1rem;
+    border-left: 1px solid var(--rule-strong);
+  }
+
+  p { margin: 0; max-width: 68ch; }
+  .note { font-size: .875rem; color: var(--ink-3); line-height: 1.6; }
+  code { font-family: var(--mono); font-size: .92em; }
+
+  header .meta {
+    margin-top: 1.6rem;
+    display: flex; flex-wrap: wrap; gap: .5rem 1.4rem;
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .07em;
+    color: var(--ink-3); text-transform: uppercase;
+  }
+  .revtag {
+    color: var(--brass);
+    border: 1px solid color-mix(in srgb, var(--brass) 40%, transparent);
+    background: var(--brass-soft);
+    padding: .06rem .4rem; border-radius: 2px;
+  }
+
+  /* ── The evidence split ───────────────────────────────────── */
+  .evsplit {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .evsplit table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  .evsplit caption {
+    text-align: left;
+    padding: 1rem 1.2rem .2rem;
+    background: var(--surface);
+    font-family: var(--mono); font-size: .66rem; letter-spacing: .15em;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+  .evsplit th {
+    text-align: left;
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--ink-3); font-weight: 600;
+    padding: .8rem 1.2rem .5rem; background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+  }
+  .evsplit td {
+    padding: .7rem 1.2rem; border-bottom: 1px solid var(--rule);
+    background: var(--surface); color: var(--ink-2); vertical-align: top;
+  }
+  .evsplit tr:last-child td { border-bottom: 0; }
+  .evsplit td:first-child { color: var(--ink); font-weight: 600; }
+  .evsplit .pos td { background: color-mix(in srgb, var(--accent-soft) 42%, var(--surface)); }
+  .evsplit .neg td { background: color-mix(in srgb, var(--brass-soft) 34%, var(--surface)); }
+  .sign { font-family: var(--mono); font-weight: 700; }
+  .sign--pos { color: var(--accent); }
+  .sign--neg { color: var(--brass); }
+  .cite { font-family: var(--mono); font-size: .68rem; color: var(--ink-3); }
+  .scroll { overflow-x: auto; }
+
+  /* ── Cross-section ────────────────────────────────────────── */
+  .section-wrap {
+    border: 1px solid var(--rule); border-radius: 3px;
+    background: var(--surface); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .xsection {
+    display: grid;
+    grid-template-columns: 8.5rem minmax(0,1fr) 11.5rem;
+    grid-template-rows: repeat(5, auto);
+  }
+
+  .depth {
+    grid-column: 1;
+    padding: 1.4rem 1rem 1.4rem 1.3rem;
+    border-right: 1px solid var(--rule);
+    font-family: var(--mono); font-size: .66rem; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--ink-3);
+    display: flex; flex-direction: column; gap: .35rem;
+  }
+  .depth b { display: block; color: var(--ink); font-weight: 600; }
+  .depth span { font-size: .62rem; letter-spacing: .05em; text-transform: none; line-height: 1.5; }
+
+  .band { grid-column: 2; padding: 1.4rem 1.5rem; display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+  .band--surface { background: var(--surface-2); }
+  .band--crust   { background: linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--crust-soft) 55%, var(--surface)) 100%); }
+  .band--mantle  { background: linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 60%, var(--surface)) 0%, var(--accent-soft) 100%); }
+
+  .datum, .moho { grid-column: 1 / 3; }
+
+  .datum {
+    background: var(--ink); color: var(--bg);
+    padding: .72rem 1.4rem;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: .5rem 1.4rem;
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .15em;
+    text-transform: uppercase; font-weight: 600;
+  }
+  .datum em {
+    font-family: var(--sans); font-style: normal; font-size: .7rem;
+    letter-spacing: .02em; text-transform: none; font-weight: 400; opacity: .72;
+  }
+
+  .moho {
+    border-top: 1px solid var(--rule-strong);
+    border-bottom: 1px solid var(--rule-strong);
+    background-image: repeating-linear-gradient(-45deg, transparent 0 5px,
+      color-mix(in srgb, var(--crust) 30%, transparent) 5px 6px);
+    padding: .7rem 1.4rem;
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem 1.1rem;
+  }
+  .moho b {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink);
+  }
+  .moho span { font-size: .76rem; color: var(--ink-2); }
+  .moho code { color: var(--ink); background: var(--surface); padding: .1rem .35rem; border-radius: 2px; border: 1px solid var(--rule); }
+
+  /* The dike: a discordant intrusion cutting across the bedding. */
+  .dike {
+    grid-column: 3;
+    grid-row: 1 / -1;
+    border-left: 2px solid var(--accent-vivid);
+    background-image: repeating-linear-gradient(90deg,
+      color-mix(in srgb, var(--accent-soft) 78%, transparent) 0 7px,
+      color-mix(in srgb, var(--accent-vivid) 16%, transparent) 7px 9px);
+    padding: 1.4rem 1rem;
+    display: flex; flex-direction: column; gap: .7rem;
+  }
+  .dike .tag {
+    font-family: var(--mono); font-size: .6rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600;
+  }
+  .dike p { font-size: .74rem; color: var(--ink-2); line-height: 1.55; max-width: none; }
+  .dike b { color: var(--ink); }
+  .dike .cut {
+    margin-top: auto; font-family: var(--mono); font-size: .62rem;
+    color: var(--accent); letter-spacing: .06em; line-height: 1.6;
+  }
+
+  @media (max-width: 56rem) {
+    .xsection { grid-template-columns: 1fr; grid-template-rows: none; }
+    .depth { grid-column: 1; border-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: .9rem; }
+    .band { grid-column: 1; padding: 1.2rem 1.1rem; }
+    .datum, .moho { grid-column: 1; }
+    .dike { grid-column: 1; grid-row: auto; border-left: 0; border-top: 2px solid var(--accent-vivid); }
+  }
+
+  /* ── Nodes ────────────────────────────────────────────────── */
+  .row { display: flex; flex-wrap: wrap; align-items: stretch; gap: .55rem; }
+  .arrow { align-self: center; font-family: var(--mono); color: var(--ink-3); font-size: .95rem; line-height: 1; flex: none; }
+
+  .node {
+    background: var(--surface); border: 1.5px solid var(--rule-strong);
+    border-radius: 3px; padding: .6rem .8rem; min-width: 0; flex: 1 1 9.5rem;
+    display: flex; flex-direction: column; gap: .28rem;
+  }
+  .node--live   { border-color: var(--accent-vivid); }
+  .node--gated  { border-style: dashed; border-color: var(--crust); }
+  .node--parked { border-style: dotted; border-color: var(--ink-3); opacity: .85; }
+  .node--dead {
+    border-style: dotted; border-color: color-mix(in srgb, var(--brass) 55%, transparent);
+    background: color-mix(in srgb, var(--brass-soft) 30%, var(--surface));
+  }
+  .node--dead .what {
+    text-decoration: line-through; text-decoration-thickness: 1px;
+    text-decoration-color: color-mix(in srgb, var(--brass) 65%, transparent);
+    color: var(--ink-2);
+  }
+
+  .node .who { font-family: var(--mono); font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  .node .what { font-weight: 600; font-size: .92rem; color: var(--ink); }
+  .node .how  { font-size: .75rem; color: var(--ink-2); line-height: 1.5; font-family: var(--mono); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .1rem; }
+  .chip {
+    font-family: var(--mono); font-size: .57rem; letter-spacing: .09em;
+    text-transform: uppercase; padding: .15rem .42rem; border-radius: 2px;
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .chip--substrate { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .chip--judgment  { background: var(--crust-soft); color: var(--crust); border-color: color-mix(in srgb, var(--crust) 32%, transparent); }
+  .chip--absorb    { background: var(--brass-soft); color: var(--brass); border-color: color-mix(in srgb, var(--brass) 30%, transparent); }
+
+  .rule-note { font-size: .78rem; color: var(--ink-2); border-left: 2px solid var(--accent-vivid); padding-left: .8rem; max-width: 64ch; }
+  .rule-note b { color: var(--ink); font-weight: 600; }
+  .rule-note--warn { border-left-color: var(--brass); }
+
+  /* ── The fork ─────────────────────────────────────────────── */
+  .fork { display: flex; flex-direction: column; gap: 1rem; }
+  .fork-q {
+    border: 1.5px solid var(--accent-vivid); border-radius: 3px;
+    background: color-mix(in srgb, var(--accent-soft) 50%, var(--surface));
+    padding: 1.2rem 1.4rem; display: flex; flex-direction: column; gap: .5rem;
+  }
+  .fork-q .tag { font-family: var(--mono); font-size: .62rem; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .fork-q .q { font-family: var(--serif); font-size: 1.08rem; line-height: 1.5; color: var(--ink); max-width: 66ch; }
+  .branches { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1rem; }
+  .branch { border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: .5rem; }
+  .branch--a { border-top: 3px solid var(--crust); }
+  .branch--b { border-top: 3px solid var(--brass); }
+  .branch h3 { margin: 0; font-size: .95rem; font-weight: 650; color: var(--ink); }
+  .branch .lead { font-family: var(--mono); font-size: .62rem; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); }
+  .branch p { font-size: .82rem; color: var(--ink-2); }
+  .branch .verdict { margin-top: .3rem; font-size: .8rem; color: var(--ink); border-top: 1px solid var(--rule); padding-top: .55rem; }
+
+  /* ── Gates ────────────────────────────────────────────────── */
+  .gates { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+  .gate { background: var(--surface); padding: 1rem 1.15rem; display: flex; flex-direction: column; gap: .35rem; }
+  .gate .n { font-family: var(--mono); font-size: 1.15rem; font-weight: 700; color: var(--accent-vivid); line-height: 1; font-variant-numeric: tabular-nums; }
+  .gate .t { font-weight: 640; font-size: .88rem; color: var(--ink); }
+  .gate .d { font-size: .78rem; color: var(--ink-2); line-height: 1.5; }
+  .gate .src { font-family: var(--mono); font-size: .62rem; color: var(--ink-3); margin-top: .15rem; }
+  .gate--new { background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface)); }
+
+  /* ── Cycle ────────────────────────────────────────────────── */
+  .cycle { border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); padding: 1.4rem; }
+  .cycle-scroll { overflow-x: auto; padding-bottom: .3rem; }
+  .cycle-scroll .row { flex-wrap: nowrap; min-width: 46rem; }
+  .return {
+    margin-top: .85rem; border: 1.5px dashed var(--accent-vivid); border-radius: 3px;
+    background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+    padding: .6rem .9rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .8rem;
+    font-size: .8rem; color: var(--ink-2);
+  }
+  .return b { font-family: var(--mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+
+  .rejected {
+    border: 1px dashed var(--brass); border-radius: 3px;
+    background: color-mix(in srgb, var(--brass-soft) 40%, var(--surface));
+    padding: 1.3rem 1.4rem; display: flex; flex-direction: column; gap: .9rem;
+  }
+  .rejected .node { background: transparent; border-style: dashed; border-color: color-mix(in srgb, var(--brass) 45%, transparent); }
+  .rejected .node .what { color: var(--ink-2); text-decoration: line-through; text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, var(--brass) 60%, transparent); }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-top: 1.4rem;
+    display: flex; flex-wrap: wrap; gap: .4rem 1.6rem;
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .04em; color: var(--ink-3);
+  }
+  footer b { color: var(--ink-2); font-weight: 500; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .node { transition: border-color .16s ease, transform .16s ease; }
+    .node:hover { transform: translateY(-1px); }
+  }
+  a:focus-visible { outline: 2px solid var(--accent-vivid); outline-offset: 2px; }
+</style>
+
+<div class="plate">
+
+  <header>
+    <p class="eyebrow">Strata · Architecture Plate 01</p>
+    <h1>The composite model layer</h1>
+    <p class="thesis">
+      Every mechanism with positive evidence lives <em>above</em> the token stream.
+      Every mechanism with negative evidence lives <em>below</em> it.
+    </p>
+    <p class="subthesis">
+      The doctrine is unchanged: the weights hold the <b>judgment</b>, the composite holds the thing
+      judgment operates on — a fact, a computation, a constraint. What moved is <b>where the
+      fact-composite belongs.</b>
+    </p>
+    <div class="meta">
+      <span class="revtag">Rev B · post-literature-sweep</span>
+      <span>Cross-section · serving path</span>
+      <span>Depth ↓ = distance from the harness</span>
+      <span>2026-07-09</span>
+    </div>
+  </header>
+
+  <!-- ── The evidence split ─────────────────────────────────── -->
+  <section class="evsplit">
+    <div class="scroll">
+      <table>
+        <caption>The split nobody drew — sort every result by which side of the stream its mechanism lives on</caption>
+        <thead>
+          <tr><th>Mechanism</th><th>Lives</th><th>Evidence</th><th>What was measured</th></tr>
+        </thead>
+        <tbody>
+          <tr class="pos">
+            <td>In-context RAG</td><td>Above</td>
+            <td><span class="sign sign--pos">+</span></td>
+            <td>“Retrieved passages are concatenated as context” <span class="cite">Singh 2026 · 2604.00715</span></td>
+          </tr>
+          <tr class="pos">
+            <td>MassiveDS RIC-LM</td><td>Above</td>
+            <td><span class="sign sign--pos">+</span></td>
+            <td>“we prepend the retrieved documents” — but “marginal benefits” on reasoning, <b>for weaker models</b> <span class="cite">Shao 2024 · 2407.12854</span></td>
+          </tr>
+          <tr class="neg">
+            <td>kNN-LM interpolation</td><td>Below</td>
+            <td><span class="sign sign--neg">−</span></td>
+            <td>Already absorbed into the parametric LM “without the need for an explicit retrieval component” <span class="cite">Xu 2023</span> · no tail benefit <span class="cite">Nishida 2025</span> · ppl improves, generation doesn’t <span class="cite">Wang 2023</span></td>
+          </tr>
+          <tr class="neg">
+            <td>RETRO cross-attention</td><td>Below</td>
+            <td><span class="sign sign--neg">−</span></td>
+            <td>Gains “largely originate from overlapping tokens between the database and the test data” — copying <span class="cite">Norlund 2023</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Cross-section ──────────────────────────────────────── -->
+  <section style="display:flex;flex-direction:column;gap:1.1rem">
+    <h2>I · The serving path, revised</h2>
+
+    <div class="section-wrap">
+      <div class="xsection">
+
+        <div class="depth">
+          <b>Surface</b>
+          <span>The application — and now the fact channel.</span>
+        </div>
+        <div class="band band--surface">
+          <div class="row">
+            <div class="node node--live">
+              <span class="who">Any harness</span>
+              <span class="what">Agent loop / app</span>
+              <span class="how">prompt → tokens</span>
+            </div>
+            <span class="arrow">▸</span>
+            <div class="node node--live">
+              <span class="who">R1 · StrataDB</span>
+              <span class="what">Retrieval-in-context</span>
+              <span class="how">prepend top-k doc chunks<br>~1–15 GB index, not 15 TB</span>
+              <div class="chips">
+                <span class="chip chip--substrate">mutable</span>
+                <span class="chip chip--substrate">citable by construction</span>
+              </div>
+            </div>
+          </div>
+          <p class="rule-note">
+            <b>R1 moved up.</b> It costs <b>context</b> — the scarcest resource a 500M has — and buys
+            mutability plus span-level citation. No Moho, no kernels, no per-token neighbour log.
+          </p>
+        </div>
+
+        <div class="datum">
+          <span>▬▬ The token stream ▬▬</span>
+          <em>Everything below is invisible to the caller. It is also, per the evidence, where composites stop working.</em>
+        </div>
+
+        <div class="depth">
+          <b>Crust</b>
+          <span>Lithos · Verity · the sandbox.</span>
+        </div>
+        <div class="band band--crust">
+          <p class="eyebrow" style="margin-bottom:-.4rem">The logit chain — per token</p>
+          <div class="row">
+            <div class="node node--live">
+              <span class="who">Lithos · weights</span>
+              <span class="what">p_LM</span>
+              <span class="how">transformer forward pass</span>
+              <div class="chips"><span class="chip chip--judgment">judgment</span></div>
+            </div>
+            <span class="arrow">▸</span>
+            <div class="node node--dead">
+              <span class="who">kNN-LM</span>
+              <span class="what">interpolate</span>
+              <span class="how">deferred — 4 negative results</span>
+              <div class="chips"><span class="chip chip--absorb">partly absorbed</span></div>
+            </div>
+            <span class="arrow">▸</span>
+            <div class="node node--parked">
+              <span class="who">Verity · policy</span>
+              <span class="what">mask logits</span>
+              <span class="how">deterministic · the last write</span>
+              <div class="chips"><span class="chip chip--substrate">a guarantee</span></div>
+            </div>
+            <span class="arrow">▸</span>
+            <div class="node node--live">
+              <span class="who">Decode</span>
+              <span class="what">sample</span>
+              <span class="how">→ one token</span>
+            </div>
+          </div>
+          <p class="rule-note">
+            <b>Verity must still be the last write.</b> A guarantee that anything downstream can
+            overturn is not a guarantee.
+          </p>
+
+          <p class="eyebrow" style="margin:.5rem 0 -.4rem">The tool loop — per segment · <span style="color:var(--accent)">untouched by the sweep</span></p>
+          <div class="row">
+            <div class="node node--live">
+              <span class="who">TIR</span>
+              <span class="what">emit <code>&lt;|python|&gt;</code></span>
+              <span class="how">model decides to compute</span>
+              <div class="chips"><span class="chip chip--judgment">judgment · trained in</span></div>
+            </div>
+            <span class="arrow">▸</span>
+            <div class="node node--live">
+              <span class="who">Server</span>
+              <span class="what">pause decode</span>
+              <span class="how">buffer to <code>&lt;|/tool|&gt;</code></span>
+            </div>
+            <span class="arrow">▸</span>
+            <div class="node node--live">
+              <span class="who">Sandbox</span>
+              <span class="what">execute</span>
+              <span class="how">PYTHONHASHSEED=0 · 5s · 2GB</span>
+              <div class="chips"><span class="chip chip--substrate">exact</span></div>
+            </div>
+            <span class="arrow">▸</span>
+            <div class="node node--live">
+              <span class="who">Server</span>
+              <span class="what">append + resume</span>
+              <span class="how"><code>&lt;|tool_result|&gt;</code> → KV · masked from loss</span>
+            </div>
+          </div>
+          <p class="rule-note">
+            The strongest leg, and the only composite no result threatens. A calculator beats
+            parametric arithmetic forever.
+          </p>
+        </div>
+
+        <div class="moho">
+          <b>◤◢ Moho — the discontinuity ◤◢</b>
+          <span>
+            <b style="color:var(--ink)">Now serves R2 only.</b> Paged gather-attention, page-summary
+            top-k, one-hop CSR graph expansion. The contract, not the kernel, is the boundary:
+            <code>topk_pages</code> <code>gather</code> <code>append</code> <code>flush</code>
+          </span>
+        </div>
+
+        <div class="depth">
+          <b>Mantle</b>
+          <span>StrataDB — working memory, not facts.</span>
+        </div>
+        <div class="band band--mantle">
+          <div class="row">
+            <div class="node node--gated">
+              <span class="who">R2 · StrataDB</span>
+              <span class="what">KV pages + graph</span>
+              <span class="how">hot on GPU · cold by top-k<br>one-hop expansion for multi-hop recall</span>
+              <div class="chips">
+                <span class="chip chip--substrate">per-tenant</span>
+                <span class="chip chip--substrate">promoted → first track</span>
+              </div>
+            </div>
+            <div class="node node--dead">
+              <span class="who">R1 · old design</span>
+              <span class="what">Token-level datastore</span>
+              <span class="how">9.84e9 × 768 × 2B ≈ 15.1 TB<br>killed — moved above the line</span>
+            </div>
+            <div class="node node--gated">
+              <span class="who">Versioning</span>
+              <span class="what">Branch / time-travel</span>
+              <span class="how"><b>datastore_version</b> — the pin that<br>makes a mutable corpus evaluable</span>
+              <div class="chips"><span class="chip chip--substrate">bisectable</span></div>
+            </div>
+          </div>
+          <p class="rule-note">
+            <b>R2 is immune to the entire sweep.</b> Every negative result concerns fact retrieval
+            into the <em>output distribution</em>. R2 approximates <em>the same attention</em> — its
+            criterion is memory and latency, not bpb. It is a systems bet, and it can only fail for
+            engineering reasons. That is why it goes first.
+          </p>
+        </div>
+
+        <!-- The dike: discordant intrusion, cuts across the bedding -->
+        <aside class="dike">
+          <span class="tag">◇ StrataDB dike</span>
+          <p>
+            A <b>dike</b> cuts discordantly across the strata rather than lying along them.
+          </p>
+          <p>
+            StrataDB now surfaces on <b>both</b> sides of the token stream — but the fact channel
+            <b>never passes the Moho.</b> Documents rise straight to the surface and enter as
+            context.
+          </p>
+          <p>
+            Only the <b>state</b> channel (R2) stays in the mantle and is mediated by kernels.
+          </p>
+          <div class="cut">
+            facts&nbsp;→ above the datum<br>
+            state&nbsp;→ through the Moho
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── The fork ───────────────────────────────────────────── -->
+  <section class="fork">
+    <h2>II · The fork — the one question that is ours</h2>
+    <div class="fork-q">
+      <span class="tag">C-CTX · eval-only · ~$0 compute</span>
+      <p class="q">
+        At a 500M-scale context budget, is retrieval’s benefit on STEM reasoning destroyed by the
+        context it displaces?
+      </p>
+      <p class="note" style="max-width:70ch">
+        MassiveDS explains its factual wins with “the LM only needs to extract the answer,” and
+        reports marginal benefit on reasoning <em>for weaker models</em>. Two causes fit that data.
+        <b style="color:var(--ink)">They predict identical benchmarks and opposite architectures</b> —
+        and nobody has separated them, because nobody runs a 500M with a short context window.
+      </p>
+    </div>
+    <div class="branches">
+      <div class="branch branch--a">
+        <span class="lead">Cause (a)</span>
+        <h3>Capability</h3>
+        <p>A small model cannot integrate a retrieved fact into a multi-step derivation. It had the
+          fact and the room, and still couldn’t use it.</p>
+        <p class="verdict"><b>→</b> Retrieval never serves the reasoner. Build in-context RAG for the
+          <b>mutability + citation</b> surface only. No decode-loop retrieval, ever.</p>
+      </div>
+      <div class="branch branch--b">
+        <span class="lead">Cause (b)</span>
+        <h3>Displacement</h3>
+        <p>The passages ate the context the reasoning needed. The model could have used the fact; it
+          no longer had room to think.</p>
+        <p class="verdict"><b>→</b> A <b>context-free</b> fact channel is the only route. kNN-LM’s weak
+          per-token gain may win <em>net of displacement</em> — justified on <b>Gate 5</b> (scarce
+          resource), never on capability, and still owing Gates 1–4.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Gates ──────────────────────────────────────────────── -->
+  <section style="display:flex;flex-direction:column;gap:1.1rem">
+    <h2>III · The composite acceptance test</h2>
+    <p class="note" style="max-width:72ch">
+      All four negative results have the same shape: a gain <b style="color:var(--ink)">credited to the
+      composite that came from somewhere else</b>. These are failure modes of <em>attribution</em>, not
+      of retrieval — and they will recur for R2, TIR, and Verity. No composite’s number is believed
+      until it clears all six.
+    </p>
+    <div class="gates">
+      <div class="gate gate--new">
+        <span class="n">0</span><span class="t">Mechanism identity</span>
+        <span class="d">Evidence transfers only within a mechanism class. An in-context RAG result may not be cited for kNN-LM.</span>
+        <span class="src">the research summary violated this</span>
+      </div>
+      <div class="gate">
+        <span class="n">1</span><span class="t">Absorbed baseline</span>
+        <span class="d">Has the baseline received every trick the composite gets for free?</span>
+        <span class="src">Xu 2023 — the tricks fold back in</span>
+      </div>
+      <div class="gate">
+        <span class="n">2</span><span class="t">Product metric</span>
+        <span class="d">Does the gain appear in what we ship (task accuracy), not only the proxy (bpb)?</span>
+        <span class="src">Wang 2023 — ppl up, generation flat</span>
+      </div>
+      <div class="gate">
+        <span class="n">3</span><span class="t">Leakage measured</span>
+        <span class="d">Report the gain bucketed by overlap between the store and the eval. Asserting disjointness is not enough.</span>
+        <span class="src">Norlund 2023 — gain ≈ copying</span>
+      </div>
+      <div class="gate">
+        <span class="n">4</span><span class="t">Distribution, not aggregate</span>
+        <span class="d">What fraction of tokens are helped vs hurt? An aggregate can be carried by a minority while most regress.</span>
+        <span class="src">Wang 2023 — majority get worse</span>
+      </div>
+      <div class="gate">
+        <span class="n">5</span><span class="t">Cost in the scarce resource</span>
+        <span class="d">Worth what it costs in the resource the device actually lacks. That turned out to be <b>context</b>, not VRAM.</span>
+        <span class="src">→ C-CTX</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Cycle ──────────────────────────────────────────────── -->
+  <section style="display:flex;flex-direction:column;gap:1.1rem">
+    <h2>IV · The rock cycle — build time, across the legs</h2>
+    <div class="cycle">
+      <div class="cycle-scroll">
+        <div class="row">
+          <div class="node node--live">
+            <span class="who">Chisel</span><span class="what">Data factory</span>
+            <span class="how">canon records · verified synthetic<br>source_id · record_id · text_sha256</span>
+          </div>
+          <span class="arrow">▸</span>
+          <div class="node node--live">
+            <span class="who">Chisel → Lithos</span><span class="what">Corpus · task banks</span>
+            <span class="how">+ the R1 doc index, built from<br>the <em>same</em> records</span>
+          </div>
+          <span class="arrow">▸</span>
+          <div class="node node--live">
+            <span class="who">Lithos</span><span class="what">Train</span>
+            <span class="how">pretrain → SFT → GRPO-RLVR<br>sandbox = the reward</span>
+          </div>
+          <span class="arrow">▸</span>
+          <div class="node node--live">
+            <span class="who">Lithos</span><span class="what">Serve</span>
+            <span class="how">the cross-section above</span>
+          </div>
+          <span class="arrow">▸</span>
+          <div class="node node--live">
+            <span class="who">Petra</span><span class="what">Diagnose</span>
+            <span class="how">channel: parametric | retrieved | tool<br>a prepended passage cites itself</span>
+          </div>
+        </div>
+      </div>
+      <div class="return">
+        <b>↺ Tectonics</b>
+        <span>
+          the control plane closes the ring — Petra emits typed <code>data_recommendation</code> → Chisel
+          and <code>model_recommendation</code> → Lithos. <b>Verity gates the arc:</b> cheap and reversible
+          runs automatically; an expensive cluster retrain waits for approval. Hand-crank the loop first;
+          build the conductor last.
+        </span>
+      </div>
+      <p class="note" style="margin-top:1rem">
+        <b style="color:var(--ink)">One key namespace still spans every leg</b> —
+        <code>source_id · record_id · text_sha256</code> threads Chisel’s records → the corpus →
+        <code>docindex</code> → the R1 doc index → the citation → Petra’s join. Moving R1 above the
+        line made this <em>cheaper</em>: a prepended passage is citable at the span level, with no
+        neighbour log at all.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Deferred ───────────────────────────────────────────── -->
+  <section style="display:flex;flex-direction:column;gap:1.1rem">
+    <h2>V · Struck, with the reason</h2>
+    <div class="rejected">
+      <div class="row">
+        <div class="node">
+          <span class="who">4 negative results</span><span class="what">kNN-LM in the decode loop</span>
+          <span class="how">resurrectable only by C-CTX (b)</span>
+          <div class="chips"><span class="chip chip--absorb">deferred</span></div>
+        </div>
+        <div class="node">
+          <span class="who">Norlund 2023</span><span class="what">RETRO cross-attention</span>
+          <span class="how">gain ≈ verbatim overlap</span>
+          <div class="chips"><span class="chip chip--absorb">deferred</span></div>
+        </div>
+        <div class="node">
+          <span class="who">15.1 TB</span><span class="what">Token-level datastore</span>
+          <span class="how">doc chunks instead — 3 orders of magnitude</span>
+          <div class="chips"><span class="chip chip--absorb">killed</span></div>
+        </div>
+        <div class="node">
+          <span class="who">Refuted</span><span class="what">Frequency discriminator</span>
+          <span class="how">gains land on <em>high</em>-freq tokens</span>
+          <div class="chips"><span class="chip chip--absorb">retracted</span></div>
+        </div>
+        <div class="node">
+          <span class="who">Absorbed</span><span class="what">Best-of-n · cascades · agent scaffolds</span>
+          <span class="how">became trained reasoning + tool-use RL</span>
+          <div class="chips"><span class="chip chip--absorb">absorbed</span></div>
+        </div>
+        <div class="node">
+          <span class="who">Free lunch</span><span class="what">Speculative decoding</span>
+          <span class="how">identical distribution · everyone gets it</span>
+          <div class="chips"><span class="chip chip--absorb">table stakes</span></div>
+        </div>
+      </div>
+      <p class="rule-note rule-note--warn">
+        <b>The softmax-bottleneck justification for R1 is dead.</b> Xu, Alon &amp; Neubig folded the
+        kNN-LM tricks back into the parametric LM “without the need for an explicit retrieval
+        component.” The absorption test was run on our own mechanism, by someone else, and partly
+        passed. R1 survives on the <b>mutable</b> clause alone — facts that change, or facts the model
+        never saw. You cannot train on a fact you do not have.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <span><b>Doctrine</b> docs/composite-model-layer.md</span>
+    <span><b>Plan</b> docs/composite-plan.md</span>
+    <span><b>Gate</b> docs/c0-spec.md</span>
+    <span><b>Boundary</b> docs/moho.md</span>
+    <span>rev B · post-sweep</span>
+  </footer>
+
+</div>

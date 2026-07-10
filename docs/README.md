@@ -7,6 +7,9 @@
 ## Architecture & design
 - [Composite model layer](composite-model-layer.md) — the absorption test; which of R1/R2/TIR/Verity are moats and which are scaffolding
 - [Composite instrumentation](composite-instrumentation.md) — the measurement apparatus: three capture points, three tables, C0–C5 as queries
+- [Composite plan](composite-plan.md) — **DECIDED**: mechanisms above the token stream have positive evidence, below it negative; R1 → in-context RAG, R2 first, the six acceptance gates
+- [Composite plate](composite-plate.html) — the architecture drawn as a stratigraphic cross-section (rev B, post-sweep). Self-contained HTML; open in a browser
+- [C0 spec](c0-spec.md) — the R1 gate experiment, post-literature-sweep (absorb first, measure the residual; superseded on architecture by composite-plan.md)
 - [Architecture audit](architecture-audit.md) — Lithos vs Qwen3, component-by-component + the applied default fixes
 - [Tokenizer](tokenizer.md) — the 32k STEM BPE design
 - [TIR format](tir-format.md) — tool-integrated-reasoning tokens + loss masking (read before writing TIR data)
