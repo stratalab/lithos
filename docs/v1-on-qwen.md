@@ -151,8 +151,12 @@ of the following may leak into code or data:
 ## 6. v1 hardening — the actual work, in order
 
 **Post-training**
-1. Add the 7 chat specials + the TIR block to Qwen's tokenizer as **added tokens** (~19 new
-   embedding rows, trained during SFT). Re-run the parity test.
+1. ✅ **DONE** — `lithos/serve/tokenizer_adapt.py`. Adds the **13** required specials
+   (`chat_template.REQUIRED_SPECIAL_TOKENS`: 7 core + 6 TIR) to Qwen's tokenizer, *reusing*
+   any it already has (Qwen3 ships `<think>`/`</think>`, so ~11 are genuinely new). The
+   embedding grows via `load_qwen3(hf, vocab_size=…)`; added rows are zero-init and trained
+   during SFT. A test proves growing the vocab **preserves import parity on Qwen's original
+   slice** — the property the whole decision rests on.
 2. Retokenize the SFT / RLVR / preference data and the decontam probes.
 3. **E2.5 — retrieval-aware SFT**: reference blocks in the mix, plus **distractor** examples
    the model must ignore. Required before any C-CTX `capability` verdict is believable

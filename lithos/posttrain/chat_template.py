@@ -41,6 +41,12 @@ TOOL_CLOSE, TOOL_RESULT = "<|/tool|>", "<|tool_result|>"
 TOOL_OPEN = {"python": "<|python|>", "octave": "<|octave|>"}  # runtime identity in the open tag
 TIR_TOKENS = (THINK_OPEN, THINK_CLOSE, *TOOL_OPEN.values(), TOOL_CLOSE, TOOL_RESULT)
 
+# Every special token an SFT/TIR-capable tokenizer must resolve, core + TIR, in a stable
+# order. THE single source of truth: a from-scratch STEM tokenizer reserves these, and a
+# Qwen base is *augmented* with whichever it lacks (`lithos/serve/tokenizer_adapt.py`), so
+# the tokenizer and this renderer can never drift on what must exist.
+REQUIRED_SPECIAL_TOKENS: tuple[str, ...] = (*_SPECIALS, *TIR_TOKENS)
+
 
 class _Encoding(Protocol):
     ids: list[int]
