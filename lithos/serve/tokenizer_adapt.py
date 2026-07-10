@@ -29,9 +29,17 @@ A HF ``PreTrainedTokenizerFast`` wrapper exposes neither in that shape.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from lithos.posttrain.chat_template import REQUIRED_SPECIAL_TOKENS
+from lithos.utils.io import ensure_dir, write_json
+
+#: The sidecar naming the model this tokenizer was cut for. The augmented tokenizer's
+#: ``vocab_size`` and the imported model's must agree, or shard ids can index past the
+#: embedding — so the contract is written down next to the artifact, not left implicit.
+ADAPT_MANIFEST_NAME = "adapt.json"
+TOKENIZER_FILE_NAME = "tokenizer.json"
 
 
 @dataclass(frozen=True)
@@ -115,3 +123,52 @@ def adapt_qwen(hf_model: Any, backend_tokenizer: Any) -> tuple[Any, AugmentResul
     vsize = import_vocab_size(hf_model.config, result)
     model = load_qwen3(hf_model, vocab_size=vsize)
     return model, result
+
+
+def save_augmented_tokenizer(
+    base_tokenizer: Any, out_dir: str | Path, *, base_model: str | None = None
+) -> AugmentResult:
+    """Augment a base tokenizer and write it as a build artifact: ``tokenizer.json`` plus an
+    ``adapt.json`` sidecar recording the vocab size, the added/reused specials, and the base
+    model. The existing SFT/RLVR builds consume the ``tokenizer.json`` unchanged — "retokenize
+    on the Qwen tokenizer" is just pointing ``tokenizer_path`` at this directory.
+
+    ``base_tokenizer`` may be a live ``tokenizers.Tokenizer`` or a path to a ``tokenizer.json``
+    (e.g. Qwen's). It is augmented in place; the original file on disk is not touched.
+    """
+    if isinstance(base_tokenizer, (str, Path)):
+        from tokenizers import Tokenizer
+
+        backend = Tokenizer.from_file(str(base_tokenizer))
+    else:
+        backend = base_tokenizer
+
+    result = augment_tokenizer(backend)
+    out = ensure_dir(out_dir)
+    backend.save(str(out / TOKENIZER_FILE_NAME))
+    write_json(
+        out / ADAPT_MANIFEST_NAME,
+        {
+            "base_model": base_model,
+            "base_vocab_size": result.base_vocab_size,
+            "vocab_size": result.vocab_size,
+            "added": list(result.added),
+            "reused": list(result.reused),
+            "special_ids": result.ids,
+            "required_special_tokens": list(REQUIRED_SPECIAL_TOKENS),
+        },
+    )
+    return result
+
+
+def assert_tokenizer_matches_model(tok: Any, model_vocab_size: int) -> None:
+    """Guard the train/serve contract: every id the tokenizer can emit must index a real
+    model row. A tokenizer larger than the model's vocab would index past the embedding.
+    """
+    tvocab = int(tok.get_vocab_size())
+    if tvocab > model_vocab_size:
+        raise ValueError(
+            f"tokenizer vocab ({tvocab}) exceeds the model's vocab ({model_vocab_size}): "
+            f"token ids would index past the embedding. Import the model with "
+            f"vocab_size >= {tvocab} (see import_vocab_size)."
+        )

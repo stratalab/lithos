@@ -157,7 +157,15 @@ of the following may leak into code or data:
    embedding grows via `load_qwen3(hf, vocab_size=…)`; added rows are zero-init and trained
    during SFT. A test proves growing the vocab **preserves import parity on Qwen's original
    slice** — the property the whole decision rests on.
-2. Retokenize the SFT / RLVR / preference data and the decontam probes.
+2. ✅ **DONE** — retokenization is a *build input*, not a data transform. The SFT/RLVR source
+   data is text (messages JSONL, task banks); it tokenizes at build time. `save_augmented_
+   tokenizer` / `scripts/adapt_qwen_tokenizer.py` cut an augmented `tokenizer.json` + `adapt.json`
+   artifact; point each build's `tokenizer_path` at it and the existing pipeline retokenizes
+   unchanged. A test drives the real SFT build under an augmented tokenizer and checks the
+   shards (specials at their augmented ids, dtype widened past uint16 for Qwen-scale vocab, loss
+   mask on the assistant turn). `assert_tokenizer_matches_model` guards the vocab contract.
+   *Remaining:* run it against the real Qwen `tokenizer.json` (needs HF access) and repoint the
+   configs — an ops step, not code. The decontam probes retokenize the same way.
 3. **E2.5 — retrieval-aware SFT**: reference blocks in the mix, plus **distractor** examples
    the model must ignore. Required before any C-CTX `capability` verdict is believable
    (`docs/composite-plan.md` §3 cause (c)).

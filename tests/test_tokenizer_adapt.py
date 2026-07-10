@@ -15,7 +15,12 @@ from lithos.posttrain.chat_template import (
     special_ids,
     tir_token_ids,
 )
-from lithos.serve.tokenizer_adapt import augment_tokenizer, import_vocab_size
+from lithos.serve.tokenizer_adapt import (
+    assert_tokenizer_matches_model,
+    augment_tokenizer,
+    import_vocab_size,
+    save_augmented_tokenizer,
+)
 
 
 def _base_tokenizer(vocab_size: int = 400, prehave: list[str] | None = None):
@@ -171,3 +176,109 @@ def test_import_vocab_size_uses_spare_rows_when_specials_fit_under_config_vocab(
     # specials past config vocab -> grow to cover the highest id + 1
     res2 = AugmentResult(tokenizer=None, ids={f"t{i}": 100 + i for i in range(13)})
     assert import_vocab_size(SimpleNamespace(vocab_size=100), res2) == 113
+
+
+# ── persistence: the augmented tokenizer is a build artifact ──────────────────
+
+
+def test_save_augmented_tokenizer_writes_a_consumable_artifact(tmp_path):
+    """The SFT/RLVR builds load a tokenizer.json by path; the augmented one must be one."""
+    from tokenizers import Tokenizer
+
+    base = _base_tokenizer()
+    base_path = tmp_path / "base.json"
+    base.save(str(base_path))
+
+    out = tmp_path / "qwen-lithos"
+    res = save_augmented_tokenizer(base_path, out, base_model="Qwen/Qwen3-1.7B-Base")
+
+    # tokenizer.json reloads and still resolves every special to the recorded id
+    reloaded = Tokenizer.from_file(str(out / "tokenizer.json"))
+    for name, tid in res.ids.items():
+        assert reloaded.token_to_id(name) == tid
+
+    # the sidecar records the contract the model import must honour
+    import json
+
+    man = json.loads((out / "adapt.json").read_text())
+    assert man["base_model"] == "Qwen/Qwen3-1.7B-Base"
+    assert man["vocab_size"] == reloaded.get_vocab_size()
+    assert set(man["added"]) | set(man["reused"]) == set(REQUIRED_SPECIAL_TOKENS)
+
+
+def test_save_accepts_a_live_tokenizer_too(tmp_path):
+    res = save_augmented_tokenizer(_base_tokenizer(), tmp_path / "out")
+    assert (tmp_path / "out" / "tokenizer.json").exists()
+    assert res.vocab_size > res.base_vocab_size
+
+
+# ── the train/serve contract guard ────────────────────────────────────────────
+
+
+def test_tokenizer_bigger_than_the_model_is_rejected():
+    tok = _base_tokenizer()
+    augment_tokenizer(tok)
+    assert_tokenizer_matches_model(tok, tok.get_vocab_size())  # equal: fine
+    assert_tokenizer_matches_model(tok, tok.get_vocab_size() + 5)  # roomier: fine
+    with pytest.raises(ValueError, match="index past the embedding"):
+        assert_tokenizer_matches_model(tok, tok.get_vocab_size() - 1)
+
+
+def test_dtype_widens_past_uint16_at_the_qwen_boundary():
+    """Qwen's ~151k vocab crosses the uint16 ceiling; shard ids must not overflow."""
+    from lithos.data.shard import dtype_for_vocab
+
+    assert dtype_for_vocab(65536) == "uint16"  # max id 65535 fits
+    assert dtype_for_vocab(65537) == "uint32"  # max id 65536 does not
+    assert dtype_for_vocab(151_936) == "uint32"  # Qwen3
+
+
+# ── end to end: the SFT build really retokenizes under the augmented tokenizer ─
+
+
+def test_sft_build_retokenizes_correctly_on_the_augmented_tokenizer(tmp_path):
+    """The point of the whole step: existing SFT source data (text) tokenizes into valid
+    shards under the augmented tokenizer, with the chat specials at their augmented ids and
+    the loss mask on the assistant turn."""
+    import json
+
+    import numpy as np
+    from lithos.posttrain.sft_corpus import SFTCorpusBuildConfig, build_sft_corpus
+
+    out = tmp_path / "qwen-lithos"
+    res = save_augmented_tokenizer(_base_tokenizer(), out)
+    end_id = res.ids["<|end|>"]
+
+    data = tmp_path / "sft.jsonl"
+    messages = {
+        "messages": [
+            {"role": "user", "content": "solve for x"},
+            {"role": "assistant", "content": "x equals two"},
+        ]
+    }
+    data.write_text(json.dumps(messages) + "\n")
+
+    manifest = build_sft_corpus(
+        SFTCorpusBuildConfig(
+            tokenizer_path=str(out / "tokenizer.json"),
+            sources=[{"path": str(data), "name": "s", "tier": "open"}],  # type: ignore[list-item]
+            output_dir=str(tmp_path / "sftout"),
+            seq_len=64,
+            tokens_per_shard=256,
+        )
+    )
+
+    assert manifest["num_tokens"] > 0 and manifest["num_loss_tokens"] > 0
+    # dtype is chosen from the augmented vocab, not the base
+    assert manifest["shards"][0]["dtype"] in ("uint16", "uint32")
+
+    shard = manifest["shards"][0]
+    toks = np.fromfile(tmp_path / "sftout" / shard["tokens_path"], dtype=shard["dtype"])
+    mask = np.fromfile(
+        tmp_path / "sftout" / shard["mask_path"], dtype="uint8"
+    )
+    # the augmented <|end|> id actually appears, and it is a valid id for this tokenizer
+    assert end_id in toks.tolist()
+    assert int(toks.max()) < res.vocab_size
+    # exactly the assistant content + its closing <|end|> is a loss target (mask has 1s)
+    assert mask.sum() > 0 and mask.sum() < len(mask)
