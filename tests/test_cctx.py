@@ -26,6 +26,7 @@ from lithos.evals.cctx import (
     write_episodes,
 )
 from lithos.posttrain.chat_template import TIR_TOKENS
+from lithos.posttrain.reference import REFERENCE_HEADER
 from lithos.posttrain.taskbank import Task
 from lithos.retrieval import Datastore, DistractorRetriever, DocumentRetriever, HashingEmbedder
 
@@ -121,6 +122,20 @@ class IgnoresTheFact(AnswerAfterThinking):
 
     def _answer_for(self, prompt_text: str) -> str:
         return self.wrong
+
+
+class CannotReadAReferenceBlock(AnswerAfterThinking):
+    """Uses the fact as bare prose; blind to it inside a ``Reference material:`` block.
+
+    An **untrained** model: nothing in SFT or RLVR ever rendered a reference block, so it has
+    never seen one. It predicts the same benchmark numbers as `IgnoresTheFact` — which is
+    exactly why the `inline` arm has to exist.
+    """
+
+    def _answer_for(self, prompt_text: str) -> str:
+        if REFERENCE_HEADER in prompt_text:
+            return self.wrong  # the fact is right there, and it cannot see it
+        return super()._answer_for(prompt_text)
 
 
 def _store(tok, texts):
@@ -311,3 +326,71 @@ def test_summary_reports_starvation(tok):
     recs = _run(m, tok, arms=(Arm.PREPEND,), budgets=(8,))
     s = summarize(recs)
     assert s["prepend@8"]["starved_frac"] == 1.0
+
+
+# ── the inline arm: is the failure format, or capability? ─────────────────────
+
+
+def test_inline_arm_renders_bare_prose_and_costs_fewer_tokens_than_a_block(tok):
+    """Same fact, no header and no [n] markers — so it is strictly cheaper in context."""
+    m = AnswerAfterThinking(tok, think_tokens=2, right="42", wrong="7", cue=CUE)
+    recs = _run(m, tok, arms=(Arm.PREPEND, Arm.INLINE), budgets=(512,))
+    by_arm = {r.arm: r for r in recs}
+    assert by_arm["inline"].context_placement == "inline"
+    assert by_arm["prepend"].context_placement == "block"
+    assert by_arm["inline"].context_tokens < by_arm["prepend"].context_tokens
+
+
+def test_a_format_blind_model_is_diagnosed_untrained_not_incapable(tok):
+    """THE POINT. This model can use a fact as prose and cannot see it in our block. Without
+    the inline arm it is indistinguishable from `IgnoresTheFact` — and we would have
+    concluded that a 500M cannot use retrieved facts, when it was never taught to read one."""
+    budgets = (96, 512)
+    m = CannotReadAReferenceBlock(tok, think_tokens=4, right="42", wrong="7", cue=CUE)
+    recs = _run(m, tok, arms=(Arm.NONE, Arm.PREPEND, Arm.ORACLE, Arm.INLINE), budgets=budgets)
+    d = diagnose(summarize(recs), budgets=budgets)
+
+    assert d.verdict == "untrained", d.rationale
+    assert d.oracle_gain <= 0.05  # the block bought nothing...
+    assert d.format_effect is not None and d.format_effect > 0  # ...but prose did
+    assert "Gate 1 pointing back at us" in d.rationale
+
+
+def test_a_truly_incapable_model_still_diagnoses_capability_with_the_inline_arm_run(tok):
+    """The inline arm must not turn every `capability` into `untrained`."""
+    budgets = (96, 512)
+    m = IgnoresTheFact(tok, think_tokens=4, right="42", wrong="7", cue=CUE)
+    recs = _run(m, tok, arms=(Arm.NONE, Arm.PREPEND, Arm.ORACLE, Arm.INLINE), budgets=budgets)
+    d = diagnose(summarize(recs), budgets=budgets)
+    assert d.verdict == "capability", d.rationale
+    assert d.format_effect is not None and abs(d.format_effect) <= 0.05
+    assert "not earned" not in d.rationale  # the arm WAS run
+
+
+def test_capability_without_the_inline_arm_is_flagged_as_not_earned(tok):
+    """A `capability` verdict that never ruled out `untrained` is the absence of a test, not
+    a finding. `diagnose` says so out loud."""
+    budgets = (96, 512)
+    m = IgnoresTheFact(tok, think_tokens=4, right="42", wrong="7", cue=CUE)
+    recs = _run(m, tok, arms=(Arm.NONE, Arm.PREPEND, Arm.ORACLE), budgets=budgets)
+    d = diagnose(summarize(recs), budgets=budgets)
+    assert d.verdict == "capability"
+    assert d.format_effect is None
+    assert "not earned" in d.rationale
+
+
+def test_a_displacement_limited_model_is_unaffected_by_the_inline_arm(tok):
+    """It can read a block fine; its problem is room. Adding the arm must not change the call."""
+    budgets = (96, 512)
+    m = AnswerAfterThinking(tok, think_tokens=40, right="42", wrong="7", cue=CUE)
+    recs = _run(m, tok, arms=(Arm.NONE, Arm.PREPEND, Arm.ORACLE, Arm.INLINE), budgets=budgets)
+    assert diagnose(summarize(recs), budgets=budgets).verdict == "displacement"
+
+
+def test_episodes_record_the_prompt_format(tok):
+    """Changing the renderer changes the output for identical weights; the four-tuple does not
+    capture that, so the episode does."""
+    m = AnswerAfterThinking(tok, think_tokens=2, right="42", wrong="7", cue=CUE)
+    recs = _run(m, tok, arms=(Arm.INLINE,), budgets=(512,))
+    assert recs[0].reference_format_version == "ref-v1"
+    assert recs[0].context_placement == "inline"

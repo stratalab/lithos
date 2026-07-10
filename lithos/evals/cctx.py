@@ -16,6 +16,12 @@ numbers**, and they imply **opposite architectures**:
         may win net of displacement — justified on Gate 5 (scarce resource), never on
         capability, and still owing Gates 1–4.
 
+  (c) **untrained** — the model was never taught what a ``Reference material:`` block *is*.
+      Nothing in SFT or RLVR ever rendered one; only the server did. This predicts the same
+      numbers as (a), and it is Gate 1 pointing back at us: the composite must have had a
+      fair shot too.
+      → retrieval-aware SFT before any capability claim. The ``inline`` arm detects it.
+
 Nobody has separated them, because nobody runs a 500M with a short context window.
 
 ## The arms
@@ -33,6 +39,8 @@ arm          fact in prompt?     charged to the budget?      what it measures
                                                              context-free channel buys
 ``distractor`` yes, irrelevant   yes                         the price of the tokens
                                                              alone, content removed
+``inline``   yes, as bare prose  yes                         whether the failure is
+                                                             FORMAT, not capability
 ===========  ==================  ==========================  =========================
 
 **No mechanism can deliver ``oracle`` by prepending.** That is the point. It is an upper
@@ -43,6 +51,7 @@ Three comparisons, three questions:
   ``oracle - none``       does a free, relevant fact help at all?     (capability)
   ``oracle - prepend``    does charging its cost destroy the gain?    (displacement)
   ``prepend - distractor`` was it the content, or just the tokens?    (control)
+  ``inline - oracle``     could it use the fact in a FAMILIAR shape?  (untrained)
 
 ## Pre-registration
 
@@ -61,6 +70,7 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
+from lithos.posttrain.reference import REFERENCE_FORMAT_VERSION, ContextPlacement
 from lithos.posttrain.taskbank import Task, verify
 from lithos.retrieval.types import Retriever
 from lithos.serve.composite import CompositeModel
@@ -73,6 +83,9 @@ class Arm(StrEnum):
     PREPEND = "prepend"
     ORACLE = "oracle"
     DISTRACTOR = "distractor"
+    #: Same fact, same charging as `prepend`, but rendered as bare prose before the question —
+    #: a shape every LM has seen a billion times. Isolates format from capability.
+    INLINE = "inline"
 
 
 @dataclass(frozen=True)
@@ -97,6 +110,18 @@ class EpisodeRecord:
     n_tool_calls: int
     truncated: bool
     cited_source_ids: tuple[str, ...]
+    context_placement: str
+    reference_format_version: str
+
+
+#: arm -> (placement, is the context charged to the completion budget?)
+_ARM_SPEC: dict[Arm, tuple[ContextPlacement, bool]] = {
+    Arm.NONE: (ContextPlacement.BLOCK, True),  # no context; placement is moot
+    Arm.PREPEND: (ContextPlacement.BLOCK, True),
+    Arm.ORACLE: (ContextPlacement.BLOCK, False),  # the fact is free
+    Arm.DISTRACTOR: (ContextPlacement.BLOCK, True),
+    Arm.INLINE: (ContextPlacement.INLINE, True),  # same charging as prepend; familiar shape
+}
 
 
 def _retriever_for(arm: Arm, retriever: Retriever | None, distractor: Retriever | None):
@@ -131,6 +156,7 @@ def run_cctx(
     records: list[EpisodeRecord] = []
     for arm in arms:
         r = _retriever_for(arm, retriever, distractor_retriever)
+        placement, charge = _ARM_SPEC[arm]
         cm = CompositeModel(model, tok, weights_sha256=weights_sha256, retriever=r, device=device)
         for budget in budgets:
             for task in tasks:
@@ -138,8 +164,9 @@ def run_cctx(
                     task.prompt,
                     context_token_budget=context_token_budget if r is not None else 0,
                     total_token_budget=budget,
-                    # The whole experiment, in one flag.
-                    charge_context=(arm is not Arm.ORACLE),
+                    # The whole experiment, in two flags.
+                    charge_context=charge,
+                    placement=placement,
                     max_tool_calls=max_tool_calls,
                     use_cache=use_cache,
                     **gen_kwargs,
@@ -164,6 +191,8 @@ def run_cctx(
                         n_tool_calls=len(res.tool_calls),
                         truncated=res.truncated,
                         cited_source_ids=tuple(c.source_id for c in res.citations),
+                        context_placement=res.context_placement,
+                        reference_format_version=REFERENCE_FORMAT_VERSION,
                     )
                 )
     return records
@@ -189,11 +218,12 @@ def summarize(records: Iterable[EpisodeRecord]) -> dict[str, dict[str, float]]:
 
 @dataclass(frozen=True)
 class Diagnosis:
-    verdict: str  # "capability" | "displacement" | "inconclusive"
+    verdict: str  # "capability" | "displacement" | "untrained" | "inconclusive"
     oracle_gain: float  # oracle - none, at the largest budget
     displacement: float  # oracle - prepend, at the smallest budget
     converges: float  # oracle - prepend, at the largest budget (want ~0)
     content_effect: float | None  # prepend - distractor, largest budget (None if not run)
+    format_effect: float | None  # inline - oracle, largest budget (None if not run)
     rationale: str
 
 
@@ -205,12 +235,20 @@ def diagnose(
 ) -> Diagnosis:
     """The pre-registered decision rule (`docs/c0-spec.md` §7). Written before the numbers.
 
-    * **capability** — a free, relevant fact does not help even at the largest budget.
-      ``oracle - none <= eps``. Retrieval does not serve the reasoner, at any price.
+    * **untrained** — a free fact in our ``Reference material:`` block does not help, but the
+      *same fact as bare prose* does. The model can use a fact; it cannot read our format.
+      **Checked before `capability`, because the two are indistinguishable without it.**
+      Nothing in SFT or RLVR ever rendered a reference block — only the server did.
+    * **capability** — a free, relevant fact does not help even at the largest budget, *and*
+      not inline either. ``oracle - none <= eps``. Retrieval does not serve the reasoner.
     * **displacement** — the free fact *does* help, and charging its cost destroys the gain
       at a tight budget while the two converge at a generous one. That is the signature of
       the context window binding, and the only thing that resurrects decode-loop retrieval.
     * **inconclusive** — anything else. Say so; do not squint.
+
+    Note the asymmetry: without the ``inline`` arm, a ``capability`` verdict is **not
+    earned** — it is merely the absence of an alternative we failed to test. `diagnose` says
+    so rather than pretending otherwise.
     """
     lo, hi = min(budgets), max(budgets)
 
@@ -221,7 +259,7 @@ def diagnose(
     needed = [acc(a, b) for a in (Arm.NONE, Arm.PREPEND, Arm.ORACLE) for b in (lo, hi)]
     if any(v is None for v in needed):
         return Diagnosis(
-            "inconclusive", 0.0, 0.0, 0.0, None, "missing arm×budget cells; cannot decide"
+            "inconclusive", 0.0, 0.0, 0.0, None, None, "missing arm×budget cells; cannot decide"
         )
 
     oracle_gain = acc(Arm.ORACLE, hi) - acc(Arm.NONE, hi)  # type: ignore[operator]
@@ -231,12 +269,29 @@ def diagnose(
     d_hi = acc(Arm.DISTRACTOR, hi)
     content = None if d_hi is None else acc(Arm.PREPEND, hi) - d_hi  # type: ignore[operator]
 
-    if oracle_gain <= eps:
+    i_hi = acc(Arm.INLINE, hi)
+    fmt = None if i_hi is None else i_hi - acc(Arm.ORACLE, hi)  # type: ignore[operator]
+    inline_gain = None if i_hi is None else i_hi - acc(Arm.NONE, hi)  # type: ignore[operator]
+
+    if oracle_gain <= eps and inline_gain is not None and inline_gain > eps:
+        verdict, why = (
+            "untrained",
+            f"a free fact in a reference block bought {oracle_gain:+.3f}, but the same fact as "
+            f"bare prose bought {inline_gain:+.3f} at budget {hi}. The model can use a fact; it "
+            f"cannot read our format. Nothing in SFT or RLVR ever rendered a "
+            f"`{REFERENCE_FORMAT_VERSION}` block. Retrieval-aware SFT is required before any "
+            f"capability claim — this is Gate 1 pointing back at us.",
+        )
+    elif oracle_gain <= eps:
+        earned = (
+            "" if inline_gain is not None else " NOTE: the `inline` arm was not run, so "
+            "`untrained` was never ruled out and this verdict is not earned."
+        )
         verdict, why = (
             "capability",
             f"a free, relevant fact bought {oracle_gain:+.3f} at budget {hi} (<= eps={eps}). "
             "The model cannot use the fact even when it costs nothing. Retrieval does not "
-            "serve the reasoner; build it for mutability and citation only.",
+            f"serve the reasoner; build it for mutability and citation only.{earned}",
         )
     elif displacement > eps and abs(converges) <= eps:
         verdict, why = (
@@ -252,7 +307,7 @@ def diagnose(
             f"oracle_gain={oracle_gain:+.3f}, displacement={displacement:+.3f}, "
             f"converges={converges:+.3f} fit neither pre-registered pattern.",
         )
-    return Diagnosis(verdict, oracle_gain, displacement, converges, content, why)
+    return Diagnosis(verdict, oracle_gain, displacement, converges, content, fmt, why)
 
 
 def write_episodes(records: Iterable[EpisodeRecord], path: str | Path) -> Path:

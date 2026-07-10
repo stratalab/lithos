@@ -77,8 +77,27 @@ context window:
   derivation. Retrieval is useless to a reasoner at this scale.
 - **(b) Displacement**: the retrieved passages *ate the context the reasoning needed*. The model
   could have used the fact; it no longer had room to think.
+- **(c) Untrained** *(found 2026-07-10, while auditing what the composite needs from
+  post-training)*: the model was never taught what a `Reference material:` block **is**.
+  `_CONTEXT_HEADER` lived in the serving path and nowhere else — nothing in SFT or RLVR ever
+  rendered one. This predicts the same numbers as (a).
 
 These predict identical benchmark numbers and opposite architectures.
+
+> **(c) is Gate 1 pointing back at us.** Gate 1 asks whether the *baseline* received every
+> trick the composite gets for free. The mirror obligation is that the **composite must have
+> had a fair shot too** — and it hadn't. A `capability` verdict reached without ruling out
+> (c) is not a finding; it is the absence of a test.
+
+**The `inline` arm separates (a) from (c)** and costs no training: render the same fact as
+bare prose before the question — a shape every LM has seen a billion times in pretraining —
+instead of inside a header-and-`[n]`-markers block it has never seen. If `inline` helps and
+`oracle` does not, the failure is **format**, not capability. `diagnose` checks (c) *before*
+(a), and flags a `capability` verdict as `not earned` when the arm was not run.
+
+Landed: `lithos/posttrain/reference.py` is the **one renderer both training and serving
+import** — the same argument that made `validate_tir_record` shared rather than
+reimplemented. A format the server invents is a format the model never saw.
 
 > **C-CTX — the fork.** At a 500M-scale context budget, is retrieval's benefit on STEM reasoning
 > destroyed by the context it displaces? Hold the fact constant; vary how it arrives (prepended
@@ -233,7 +252,8 @@ Struck, with the reason, so we do not rediscover them:
 |---|---|---|---|---|
 | **E1** | **A0 — absorb.** Implement Xu 2023's three parametric interventions on the 100M. | Training, no datastore | ~$40–110 | Not an experiment — a **free model improvement**, kept forever, no `datastore_version`, no ANN, no attribution ambiguity. Do it regardless. |
 | **E2** | **Baseline saturation curve.** One 8-epoch 110M run, checkpoints at whole epochs. | One run | ~$38 | Required by §10.1 before *any* composite. Gives the ruler. |
-| **E3** | **C-CTX — the fork.** Fact held constant; delivery varied (prepend / oracle-free-injection / none) × reasoning-token budget. | Eval-only, on E2's checkpoints + a doc index | ~$0 compute | **Picks the architecture** (§3). |
+| **E3** | **C-CTX — the fork.** Fact held constant; delivery varied (none / prepend / oracle-free / **inline** / distractor) × reasoning-token budget. | Eval-only, on E2's checkpoints + a doc index | ~$0 compute | **Picks the architecture** (§3). |
+| **E2.5** | **Retrieval-aware SFT.** Reference blocks in the SFT mix, with **distractor** examples the model must ignore. Required before a `capability` verdict is believable; the `inline` arm only *detects* the gap, it does not close it. | SFT run | ~$50–150 | Whether E3's verdict is about the model or about our prompt format. |
 | **E4** | **C0-B — usability.** Can the model use a retrieved STEM fact in a multi-step derivation? Split eval into factual-lookup vs. multi-step. | Shares E3's apparatus | ~$0 | Whether R1 serves the flagship at all. |
 
 **Under ~$150, and E3 is the one nobody has run for us.**

@@ -38,6 +38,11 @@ import torch
 
 from lithos.model.generation import LogitsProcessor
 from lithos.posttrain.chat_template import render_prompt, special_ids, tir_token_ids
+from lithos.posttrain.reference import (
+    REFERENCE_FORMAT_VERSION,
+    ContextPlacement,
+    build_messages,
+)
 from lithos.posttrain.sandbox import tool_env_sha
 from lithos.posttrain.tir_rollout import tir_rollout
 
@@ -49,6 +54,7 @@ __all__ = [
     "Citation",
     "CompositeModel",
     "CompositeResult",
+    "ContextPlacement",
     "DenyTokensPolicy",
     "Passage",
     "RetrievedContext",
@@ -156,6 +162,11 @@ class CompositeResult:
     #: Tokens the model was *allowed* to generate. Under a total budget L this is
     #: ``L - prompt_tokens`` — so prepended passages shrink it, and that is displacement.
     completion_budget: int = 0
+    #: How the passages were rendered, and by which version of the renderer. Changing either
+    #: changes the model's output for identical weights/datastore/policy/tool-env — an honest
+    #: gap in the four-tuple, recorded per-response rather than papered over.
+    context_placement: str = ""
+    reference_format_version: str = REFERENCE_FORMAT_VERSION
     truncated: bool = False
 
     @property
@@ -186,12 +197,6 @@ class CompositeResult:
 
 
 # ── the composite ─────────────────────────────────────────────────────────────
-
-_CONTEXT_HEADER = "Reference material:"
-
-
-def _render_passage(p: Passage, n: int) -> str:
-    return f"[{n}] {p.text}"
 
 
 class CompositeModel:
@@ -238,29 +243,38 @@ class CompositeModel:
         )
 
     def _build_messages(
-        self, query: str, passages: Sequence[Passage], system: str | None
+        self,
+        query: str,
+        passages: Sequence[Passage],
+        system: str | None,
+        placement: ContextPlacement = ContextPlacement.BLOCK,
     ) -> list[dict[str, str]]:
-        msgs: list[dict[str, str]] = []
-        if system:
-            msgs.append({"role": "system", "content": system})
-        if passages:
-            block = "\n".join(_render_passage(p, i + 1) for i, p in enumerate(passages))
-            content = f"{_CONTEXT_HEADER}\n{block}\n\n{query}"
-        else:
-            content = query
-        msgs.append({"role": "user", "content": content})
-        return msgs
+        """Delegates to `lithos.posttrain.reference` — the ONE renderer that training also
+        imports. The server does not get to invent a prompt format the model never saw."""
+        return build_messages(
+            query, [p.text for p in passages], system=system, placement=placement
+        )
 
-    def _fit_to_budget(self, query: str, ctx: RetrievedContext, system: str | None, budget: int):
+    def _fit_to_budget(
+        self,
+        query: str,
+        ctx: RetrievedContext,
+        system: str | None,
+        budget: int,
+        placement: ContextPlacement,
+    ):
         """Drop lowest-ranked passages until the context fits ``budget`` tokens.
 
         The cost is measured as ``len(prompt_with) - len(prompt_without)``: exact, and
-        immune to BPE merging across the passage/query seam.
+        immune to BPE merging across the passage/query seam. Measured per placement, since
+        a block's header and ``[n]`` markers cost tokens that inline prose does not.
         """
-        bare = len(render_prompt(self._build_messages(query, (), system), self.tok))
+        bare = len(render_prompt(self._build_messages(query, (), system, placement), self.tok))
         kept = list(ctx.passages)
         while kept:
-            full = len(render_prompt(self._build_messages(query, kept, system), self.tok))
+            full = len(
+                render_prompt(self._build_messages(query, kept, system, placement), self.tok)
+            )
             if full - bare <= budget:
                 return tuple(kept), full - bare, bare
             kept.pop()  # drop the last (lowest-ranked) passage and re-measure
@@ -275,6 +289,7 @@ class CompositeModel:
         max_new: int = 128,
         total_token_budget: int | None = None,
         charge_context: bool = True,
+        placement: ContextPlacement = ContextPlacement.BLOCK,
         max_tool_calls: int = 2,
         temperature: float = 1.0,
         top_p: float | None = 0.95,
@@ -291,16 +306,20 @@ class CompositeModel:
         zero context cost, which is what a context-free fact channel (kNN-LM) would buy.
         No mechanism can actually do this by prepending — that is the point. It is an
         upper bound, and the gap between it and the prepend arm *is* the displacement.
+
+        ``placement`` selects the shared renderer's format (`lithos.posttrain.reference`).
+        ``INLINE`` is the control for the third cause: a model that can use a fact as prose
+        but not inside a ``Reference material:`` block is *untrained*, not incapable.
         """
         passages: tuple[Passage, ...] = ()
         context_tokens = 0
         if self.retriever is not None and context_token_budget > 0:
             ctx = self.retriever.retrieve(query, token_budget=context_token_budget)
             passages, context_tokens, _ = self._fit_to_budget(
-                query, ctx, system, context_token_budget
+                query, ctx, system, context_token_budget, placement
             )
 
-        messages = self._build_messages(query, passages, system)
+        messages = self._build_messages(query, passages, system, placement)
         prompt_ids = render_prompt(messages, self.tok)
 
         if total_token_budget is not None:
@@ -328,11 +347,13 @@ class CompositeModel:
         # Per-passage cost, measured the same exact way as the total.
         cites: list[Citation] = []
         if passages:
-            bare = len(render_prompt(self._build_messages(query, (), system), self.tok))
+            bare = len(render_prompt(self._build_messages(query, (), system, placement), self.tok))
             running = bare
             for i in range(1, len(passages) + 1):
                 upto = len(
-                    render_prompt(self._build_messages(query, passages[:i], system), self.tok)
+                    render_prompt(
+                        self._build_messages(query, passages[:i], system, placement), self.tok
+                    )
                 )
                 p = passages[i - 1]
                 cites.append(
@@ -360,5 +381,6 @@ class CompositeModel:
             prompt_tokens=len(prompt_ids),
             context_tokens=context_tokens,
             completion_budget=max_new,
+            context_placement=placement.value if passages else "",
             truncated=roll.truncated,
         )
