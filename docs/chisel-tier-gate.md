@@ -28,6 +28,13 @@ text from the weights does not un-make it. What it buys is (a) the corpus manife
 expression is confined to the retrieval channel, where every use is quotation with a citation. That
 is the posture that survived Google Books, and it is what a regulated buyer asks for.
 
+> **SCOPE AMENDMENT (2026-07-10, `docs/v1-on-qwen.md` §2).** v1 post-trains a **Qwen3 base**, so
+> the attestation covers *the weights **we** trained* — the SFT / RLVR / DPO tokens — and **not**
+> the base's pretraining data, which is opaque to us. The gate still governs every token we add,
+> but the manifest must now carry `scope` and `base_model`: **an attestation that does not state
+> what it covers is worse than none.** The unqualified claim above becomes true again in v2, when
+> pretraining returns.
+
 ---
 
 ## 1. The vocabulary

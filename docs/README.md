@@ -3,6 +3,7 @@
 ## Product & plan
 - [PRD](prd.md) — requirements
 - [Implementation plan](implementation-plan.md) — the phased build plan
+- [v1 on a Qwen base](v1-on-qwen.md) — **DECIDED**: v1 drops from-scratch pretraining, post-trains Qwen3 0.6–8B; attestation is *scoped to post-training*; from-scratch returns as the v2 attestation demonstrator
 
 ## Architecture & design
 - [Composite model layer](composite-model-layer.md) — the absorption test; which of R1/R2/TIR/Verity are moats and which are scaffolding
