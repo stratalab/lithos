@@ -90,14 +90,27 @@ four suspicions each get a structural answer here).
 shipped with it. The novel, category-defining content is the **engineering + physics
 exam-derived sets** (value+units checked) — the white space no public board covers.
 
+**Status (built):** the model-free machinery is landed + green — `lithos/evals/benchmark_publish.py`
+freezes the post-cutoff slice into a versioned bundle (`benchmark.jsonl` + `manifest.json`
+with a content-hash version lock + `canary.txt` + `README.md` card answering §6's four
+suspicions + `decontam_probes.jsonl`), and `render_leaderboard` renders the parity board
+with losses included. CLI: `lithos benchmark-publish` / `lithos benchmark-leaderboard`.
+**Gated (needs a checkpoint + the Chisel bank):** actually *running* the anchor baselines
+to populate the board, and the engineering/physics exam sets that are the category-defining
+content — both wait on inputs, not code.
+
 ## Files
 
-**New:** `lithos/evals/tir_battery.py` (two-arm runner + metric); `lithos/evals/tir_stats.py`
-(McNemar + clustered SE — or fold into tir_battery); `tests/test_tir_battery.py`;
+**New (Part A):** `lithos/evals/tir_battery.py` (two-arm runner + metric);
+`lithos/evals/tir_stats.py` (McNemar + clustered SE); `tests/test_tir_battery.py`;
 `configs/eval/tir.yaml`; `scripts/run_tir_battery.py`.
+**New (Part B):** `lithos/evals/benchmark_publish.py` (freeze / hash / canary / card /
+leaderboard); `tests/test_benchmark_publish.py`.
 **Modify:** `lithos/posttrain/taskbank.py` (`verify_tir` helper); `lithos/evals/config.py`
-(`TIRBatteryConfig`); `lithos/evals/scorecard.py` (`tir` entry block);
-`lithos/evals/report.py` (uplift table); `lithos/evals/__init__.py` (exports).
+(`TIRBatteryConfig`); `lithos/evals/report.py` (uplift table); `lithos/evals/__init__.py`
+(exports); `lithos/cli.py` (`tir-battery` / `benchmark-publish` / `benchmark-leaderboard`).
+NB the scorecard `tir` entry is written by `run_tir_battery_eval` directly —
+`scorecard.append_entry` already takes an arbitrary dict, so no scorecard.py change.
 
 ## Reuse (don't rebuild)
 
