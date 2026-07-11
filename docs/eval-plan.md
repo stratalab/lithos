@@ -92,6 +92,12 @@ The §3 anchors run on *our* harness; external credibility also needs *independe
 
 Cadence/cost tiers: **continuous** (bpb per checkpoint — free), **per-experiment** (frozen battery — minutes), **keeper** (full suite + judged + regurgitation + quantized edge run).
 
+**Fitness function for the flywheel (`docs/flywheel.md`):** when the autonomous loop runs,
+the **continuous** tier is its selection pressure — so it needs a *fast proxy battery*
+(minutes, on-thesis: tool-uplift) distinct from the keeper suite, and that fitness signal
+must stay contamination-resistant (§5) or a machine optimizer will Goodhart its own
+scoreboard. The proxy battery is an open design item; the keeper suite stays human-gated.
+
 **Protocol pins (so anchors reproduce published numbers — principle 2):** GSM8K 8-shot CoT greedy · MMLU 5-shot · MATH 4-shot · BBH 3-shot CoT · HumanEval+/MBPP+ 0-shot greedy pass@1. `maj@k` / `RM@k` reported only when *explicitly labeled*, never silently swapped (RM@k reranking alone can swing a 7B from 12→21 AIME solves — a decoding artifact, not a capability). Disclose harness+version, shot count, decoding, pass@k, and chat-template on every reported number; prompt-format alone moves MMLU 4–5%, so undocumented numbers aren't comparable.
 
 ## 5. Known gaps (honest)
