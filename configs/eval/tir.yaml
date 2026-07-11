@@ -1,0 +1,30 @@
+# TIR tool-uplift battery (docs/eval-tir-battery-plan.md, Part A). Runs each
+# post-cutoff problem twice — tools off (chain-of-thought only) vs on — and reports
+# the verified solve-rate difference PER DIFFICULTY TIER. That difference is the
+# product thesis, quantified. Greedy decoding; scores ONLY the post-cutoff hold-out
+# (eval-plan §5). Run on a TIR-SFT'd (or GRPO-TIR) checkpoint — the tools-off arm is
+# meaningless before the model can reason, and both arms need the TIR vocab.
+#
+#   lithos tir-battery --config configs/eval/tir.yaml --checkpoint <ckpt>
+#
+# The uplift is per difficulty tier because it is ~0 on easy/saturated items and
+# largest on computation-heavy ones — a single average understates it (eval-plan §1).
+name: tir
+# TODO: point at the STEM tokenizer (it carries the TIR special vocab the rollout
+# needs); the fineweb-edu 32k is a placeholder and lacks <|python|>/<|/tool|>/… .
+tokenizer_path: artifacts/tokenizer/fineweb-edu-32k/tokenizer.json
+output_dir: runs/eval
+scorecard_path: configs/eval/reference_scorecard.jsonl
+
+tir:
+  enabled: true
+  battery_version: tir-v1
+  task_bank: data/problems/tir_battery.jsonl  # kind=problems JSONL (Chisel-produced)
+  cutoff_year: 2024                            # eval on > 2024 (post-cutoff hold-out)
+  levels: null                                 # optional difficulty-ladder filter
+  max_new_tokens: 512
+  max_tool_calls: 4
+  tool_timeout_s: 5.0
+  temperature: 0.0                             # greedy (honest pass@1)
+  transcript_sample: 12
+  limit: null
