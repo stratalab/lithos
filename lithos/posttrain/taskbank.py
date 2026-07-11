@@ -107,6 +107,37 @@ def verify(response: str, task: Task, *, timeout_s: float = 5.0) -> CheckResult:
     raise ValueError(f"unhandled task kind {task.kind!r}")  # pragma: no cover — Task validates
 
 
+def verify_tir(
+    completion_text: str,
+    tool_calls: list[tuple[str, str]],
+    task: Task,
+    *,
+    timeout_s: float = 5.0,
+) -> CheckResult:
+    """Grade a TIR rollout by ``task.kind`` — the eval + reward grader for tool use.
+
+    The kinds split on *where the answer lives*:
+
+    - ``code``: the answer **is** the model's executed tool code, so verify that code
+      against the task's ``tests`` — not the prose. This closes the ``grpo_trainer``
+      TODO where a code rollout was graded by its final text, which would credit a
+      model that merely *described* a solution it never ran. Only ``python`` tool
+      code counts as a code submission (``octave`` calls are computation for the
+      answer-checked kinds, not standalone programs).
+    - ``numeric`` / ``symbolic`` / ``units``: the tool computes a value the model then
+      states, so the final answer in ``completion_text`` is the thing to check — same
+      path as ``verify``.
+
+    Shared by the tool-uplift battery (eval) and GRPO-TIR (reward) so the two can't
+    grade the same rollout differently (`docs/eval-tir-battery-plan.md`).
+    """
+    if task.kind == "code":
+        solution = "\n".join(code for runtime, code in tool_calls if runtime == "python")
+        result, _ = check_code(solution, task.tests or "", timeout_s=timeout_s)
+        return result
+    return verify(completion_text, task, timeout_s=timeout_s)
+
+
 def verify_batch(
     items: list[tuple[str, Task]], *, max_workers: int = 8, timeout_s: float = 5.0
 ) -> list[CheckResult]:

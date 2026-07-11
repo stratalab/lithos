@@ -89,6 +89,77 @@ def _eval(argv: Sequence[str]) -> int:
     return 0
 
 
+def _tir_battery(argv: Sequence[str]) -> int:
+    from lithos.evals.config import EvalConfig
+    from lithos.evals.tir_battery import run_tir_battery_eval
+    from lithos.utils.config import load_and_validate
+
+    ap = argparse.ArgumentParser(
+        prog="lithos tir-battery", description="Run the TIR tool-uplift battery."
+    )
+    ap.add_argument("--config", required=True, help="Path to an eval YAML config (with a `tir` block).")
+    ap.add_argument("--checkpoint", required=True, help="Checkpoint directory to evaluate.")
+    ap.add_argument("--override", nargs="*", default=[], help="Dotted-key overrides.")
+    a = ap.parse_args(argv)
+    run_tir_battery_eval(load_and_validate(a.config, EvalConfig, a.override), a.checkpoint)
+    return 0
+
+
+def _benchmark_publish(argv: Sequence[str]) -> int:
+    import datetime as dt
+    import uuid
+
+    from lithos.evals.benchmark_publish import freeze_benchmark, write_benchmark
+    from lithos.posttrain.taskbank import load_tasks
+
+    ap = argparse.ArgumentParser(
+        prog="lithos benchmark-publish",
+        description="Freeze the TIR battery's post-cutoff slice into a public benchmark.",
+    )
+    ap.add_argument("--task-bank", required=True, help="kind=problems JSONL to freeze.")
+    ap.add_argument("--cutoff-year", type=int, required=True, help="Publish tasks dated after this year.")
+    ap.add_argument("--version", required=True, help="Benchmark version label (e.g. tir-v1).")
+    ap.add_argument("--out", required=True, help="Output directory for the bundle.")
+    ap.add_argument("--name", default="lithos-tir", help="Benchmark name.")
+    ap.add_argument("--license", dest="license_id", default="CC-BY-4.0", help="SPDX license id.")
+    ap.add_argument("--canary", default=None, help="Reuse an existing canary GUID (default: mint one).")
+    a = ap.parse_args(argv)
+    guid = a.canary or uuid.uuid4().hex
+    art = freeze_benchmark(
+        load_tasks(a.task_bank), version=a.version, cutoff_year=a.cutoff_year,
+        canary_guid=guid, created_at=dt.datetime.now(dt.UTC).isoformat(),
+        name=a.name, license_id=a.license_id,
+    )
+    out = write_benchmark(a.out, art)
+    print(
+        f"published {art.manifest['num_tasks']} tasks to {out} (version {a.version}, "
+        f"sha {art.manifest['content_sha256'][:12]}, canary {guid})"
+    )
+    return 0
+
+
+def _benchmark_leaderboard(argv: Sequence[str]) -> int:
+    from lithos.evals.benchmark_publish import render_leaderboard
+    from lithos.evals.scorecard import read_entries
+    from lithos.utils.io import atomic_write_text
+
+    ap = argparse.ArgumentParser(
+        prog="lithos benchmark-leaderboard",
+        description="Render the TIR parity leaderboard from scorecard `tir` rows (losses included).",
+    )
+    ap.add_argument("--scorecard", required=True, help="Scorecard JSONL with `tir` blocks.")
+    ap.add_argument("--out", default=None, help="Write markdown here (default: stdout).")
+    a = ap.parse_args(argv)
+    entries = [e for e in read_entries(a.scorecard) if e.get("tir")]
+    md = render_leaderboard(entries)
+    if a.out:
+        atomic_write_text(a.out, md + "\n")
+        print(f"wrote leaderboard ({len(entries)} models) to {a.out}")
+    else:
+        print(md)
+    return 0
+
+
 def _tokenize(argv: Sequence[str]) -> int:
     from lithos.data.pipeline import CorpusBuildConfig, build_corpus
     from lithos.utils.config import load_and_validate
@@ -142,6 +213,9 @@ COMMANDS: dict[str, tuple[Callable[[Sequence[str]], int], str]] = {
     "dpo": (_dpo, "DPO preference tuning"),
     "grpo": (_grpo, "GRPO / RLVR tuning"),
     "eval": (_eval, "evaluate a checkpoint"),
+    "tir-battery": (_tir_battery, "run the TIR tool-uplift battery"),
+    "benchmark-publish": (_benchmark_publish, "freeze the TIR slice into a public benchmark"),
+    "benchmark-leaderboard": (_benchmark_leaderboard, "render the TIR parity leaderboard"),
     "tokenize": (_tokenize, "build tokenized corpus shards"),
     "tokenizer": (_tokenizer, "train the BPE tokenizer"),
 }
