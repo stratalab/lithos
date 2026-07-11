@@ -33,6 +33,13 @@ class RolloutResult:
     num_tool_calls: int
     tool_calls: list[tuple[str, str]] = field(default_factory=list)  # (runtime, code) for the gaming screen
     truncated: bool = False  # hit the token/tool-call budget without a final <|end|>
+    #: Strictly parallel to ``tool_calls``: what the sandbox actually returned. Feeds
+    #: the composite's out-of-band provenance channel — a tool result is a `tool`-channel
+    #: fact, never a parametric one (`docs/petra-composite-attribution.md` §2).
+    tool_outputs: list[str] = field(default_factory=list)
+    #: Segments that closed with ``<|/tool|>`` but carried no runtime tag. The error is
+    #: injected into the context, but it is not a *call*, so it pairs with nothing.
+    num_malformed_calls: int = 0
 
 
 def parse_tool_call(
@@ -81,6 +88,8 @@ def tir_rollout(
     token_ids: list[int] = list(prompt_ids)
     action_mask: list[bool] = [False] * len(prompt_ids)
     tool_calls: list[tuple[str, str]] = []
+    tool_outputs: list[str] = []
+    num_malformed = 0
     budget = max_new
     completed = False  # emitted a final <|end|> within budget/tool caps
 
@@ -116,10 +125,12 @@ def tir_rollout(
         parsed = parse_tool_call(new, tir_ids, tok)
         if parsed is None:
             output = "[error: tool call had no <|python|>/<|octave|> tag]"
+            num_malformed += 1  # the error is still injected; it just isn't a *call*
         else:
             runtime, code = parsed
             tool_calls.append((runtime, code))
             output = run_tool(runtime, code, timeout_s=timeout_s).output
+            tool_outputs.append(output)  # keep strictly parallel to tool_calls
         # inject the result as the environment's move — NOT a policy action
         result_ids = [result_open_id, *tok.encode(output).ids[:result_token_cap], end_id]
         token_ids.extend(result_ids)
@@ -134,4 +145,6 @@ def tir_rollout(
         num_tool_calls=len(tool_calls),
         tool_calls=tool_calls,
         truncated=truncated,
+        tool_outputs=tool_outputs,
+        num_malformed_calls=num_malformed,
     )
