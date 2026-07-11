@@ -4,7 +4,7 @@ A scripted model + round-trip tokenizer drive a REAL sandbox execution through t
 composite, so the whole path — retrieve → prepend → decode (policy fixes the support) →
 pause → execute → inject → resume → provenance — is exercised without training.
 
-The load-bearing tests are the Verity ones: a guarantee anything downstream can overturn
+The load-bearing tests are the decode-policy ones: a guarantee anything downstream can overturn
 is not a guarantee. The policy runs FIRST, on the raw logits, and is final because every
 later stage (temperature/top-k/top-p) can only *remove* mass. Running it last would be
 equally safe and strictly worse — see
@@ -147,7 +147,7 @@ def test_retriever_without_a_pinned_datastore_version_is_rejected(tok):
         CompositeModel(model, tok, weights_sha256="w" * 64, retriever=StubRetriever([_passage()]))
 
 
-# ── Verity is the final authority on the support ──────────────────────────────
+# ── the decode policy is the final authority on the support ───────────────────
 
 
 class _UniformModel(torch.nn.Module):
@@ -160,7 +160,7 @@ class _UniformModel(torch.nn.Module):
         return torch.zeros((b, t, self.vocab)), None
 
 
-def test_verity_overrides_the_model_greedy(tok):
+def test_decode_policy_overrides_the_model_greedy(tok):
     """The model *wants* token X. The policy forbids X. X must not be emitted."""
     vocab = tok.vocab
     want = 42
@@ -180,7 +180,7 @@ def test_verity_overrides_the_model_greedy(tok):
     assert out[0, -1].item() != want
 
 
-def test_verity_survives_top_p_and_temperature(tok):
+def test_decode_policy_survives_top_p_and_temperature(tok):
     """top-p/temperature run AFTER the policy and only remove mass, so they cannot
     reintroduce a banned token. A uniform model + top_p=1.0 would otherwise sample
     anything in the vocab."""
@@ -255,9 +255,9 @@ def test_banning_the_models_favourite_token_does_not_empty_the_nucleus(tok):
 
 
 def test_policy_version_flows_into_the_served_model_id(tok):
-    policy = DenyTokensPolicy({5}, version="verity-v7")
+    policy = DenyTokensPolicy({5}, version="decode-policy-v7")
     cm = CompositeModel(ScriptedModel([0], tok.vocab), tok, weights_sha256="w" * 64, policy=policy)
-    assert cm.id.decode_policy_version == "verity-v7"
+    assert cm.id.decode_policy_version == "decode-policy-v7"
 
 
 # ── retrieval lives above the token stream ────────────────────────────────────
@@ -363,7 +363,7 @@ def test_injected_tool_result_is_not_a_reasoning_token(tok):
     assert res.reasoning_tokens == sum(res.action_mask[res.prompt_tokens :])
 
 
-def test_verity_applies_inside_the_tool_loop(tok):
+def test_decode_policy_applies_inside_the_tool_loop(tok):
     """The policy is the last write on every sampled token, tool-call segments included."""
     py = tok.token_to_id("<|python|>")
     end = tok.token_to_id("<|end|>")

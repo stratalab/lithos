@@ -82,7 +82,7 @@ def tir_rollout(
 ) -> RolloutResult:
     """Generate one TIR episode, executing tool calls and injecting their results.
 
-    ``logits_processor`` is the decode-policy seam (Verity). It fixes the support on every
+    ``logits_processor`` is the decode-policy seam. It fixes the support on every
     sampled token — tool-call segments included — so a forbidden token cannot be emitted
     even mid-tool-call.
     """

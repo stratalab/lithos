@@ -6,7 +6,7 @@
 - [v1 on a Qwen base](v1-on-qwen.md) — **DECIDED**: v1 drops from-scratch pretraining, post-trains Qwen3 0.6–8B; attestation is *scoped to post-training*; from-scratch returns as the v2 attestation demonstrator
 
 ## Architecture & design
-- [Composite model layer](composite-model-layer.md) — the absorption test; which of R1/R2/TIR/Verity are moats and which are scaffolding
+- [Composite model layer](composite-model-layer.md) — the absorption test; which of R1/R2/TIR/decode-policy are moats and which are scaffolding
 - [Composite instrumentation](composite-instrumentation.md) — the measurement apparatus: three capture points, three tables, C0–C5 as queries
 - [Composite plan](composite-plan.md) — **DECIDED**: mechanisms above the token stream have positive evidence, below it negative; R1 → in-context RAG, R2 first, the six acceptance gates
 - [Composite plate](composite-plate.html) — the architecture drawn as a stratigraphic cross-section (rev B, post-sweep). Self-contained HTML; open in a browser

@@ -19,7 +19,7 @@ selection pressure* wired across the legs we already have.
 | **the eval loop** | *scores* the checkpoint — the fitness function (below) |
 | **Petra** | attributes capability → training source; surfaces what's missing/failing |
 | **StrataDB** | holds the branched lineage (weights + data + eval results) — fork/merge |
-| **Verity** | the policy fence the loop cannot cross (what it may train on / emit) |
+| **Verity** | the *action* fence — deterministically verifies each tool call a deployed agent would execute (external, model-independent) |
 
 ## The loop
 
@@ -70,9 +70,13 @@ rather than drift:
 
 ## Guardrails (why it doesn't run away)
 
-- **Verity is the outer fence** — the loop may only train on / emit what policy permits
-  (the teacher doctrine: never closed-model targets, verifier-gated open-weight teachers).
-  The optimizer cannot widen its own permissions.
+- **Three fences the optimizer cannot widen** — the loop may only *train on*, *emit*, and
+  *act on* what policy permits, and those are three distinct enforcement points, not one:
+  the **train-on** fence is **Chisel** (the teacher doctrine — never closed-model targets,
+  verifier-gated open-weight teachers); the **emit** fence is Lithos's **decode-policy** (a
+  forbidden token is unreachable at decode); the **action** fence is **Verity** (the external,
+  model-independent monitor that verifies each resolved tool call before execution). The
+  optimizer cannot widen any of them.
 - **Fitness is verified, not judged** — executable grading everywhere possible, so the loop
   can't farm a compliant judge. Where a judge is unavoidable it's advisory, never a gate.
 - **Every turn is a branch, not a mutation** — StrataDB lineage means a bad direction is

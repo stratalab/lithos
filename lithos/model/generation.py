@@ -4,7 +4,7 @@ Decoding methods: greedy, temperature, top-k, top-p. Uses the KV cache by
 default; ``use_cache=False`` recomputes the full sequence each step and is the
 reference path the cache is tested against.
 
-``logits_processor`` is the **decode-policy seam** (Verity). It is the *final authority
+``logits_processor`` is the **decode-policy seam**. It is the *final authority
 on the support*: a token it forbids can never be emitted
 (``docs/composite-model-layer.md`` §7.1).
 

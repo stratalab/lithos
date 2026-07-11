@@ -120,7 +120,7 @@ architecture.
 
 Every one of the four negative results has the same shape. A composite's gain was **credited to the
 composite** when it actually came from somewhere else. These are failure modes of *attribution*, not
-of retrieval, and they will recur for R2, TIR, and Verity.
+of retrieval, and they will recur for R2, TIR, and the decode policy.
 
 **No composite's number is believed until it passes all six gates.**
 
@@ -147,7 +147,7 @@ Ordered by evidence strength, not by elegance.
 | **1** | **TIR / sandbox** | exact | **Live (MVP)** | Untouched by any of this. A calculator beats parametric arithmetic forever. Strongest leg. |
 | **2** | **R2** — KV/state offload | per-tenant | **Promote to first research track** | **Immune to the entire sweep.** All four negative results concern *fact retrieval into the output distribution*. R2 approximates *the same attention* — its success criterion is memory and latency, not bpb. It is a systems bet, and it fails only for engineering reasons. Moho serves R2 (§5.5 for the arithmetic). |
 | **3** | **In-context RAG over StrataDB** | mutable | **Build; gated on C-CTX for the reasoner** | Positive evidence, cheap, no kernels, ~1 GB index. Delivers mutability + citation-by-construction. |
-| **4** | **Verity** | a guarantee | Parked; seam landed | The **final authority on the support**. Applied *first*, to the raw logits — and final because every later stage (temperature/top-k/top-p) is monotone, i.e. can only *remove* mass. See §8.1. |
+| **4** | **decode-policy** | a guarantee | Parked; seam landed | The **final authority on the support**. Applied *first*, to the raw logits — and final because every later stage (temperature/top-k/top-p) is monotone, i.e. can only *remove* mass. See §8.1. A Lithos-internal leg — distinct from the external **Verity** action-monitor, which it does not carry the name of. |
 | **5** | **Decode-loop retrieval** (kNN-LM / RETRO) | — | **Deferred. Resurrectable only by C-CTX (b).** | Four negative results. Do not build on a scarce-resource argument we have not yet measured. |
 
 **R2 before R1 was already banked as a possibility. The sweep makes it the decision.**
@@ -265,8 +265,8 @@ decision, which is the mark of an experiment worth running first.
 
 ## 7.5 Correction found by building it (2026-07-10)
 
-`docs/composite-model-layer.md` and Plate 01 both said **"Verity must be the last write to
-the logits"**, reasoning that anything applied afterwards could reintroduce a forbidden
+`docs/composite-model-layer.md` and Plate 01 both said **"the decode policy must be the last
+write to the logits"**, reasoning that anything applied afterwards could reintroduce a forbidden
 token. Building the walking skeleton (`lithos/serve/composite.py`) proved the *mechanism*
 wrong, and a test caught it:
 

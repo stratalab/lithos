@@ -2,7 +2,7 @@
 
 **Status: doctrine — settled framing, open experiments.** Where the "model" in a Strata
 deployment stops being a naked LLM and becomes a composite that still emits tokens. Written
-because the framing decides which of R1/R2/TIR/Verity are moats and which are scaffolding a
+because the framing decides which of R1/R2/TIR/decode-policy are moats and which are scaffolding a
 future training run will delete.
 
 Companions: `docs/tir-format.md` (the tool seam), `docs/petra-provenance-lithos.md` (the
@@ -123,11 +123,21 @@ The seam is always the same:
 | **Mutable facts** | You cannot retrain to fix a stale fact; facts are numerous and change | Facts live in a datastore, retrieved at decode | **R1** (kNN-LM → RETRO), StrataDB |
 | **Per-tenant state** | You cannot train per-customer weights | KV/attention state offloaded, per-tenant, versioned | **R2**, StrataDB |
 | **Exact computation** | A calculator beats parametric arithmetic forever; no scale closes it | The sandbox executes; the model reads the result | **TIR** + `lithos.posttrain.sandbox` |
-| **Hard guarantees** | You can train a *tendency*, not a *guarantee* | Deterministic enforcement at the decode boundary | **Verity** |
+| **Hard guarantees** | You can train a *tendency*, not a *guarantee* | Deterministic enforcement at the decode boundary | **decode-policy** |
 
 This is not a coincidence discovered after the fact. It is why those four are the legs and the
 rest are products. Each one is composite because the alternative is *impossible*, not because
 composition is clever.
+
+**A naming note (2026-07-11).** The "hard guarantees" leg is Lithos's own **decode-policy** —
+a deterministic, model-*coupled* seal on *emission*, possible only because we own the decode
+loop. It is not **Verity**. Verity is a separate, standalone, model-*independent* product: an
+action-layer reference monitor that verifies each *resolved tool call* at the harness, and so
+works on any model (Qwen, Llama, Claude, Lithos). They enforce the same kind of "never do X"
+floor at two different points in the flow, but Verity is not a composite leg — it integrates
+with Lithos *externally*, at the TIR / tool-dispatch seam (a Lithos agent's tool call is the
+`before_tool_call` point Verity checks). The decode-policy learns from Verity's policy
+thinking; it does not carry its name.
 
 ### The first shippable composite: TIR-in-the-server
 
@@ -349,7 +359,7 @@ Ordered by cost. C0 gates everything downstream.
 **Decided.**
 - The **absorption test** is the doctrine. Composition-for-capability is not a moat.
 - The durable composites are exactly the four impossibilities (mutable / per-tenant / exact /
-  guarantee), which map one-to-one onto R1, R2, TIR, Verity.
+  guarantee), which map one-to-one onto R1, R2, TIR, decode-policy.
 - Model identity is the four-tuple in §7.1; evals record all four.
 - Weights hold judgment; the composite holds what judgment operates on.
 - **No composite is built before the naked SLM is saturated (§10).** The baseline is the ruler,

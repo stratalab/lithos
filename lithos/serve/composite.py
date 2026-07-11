@@ -13,7 +13,7 @@ Per `docs/composite-plan.md` (rev B, post-literature-sweep) the architecture is:
   the server pauses, the sandbox executes, the result is injected and decoding
   resumes. The *judgment* to call the tool is trained in; the *execution* never can
   be. That single clause is why TIR survives the absorption test.
-- **The decode policy (Verity) fixes the support.** Applied first, to the raw logits, and
+- **The decode policy fixes the support.** Applied first, to the raw logits, and
   final because every later stage only removes mass. Enforced in
   `lithos/model/generation._apply_decode_policy`, not by convention.
 
@@ -72,7 +72,8 @@ class ServedModelId:
     """A served model is no longer a weights file (`docs/composite-model-layer.md` §7.1).
 
     The four components *are* the parts list: weights = Lithos, datastore = StrataDB,
-    decode policy = Verity, tool env = the sandbox. Evals, bisects, and incident reports
+    decode policy = Lithos's decode-time enforcement, tool env = the sandbox. Evals, bisects,
+    and incident reports
     record all four, or they are not about the same system.
     """
 
@@ -102,11 +103,11 @@ class ServedModelId:
         )
 
 
-# ── decode policy (Verity) ────────────────────────────────────────────────────
+# ── decode policy ─────────────────────────────────────────────────────────────
 
 
 class DenyTokensPolicy:
-    """A minimal Verity primitive: these token ids may never be emitted.
+    """A minimal decode-policy primitive: these token ids may never be emitted.
 
     Only removes mass, so it satisfies the last-write invariant by construction.
     """
