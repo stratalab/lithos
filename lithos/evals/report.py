@@ -36,6 +36,33 @@ def _render_markdown(name: str, results: dict[str, Any], model_reference: dict[s
         if bench.get("mean") is not None:
             lines.append(f"- **mean**: {bench['mean']:.4f}")
         lines.append("")
+    tir = results.get("tir")
+    if tir and tir.get("overall"):
+        ov = tir["overall"]
+        sig = "significant" if ov.get("significant") else "n.s."
+        lines.append(
+            f"## Tool-uplift (battery {tir.get('battery_version', tir.get('battery', '?'))}, "
+            f"n={tir.get('n', 0)})"
+        )
+        lines.append(
+            f"- **overall**: {ov['uplift']:+.3f} "
+            f"[{ov['ci_low']:+.3f}, {ov['ci_high']:+.3f}] "
+            f"(off {ov['solve_off']:.3f} → on {ov['solve_on']:.3f}; "
+            f"McNemar p={ov['mcnemar_p']:.3g}, {sig})"
+        )
+        for tier, s in sorted(tir.get("per_tier", {}).items()):
+            lines.append(
+                f"  - {tier}: {s['uplift']:+.3f} [{s['ci_low']:+.3f}, {s['ci_high']:+.3f}] "
+                f"(n={s['n']}, off {s['solve_off']:.3f} → on {s['solve_on']:.3f})"
+            )
+        h = tir.get("health", {})
+        lines.append(
+            f"- health: tool-call {h.get('tool_call_rate', 0):.3f}, "
+            f"malformed {h.get('malformed_call_rate', 0):.3f}, "
+            f"truncation {h.get('truncation_rate_on', 0):.3f}, "
+            f"calls/solve {h.get('tool_calls_per_solve', 0):.2f}"
+        )
+        lines.append("")
     samples = results.get("samples")
     if samples:
         lines.append("## Samples")

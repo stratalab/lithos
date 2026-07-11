@@ -35,6 +35,7 @@ from lithos.posttrain.taskbank import (
     task_from_record,
     verify,
     verify_batch,
+    verify_tir,
 )
 from lithos.posttrain.tir_rollout import (
     RolloutResult,
@@ -102,4 +103,5 @@ __all__ = [
     "tir_rollout",
     "verify",
     "verify_batch",
+    "verify_tir",
 ]

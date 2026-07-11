@@ -5,6 +5,8 @@ from lithos.evals.generate_samples import generate_samples, repetition_score
 from lithos.evals.perplexity import compute_perplexity
 from lithos.evals.report import write_eval_report
 from lithos.evals.run import evaluate_checkpoint, load_model_from_checkpoint, run_evaluation
+from lithos.evals.tir_battery import run_tir_battery_eval, run_two_arm, summarize
+from lithos.evals.tir_stats import paired_uplift
 
 __all__ = [
     "EvalConfig",
@@ -12,7 +14,11 @@ __all__ = [
     "evaluate_checkpoint",
     "generate_samples",
     "load_model_from_checkpoint",
+    "paired_uplift",
     "repetition_score",
     "run_evaluation",
+    "run_tir_battery_eval",
+    "run_two_arm",
+    "summarize",
     "write_eval_report",
 ]

@@ -89,6 +89,22 @@ def _eval(argv: Sequence[str]) -> int:
     return 0
 
 
+def _tir_battery(argv: Sequence[str]) -> int:
+    from lithos.evals.config import EvalConfig
+    from lithos.evals.tir_battery import run_tir_battery_eval
+    from lithos.utils.config import load_and_validate
+
+    ap = argparse.ArgumentParser(
+        prog="lithos tir-battery", description="Run the TIR tool-uplift battery."
+    )
+    ap.add_argument("--config", required=True, help="Path to an eval YAML config (with a `tir` block).")
+    ap.add_argument("--checkpoint", required=True, help="Checkpoint directory to evaluate.")
+    ap.add_argument("--override", nargs="*", default=[], help="Dotted-key overrides.")
+    a = ap.parse_args(argv)
+    run_tir_battery_eval(load_and_validate(a.config, EvalConfig, a.override), a.checkpoint)
+    return 0
+
+
 def _tokenize(argv: Sequence[str]) -> int:
     from lithos.data.pipeline import CorpusBuildConfig, build_corpus
     from lithos.utils.config import load_and_validate
@@ -142,6 +158,7 @@ COMMANDS: dict[str, tuple[Callable[[Sequence[str]], int], str]] = {
     "dpo": (_dpo, "DPO preference tuning"),
     "grpo": (_grpo, "GRPO / RLVR tuning"),
     "eval": (_eval, "evaluate a checkpoint"),
+    "tir-battery": (_tir_battery, "run the TIR tool-uplift battery"),
     "tokenize": (_tokenize, "build tokenized corpus shards"),
     "tokenizer": (_tokenizer, "train the BPE tokenizer"),
 }
