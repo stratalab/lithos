@@ -9,9 +9,13 @@ frozen reference. Rollouts are generated inside the step (the new mechanic vs SF
 Two collection modes share one loss (``_grpo_loss``): the arithmetic test bench
 (single ``generate`` + ``MathVerifier``) and **TIR** (``cfg.grpo_tir``): multi-segment
 ``tir_rollout`` that executes tool calls in the E1 sandbox and scores with the E1
-verifier. Both build labels from a per-token **action mask** (``_labels_from_action_mask``);
-injected tool-result tokens are non-actions, so the existing ``IGNORE_INDEX`` machinery
-excludes them from the policy gradient AND the KL for free.
+verifier. Both emit the canonical ``TrainingRecord`` (``lithos/posttrain/record.py``):
+per-token loss ``weights`` (0.0 at prompt + injected tool-result tokens — non-actions
+drop out of the policy gradient AND the KL via ``IGNORE_INDEX``), the group-relative
+``advantages`` broadcast per-token, and the **sampler's** per-token ``logprobs`` —
+carried unused by this on-policy loss, so the off-policy (importance-sampling)
+correction is a loss swap, not a data-format migration, when batched/vLLM rollouts
+land (E5; docs/tinker-learnings.md T2).
 
 Single-process for now (post-training fits one GPU through ~3B; TIR rollouts are
 sequential — batching is E5). Logs BOTH the shaped `reward` (what GRPO optimizes) and
@@ -21,7 +25,7 @@ sequential — batching is E5). Logs BOTH the shaped `reward` (what GRPO optimiz
 from __future__ import annotations
 
 import contextlib
-from typing import Any
+from typing import Any, TypeVar
 
 import numpy as np
 import torch
@@ -31,7 +35,7 @@ from lithos.model import LithosForCausalLM
 from lithos.model.generation import generate
 from lithos.posttrain.chat_template import render_prompt, special_ids, tir_token_ids
 from lithos.posttrain.dpo import token_logprobs
-from lithos.posttrain.sft_dataset import IGNORE_INDEX
+from lithos.posttrain.record import IGNORE_INDEX, TrainingRecord
 from lithos.posttrain.taskbank import load_tasks, verify
 from lithos.posttrain.tir_rollout import tir_rollout
 from lithos.posttrain.verifier import (
@@ -58,38 +62,50 @@ def _autocast(device: str, precision: str) -> Any:
     return contextlib.nullcontext()
 
 
-def _pad(seqs: list[list[int]], value: int, length: int) -> list[list[int]]:
+_PadT = TypeVar("_PadT", int, float)
+
+
+def _pad(seqs: list[list[_PadT]], value: _PadT, length: int) -> list[list[_PadT]]:
     return [s + [value] * (length - len(s)) for s in seqs]
 
 
 def _labels_from_action_mask(token_ids: list[int], action_mask: list[bool]) -> list[int]:
     """Next-token labels, ``IGNORE_INDEX`` wherever the (shifted) token is not a policy
-    action — i.e. prompt and injected tool-result positions drop out of PG + KL."""
-    return [
-        token_ids[i + 1] if action_mask[i + 1] else IGNORE_INDEX
-        for i in range(len(token_ids) - 1)
-    ]
+    action — i.e. prompt and injected tool-result positions drop out of PG + KL.
+    The boolean-mask view of the canonical ``TrainingRecord.labels()``."""
+    weights = [1.0 if a else 0.0 for a in action_mask]
+    return TrainingRecord(tokens=token_ids, weights=weights).labels()
 
 
 def _grpo_loss(
     policy: LithosForCausalLM,
     reference: LithosForCausalLM,
-    inputs: list[list[int]],
-    labels: list[list[int]],
-    advantages: list[float],
+    records: list[TrainingRecord],
     *,
     pad_id: int,
     kl_coef: float,
     device: str,
     precision: str,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Policy-gradient loss + per-token k3 KL to the frozen reference. ``token_logprobs``
-    returns 0 at ``IGNORE_INDEX`` positions, so masked (prompt/tool-result) tokens
-    contribute nothing to either term. Returns (total_loss, pg_loss, kl)."""
+    """Policy-gradient loss + per-token k3 KL to the frozen reference, over canonical
+    records. ``token_logprobs`` returns 0 at ``IGNORE_INDEX`` positions and the
+    per-token advantages are 0 at zero-weight positions, so masked (prompt/
+    tool-result) tokens contribute nothing to either term. The records' sampler
+    ``logprobs`` are deliberately unread: rollouts are on-policy today, so p/q = 1
+    exactly; the importance-sampling variant slots in here. Returns
+    (total_loss, pg_loss, kl)."""
+    for r in records:
+        if r.advantages is None:
+            raise ValueError("GRPO records must carry per-token advantages")
+    inputs = [r.tokens[:-1] for r in records]
+    labels = [r.labels() for r in records]
+    # advantages[1:] aligns with labels(): both describe the prediction of tokens[i+1]
+    advs = [r.advantages[1:] for r in records if r.advantages is not None]
+
     length = max(len(s) for s in inputs)
     x = torch.tensor(_pad(inputs, pad_id, length), device=device)
     y = torch.tensor(_pad(labels, IGNORE_INDEX, length), device=device)
-    adv = torch.tensor(advantages, device=device, dtype=torch.float32)
+    adv = torch.tensor(_pad(advs, 0.0, length), device=device, dtype=torch.float32)
 
     with _autocast(device, precision):
         p_logits, _ = policy(x)
@@ -98,7 +114,7 @@ def _grpo_loss(
         r_logits, _ = reference(x)
         r_tok = token_logprobs(r_logits, y)
 
-    pg_loss = -(adv * p_tok.sum(-1)).mean()
+    pg_loss = -(adv * p_tok).sum(-1).mean()
     diff = r_tok - p_tok  # 0 at masked/pad positions
     kl = (torch.exp(diff) - diff - 1.0).sum(-1).mean()  # k3 estimator, >= 0
     return pg_loss + kl_coef * kl, pg_loss, kl
@@ -113,34 +129,37 @@ def _collect_arith(
     step: int,
     device: str,
     generator: torch.Generator,
-) -> tuple[list[list[int]], list[list[int]], list[float], dict[str, Any]]:
+) -> tuple[list[TrainingRecord], dict[str, Any]]:
     """Arithmetic test-bench rollouts: one batched ``generate`` of G per prompt,
-    scored by ``MathVerifier``. The action mask is prompt-False + completion-True."""
+    scored by ``MathVerifier``. Emits canonical records: weight 0.0 on the prompt,
+    1.0 on the completion, sampler logprobs alongside."""
     G, P = cfg.grpo_group_size, cfg.micro_batch_size
     end_id = sids["<|end|>"]
     tasks = gen_arithmetic(P, seed=cfg.seed + step + 1, max_val=10, ops="+")
 
-    inputs: list[list[int]] = []
-    labels: list[list[int]] = []
-    advantages: list[float] = []
+    records: list[TrainingRecord] = []
     sum_reward = sum_acc = 0.0
     n_roll = 0
     for task in tasks:
         pids = render_prompt([{"role": "user", "content": task["prompt"]}], tok)
         with torch.no_grad():
-            out = generate(
+            out, lps = generate(
                 policy, torch.tensor([pids], device=device).repeat(G, 1), cfg.grpo_max_new,
                 temperature=cfg.grpo_temperature, top_p=0.95, eos_token_id=end_id, generator=generator,
+                return_logprobs=True,
             )
-        rewards, responses = [], []
+        rewards, responses, resp_logprobs = [], [], []
         for gi in range(G):
             resp = out[gi].tolist()[len(pids):]
+            lp = lps[gi].tolist()  # one sampler logprob per generated token
             if end_id in resp:
-                resp = resp[: resp.index(end_id) + 1]  # keep the terminator
+                keep = resp.index(end_id) + 1  # keep the terminator
+                resp, lp = resp[:keep], lp[:keep]
             text = tok.decode([i for i in resp if i != end_id], skip_special_tokens=True)
             rewards.append(verifier.reward(text, task["answer"]))
             sum_acc += verifier.correctness(text, task["answer"])
             responses.append(resp)
+            resp_logprobs.append(lp)
         n_roll += G
         sum_reward += sum(rewards)
 
@@ -149,20 +168,22 @@ def _collect_arith(
             resp = responses[gi]
             if not resp:
                 continue
-            full = pids + resp
-            action_mask = [False] * len(pids) + [True] * len(resp)
-            y = _labels_from_action_mask(full, action_mask)
-            if all(v == IGNORE_INDEX for v in y):
+            adv = (rewards[gi] - mean_r) / (std_r + 1e-4)
+            rec = TrainingRecord(
+                tokens=pids + resp,
+                weights=[0.0] * len(pids) + [1.0] * len(resp),
+                logprobs=[0.0] * len(pids) + resp_logprobs[gi],
+                advantages=[0.0] * len(pids) + [adv] * len(resp),
+            )
+            if not rec.has_targets():
                 continue
-            inputs.append(full[:-1])
-            labels.append(y)
-            advantages.append((rewards[gi] - mean_r) / (std_r + 1e-4))
+            records.append(rec)
 
     metrics = {
         "reward": round(sum_reward / max(n_roll, 1), 4),
         "accuracy": round(sum_acc / max(n_roll, 1), 4),  # the TRUE objective — watch this
     }
-    return inputs, labels, advantages, metrics
+    return records, metrics
 
 
 def _collect_tir(
@@ -175,15 +196,14 @@ def _collect_tir(
     step: int,
     device: str,
     generator: torch.Generator,
-) -> tuple[list[list[int]], list[list[int]], list[float], dict[str, Any]]:
+) -> tuple[list[TrainingRecord], dict[str, Any]]:
     """TIR rollouts: G multi-segment ``tir_rollout``s per prompt, scored by the E1
-    verifier; tool-result tokens are masked out of the loss via the action mask."""
+    verifier; tool-result tokens carry weight 0.0 in the record (``to_record``), so
+    they drop out of the loss."""
     G, P = cfg.grpo_group_size, cfg.micro_batch_size
     step_tasks = [tasks[(step * P + i) % len(tasks)] for i in range(P)]
 
-    inputs: list[list[int]] = []
-    labels: list[list[int]] = []
-    advantages: list[float] = []
+    records: list[TrainingRecord] = []
     sum_reward = sum_acc = 0.0
     n_roll = n_tool = n_gamed = 0
     for task in step_tasks:
@@ -216,12 +236,10 @@ def _collect_tir(
         for gi, roll in enumerate(rollouts):
             if len(roll.token_ids) < 2:
                 continue
-            y = _labels_from_action_mask(roll.token_ids, roll.action_mask)
-            if all(v == IGNORE_INDEX for v in y):
+            rec = roll.to_record((rewards[gi] - mean_r) / (std_r + 1e-4))
+            if not rec.has_targets():
                 continue
-            inputs.append(roll.token_ids[:-1])
-            labels.append(y)
-            advantages.append((rewards[gi] - mean_r) / (std_r + 1e-4))
+            records.append(rec)
 
     metrics = {
         "reward": round(sum_reward / max(n_roll, 1), 4),
@@ -229,7 +247,7 @@ def _collect_tir(
         "tool_calls_per_rollout": round(n_tool / max(n_roll, 1), 3),
         "gamed": n_gamed,
     }
-    return inputs, labels, advantages, metrics
+    return records, metrics
 
 
 def train_grpo(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | None:
@@ -289,18 +307,18 @@ def train_grpo(cfg: TrainConfig, *, resume_from: str | None = None) -> RunDir | 
 
         if cfg.grpo_tir:
             assert tir_ids is not None and tir_tasks is not None
-            inputs, labels, advantages, extra = _collect_tir(
+            records, extra = _collect_tir(
                 policy, tok, tir_ids, sids, tir_tasks, cfg, step, device, gen_g
             )
         else:
-            inputs, labels, advantages, extra = _collect_arith(
+            records, extra = _collect_arith(
                 policy, tok, sids, verifier, cfg, step, device, gen_g
             )
-        if not inputs:  # every rollout degenerate this step
+        if not records:  # every rollout degenerate this step
             continue
 
         loss, pg_loss, kl = _grpo_loss(
-            policy, reference, inputs, labels, advantages,
+            policy, reference, records,
             pad_id=pad_id, kl_coef=cfg.grpo_kl_coef, device=device, precision=cfg.precision,
         )
         optimizer.zero_grad()

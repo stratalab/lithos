@@ -117,3 +117,35 @@ def test_masked_positions_have_valid_input_tokens(tmp_path):
         x, y = ds[i]
         assert (x >= 0).all()
         assert ((y == IGNORE_INDEX) | (y >= 0)).all()
+
+
+def test_legacy_mask_shards_still_load(tmp_path):
+    # Pre-T1 shards stored a uint8 .mask.bin under a mask_path key; the loader
+    # must keep reading them (suffix decides the stream dtype).
+    import numpy as np
+
+    tokens = np.asarray(list(range(10)), dtype="uint16")
+    mask = np.asarray([0, 0, 0, 0, 0, 0, 1, 1, 1, 1], dtype="uint8")
+    tokens.tofile(tmp_path / "shard_000001.tokens.bin")
+    mask.tofile(tmp_path / "shard_000001.mask.bin")
+    manifest = {"shards": [{
+        "tokens_path": "shard_000001.tokens.bin", "mask_path": "shard_000001.mask.bin",
+        "num_tokens": 10, "dtype": "uint16",
+    }]}
+    (tmp_path / "sft_manifest.json").write_text(json.dumps(manifest))
+    ds = PackedSFTDataset(load_sft_shard_specs(tmp_path / "sft_manifest.json"), seq_len=4)
+    x1, y1 = ds[1]  # same window as test_windowing_and_mask_to_ignore
+    assert x1.tolist() == [4, 5, 6, 7]
+    assert y1.tolist() == [IGNORE_INDEX, 6, 7, 8]
+
+
+def test_fractional_weights_refused_by_binary_loader(tmp_path):
+    # The (x, y) ignore-index contract can only DROP a position, not scale it —
+    # loading fractional weights here would silently train them at 1.0, so the
+    # loader must refuse (docs/tinker-learnings.md T1, pending weighted-CE seam).
+    w = SFTShardWriter(tmp_path, tokens_per_shard=10_000, dtype="uint16", tokenizer_name="t")
+    w.add(list(range(10)), [0.0, 0.5] * 5)
+    (tmp_path / "sft_manifest.json").write_text(json.dumps({"shards": w.close()}))
+    specs = load_sft_shard_specs(tmp_path / "sft_manifest.json")
+    with pytest.raises(NotImplementedError, match="fractional"):
+        PackedSFTDataset(specs, seq_len=4)

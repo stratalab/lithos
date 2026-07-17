@@ -55,14 +55,21 @@ class TokenizerLike(Protocol):
 
 @dataclass
 class Rendered:
-    """A rendered conversation: ``input_ids`` and a per-token ``loss_mask``.
+    """A rendered conversation: ``input_ids`` and per-token loss ``weights``.
 
-    ``loss_mask[j]`` is True iff ``input_ids[j]`` is an assistant token the model
-    should be trained to produce (the dataset turns this into ``-100`` labels).
+    ``weights[j] > 0`` iff ``input_ids[j]`` is an assistant token the model should
+    be trained to produce (the dataset turns zero-weight positions into ``-100``
+    labels). Weights are float — the canonical-record convention
+    (``lithos/posttrain/record.py``); the renderer itself only ever emits the
+    binary {0.0, 1.0} case. ``loss_mask`` is the derived boolean view.
     """
 
     input_ids: list[int]
-    loss_mask: list[bool]
+    weights: list[float]
+
+    @property
+    def loss_mask(self) -> list[bool]:
+        return [w > 0 for w in self.weights]
 
 
 def special_ids(tok: TokenizerLike) -> dict[str, int]:
@@ -95,23 +102,24 @@ def tir_token_ids(tok: TokenizerLike) -> dict[str, int]:
 
 def _encode_segments(
     segments: list[dict], tok: TokenizerLike, tir: dict[str, int], sids: dict[str, int]
-) -> tuple[list[int], list[bool]]:
-    """Encode an assistant turn's TIR segments to (ids, mask), per docs/tir-format.md
-    §4: think/text/tool are learned; the tool_result span (incl. its closing
-    ``<|end|>``) is masked — the sandbox wrote it, the model must not learn to
-    predict it. All tokens inserted by ID (never string-parsed). Segment structure is
-    guaranteed by the caller's ``validate_tir_message`` (the shared standalone gate)."""
+) -> tuple[list[int], list[float]]:
+    """Encode an assistant turn's TIR segments to (ids, weights), per docs/tir-format.md
+    §4: think/text/tool are learned (weight 1.0); the tool_result span (incl. its
+    closing ``<|end|>``) is zero-weighted — the sandbox wrote it, the model must not
+    learn to predict it. All tokens inserted by ID (never string-parsed). Segment
+    structure is guaranteed by the caller's ``validate_tir_message`` (the shared
+    standalone gate)."""
     ids: list[int] = []
-    mask: list[bool] = []
+    weights: list[float] = []
 
     def emit(token_id: int, learn: bool) -> None:
         ids.append(token_id)
-        mask.append(learn)
+        weights.append(1.0 if learn else 0.0)
 
     def emit_text(text: str, learn: bool) -> None:
         enc = tok.encode(text).ids
         ids.extend(enc)
-        mask.extend([learn] * len(enc))
+        weights.extend([1.0 if learn else 0.0] * len(enc))
 
     for seg in segments:  # structure validated by validate_tir_message before we get here
         stype = seg["type"]
@@ -129,33 +137,33 @@ def _encode_segments(
             emit(tir[TOOL_RESULT], False)
             emit_text(seg["output"], False)
             emit(sids["<|end|>"], False)  # result closer — masked
-    return ids, mask
+    return ids, weights
 
 
 def _encode_turn(
     msg: dict, tok: TokenizerLike, sids: dict[str, int]
-) -> tuple[list[int], list[bool]]:
-    """Encode one message to (ids, mask): role header (masked) + body + ``<|end|>``.
+) -> tuple[list[int], list[float]]:
+    """Encode one message to (ids, weights): role header (masked) + body + ``<|end|>``.
     An assistant turn carries either flat ``content`` or a TIR ``segments`` list.
     Envelope + segment structure are gated by ``validate_tir_message`` (shared)."""
     validate_tir_message(msg)
     role = msg["role"]
     ids: list[int] = [sids[ROLE_TOKEN[role]]]
-    mask: list[bool] = [False]  # role header — always masked (supplied at inference)
+    weights: list[float] = [0.0]  # role header — always masked (supplied at inference)
     if "segments" in msg:
-        seg_ids, seg_mask = _encode_segments(msg["segments"], tok, tir_token_ids(tok), sids)
+        seg_ids, seg_weights = _encode_segments(msg["segments"], tok, tir_token_ids(tok), sids)
         ids.extend(seg_ids)
-        mask.extend(seg_mask)
+        weights.extend(seg_weights)
         ids.append(sids["<|end|>"])
-        mask.append(True)  # turn terminator — learned (the model learns to stop)
+        weights.append(1.0)  # turn terminator — learned (the model learns to stop)
     else:
-        learn = role == "assistant"
+        learn = 1.0 if role == "assistant" else 0.0
         content_ids = tok.encode(msg["content"]).ids
         ids.extend(content_ids)
-        mask.extend([learn] * len(content_ids))
+        weights.extend([learn] * len(content_ids))
         ids.append(sids["<|end|>"])
-        mask.append(learn)
-    return ids, mask
+        weights.append(learn)
+    return ids, weights
 
 
 def render_conversation(
@@ -170,15 +178,15 @@ def render_conversation(
     """
     sids = special_ids(tok)
     out: list[int] = []
-    mask: list[bool] = []
+    weights: list[float] = []
     if add_bos:
         out.append(sids["<bos>"])
-        mask.append(False)
+        weights.append(0.0)
     for msg in messages:
-        turn_ids, turn_mask = _encode_turn(msg, tok, sids)
+        turn_ids, turn_weights = _encode_turn(msg, tok, sids)
         out.extend(turn_ids)
-        mask.extend(turn_mask)
-    return Rendered(out, mask)
+        weights.extend(turn_weights)
+    return Rendered(out, weights)
 
 
 def render_prompt(
