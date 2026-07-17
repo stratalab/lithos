@@ -57,3 +57,60 @@ def test_eos_stops_generation():
     out = generate(model, ids, max_new_tokens=15, greedy=True, eos_token_id=first)
     assert out.shape == (1, 4)  # prompt(3) + the eos token
     assert int(out[0, -1]) == first
+
+
+# ---- sampler logprobs (T2: the rollout record carries q) ----
+
+
+def test_return_logprobs_greedy_is_zero():
+    # Greedy decoding is a delta distribution: log q = 0 at every position.
+    model = make_model(seed=0)
+    out, lps = generate(
+        model, torch.tensor([[1, 2, 3]]), max_new_tokens=5, greedy=True, return_logprobs=True
+    )
+    assert out.shape == (1, 8)
+    assert lps.shape == (1, 5)  # one logprob per GENERATED token, prompt excluded
+    assert torch.all(lps == 0.0)
+
+
+def test_return_logprobs_match_sampling_distribution():
+    # One sampled step must report log softmax(logits/T) at the sampled token —
+    # the q an importance-sampling correction divides by.
+    model = make_model(seed=2)
+    ids = torch.tensor([[1, 2]])
+    temperature = 0.7
+    out, lps = generate(
+        model, ids, max_new_tokens=1, temperature=temperature,
+        generator=torch.Generator().manual_seed(7), return_logprobs=True,
+    )
+    with torch.no_grad():
+        logits, _ = model(ids)
+    expected = torch.log_softmax(logits[:, -1, :] / temperature, dim=-1)[0, out[0, -1]]
+    assert torch.allclose(lps[0, 0], expected, atol=1e-5)
+
+
+def test_return_logprobs_zero_on_forced_eos_padding():
+    # A row that finishes early is padded with FORCED eos tokens while the rest of
+    # the batch continues — those positions were never sampled, so their recorded
+    # logprob must be exactly 0.0. Probe an unconstrained run to learn row 0's
+    # first sampled token, then rerun with that token as eos.
+    model = make_model(seed=4)
+    ids = torch.tensor([[1, 2, 3], [4, 5, 6]])
+    kw = dict(max_new_tokens=6, temperature=1.0, return_logprobs=True)
+    probe, _ = generate(model, ids, generator=torch.Generator().manual_seed(11), **kw)
+    eos = int(probe[0, ids.shape[1]])  # row 0's first sampled token
+    out, lps = generate(
+        model, ids, generator=torch.Generator().manual_seed(11), eos_token_id=eos, **kw
+    )
+    gen = out[:, ids.shape[1] :]
+    assert int(gen[0, 0]) == eos  # same seed -> row 0 finishes at step 0
+    assert gen.shape[1] > 1  # row 1 kept the batch alive past row 0's finish
+    assert torch.all(gen[0, 1:] == eos)  # row 0's tail is forced padding...
+    assert torch.all(lps[0, 1:] == 0.0)  # ...and carries no sampler logprob
+    assert lps[0, 0] < 0.0  # the genuinely sampled token does
+    # row 1: sampled positions carry real logprobs up to (and including) its own
+    # first eos, 0.0 only after — the same invariant, row-relative.
+    hits = (gen[1] == eos).nonzero()
+    first = int(hits[0]) if len(hits) else gen.shape[1] - 1
+    assert torch.all(lps[1, : first + 1] < 0.0)
+    assert torch.all(lps[1, first + 1 :] == 0.0)

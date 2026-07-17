@@ -2,15 +2,17 @@
 
 Mirrors the pretraining build (`lithos/data/pipeline.py::build_corpus`) but for
 instruction data: each conversation is rendered with the chat template into
-``(input_ids, loss_mask)``, screened against the eval battery (F2), blended across
+``(input_ids, weights)``, screened against the eval battery (F2), blended across
 sources at controlled ratios, and packed into fixed-size shards that carry BOTH a
-token stream and a per-token loss-mask stream. The packed loader
+token stream and a per-token **loss-weight** stream (float32; the renderer emits
+the binary {0, 1} case — the canonical-record convention,
+`lithos/posttrain/record.py` / docs/tinker-learnings.md T1). The packed loader
 (`PackedSFTDataset`) memory-maps these instead of holding a dense padded array in
 RAM, and packing removes the per-conversation padding that dominated the old path.
 
 Packing uses cross-document attention **bleed** — the established pretraining
 convention (`lithos/data/packing.py`): conversations are concatenated, the loss
-mask isolates training targets, and the per-conversation ``<bos>`` signals the
+weights isolate training targets, and the per-conversation ``<bos>`` signals the
 boundary. No model/attention changes (block-diagonal masking is the PRD §27
 deferred flag for pretrain and SFT alike).
 """
@@ -34,7 +36,9 @@ from lithos.posttrain.decontam_gate import PostTrainDecontaminator, messages_tex
 from lithos.tokenizer.inspect_tokenizer import load_tokenizer
 from lithos.utils.io import ensure_dir, sha256_file, write_json
 
-# (tokens_path, mask_path, num_tokens, dtype) — parallel to data.shard.ShardSpec.
+# (tokens_path, weights_path, num_tokens, dtype) — parallel to data.shard.ShardSpec.
+# dtype is the TOKEN dtype; the weights stream is float32 (legacy shards: uint8
+# ``.mask.bin``, distinguished by suffix in the loader).
 SFTShardSpec = tuple[str, str, int, str]
 
 
@@ -86,10 +90,10 @@ class SFTCorpusBuildConfig(BaseModel):
 
 class SFTShardWriter:
     """Accumulate rendered conversations and flush fixed-size dual-stream shards:
-    ``shard_NNNNNN.tokens.bin`` (token ids) + ``shard_NNNNNN.mask.bin`` (uint8, 1 =
-    loss target). The two files are chopped at identical boundaries, so a window
-    carved from one aligns with the other. Reuses shard.py's buffer/flush/sha256
-    mechanics, extended to two channels.
+    ``shard_NNNNNN.tokens.bin`` (token ids) + ``shard_NNNNNN.weights.bin`` (float32
+    per-token loss weights; > 0 = loss target). The two files are chopped at
+    identical boundaries, so a window carved from one aligns with the other. Reuses
+    shard.py's buffer/flush/sha256 mechanics, extended to two channels.
     """
 
     def __init__(
@@ -107,55 +111,58 @@ class SFTShardWriter:
         self.tokenizer_name = tokenizer_name
         self.rel_base = Path(rel_base) if rel_base is not None else None
         self._tok_buf: list[int] = []
-        self._mask_buf: list[int] = []
+        self._weight_buf: list[float] = []
         self._shard_idx = 0
         self.total_tokens = 0
         self.total_loss_tokens = 0
         self.shards: list[dict[str, Any]] = []
 
-    def add(self, token_ids: list[int], loss_mask: list[bool]) -> None:
-        if len(token_ids) != len(loss_mask):
-            raise ValueError(f"token/mask length mismatch: {len(token_ids)} != {len(loss_mask)}")
+    def add(self, token_ids: list[int], weights: list[float]) -> None:
+        """``weights`` are per-token floats (bools coerce: the binary case)."""
+        if len(token_ids) != len(weights):
+            raise ValueError(f"token/weights length mismatch: {len(token_ids)} != {len(weights)}")
+        if any(w < 0 for w in weights):
+            raise ValueError("loss weights must be >= 0")
         self._tok_buf.extend(token_ids)
-        self._mask_buf.extend(1 if m else 0 for m in loss_mask)
+        self._weight_buf.extend(float(w) for w in weights)
         while len(self._tok_buf) >= self.tokens_per_shard:
             self._write(
-                self._tok_buf[: self.tokens_per_shard], self._mask_buf[: self.tokens_per_shard]
+                self._tok_buf[: self.tokens_per_shard], self._weight_buf[: self.tokens_per_shard]
             )
             del self._tok_buf[: self.tokens_per_shard]
-            del self._mask_buf[: self.tokens_per_shard]
+            del self._weight_buf[: self.tokens_per_shard]
 
     def _rel(self, path: Path) -> str:
         return str(path.relative_to(self.rel_base)) if self.rel_base is not None else str(path)
 
-    def _write(self, ids: list[int], mask: list[int]) -> None:
+    def _write(self, ids: list[int], weights: list[float]) -> None:
         self._shard_idx += 1
         shard_id = f"shard_{self._shard_idx:06d}"
         tok_path = self.dir / f"{shard_id}.tokens.bin"
-        mask_path = self.dir / f"{shard_id}.mask.bin"
+        weights_path = self.dir / f"{shard_id}.weights.bin"
         tok_arr = np.asarray(ids, dtype=self.dtype)
-        mask_arr = np.asarray(mask, dtype=np.uint8)
+        weight_arr = np.asarray(weights, dtype=np.float32)
         tok_arr.tofile(tok_path)
-        mask_arr.tofile(mask_path)
+        weight_arr.tofile(weights_path)
         self.total_tokens += int(tok_arr.size)
-        self.total_loss_tokens += int(mask_arr.sum())
+        self.total_loss_tokens += int((weight_arr > 0).sum())
         self.shards.append(
             {
                 "shard_id": shard_id,
                 "tokens_path": self._rel(tok_path),
-                "mask_path": self._rel(mask_path),
+                "weights_path": self._rel(weights_path),
                 "num_tokens": int(tok_arr.size),
                 "dtype": self.dtype.name,
                 "tokenizer": self.tokenizer_name,
                 "tokens_sha256": sha256_file(tok_path),
-                "mask_sha256": sha256_file(mask_path),
+                "weights_sha256": sha256_file(weights_path),
             }
         )
 
     def close(self, *, flush_remainder: bool = True) -> list[dict[str, Any]]:
         if flush_remainder and self._tok_buf:
-            self._write(self._tok_buf, self._mask_buf)
-            self._tok_buf, self._mask_buf = [], []
+            self._write(self._tok_buf, self._weight_buf)
+            self._tok_buf, self._weight_buf = [], []
         return self.shards
 
 
@@ -209,8 +216,8 @@ def _render_source(
     add_bos: bool,
     decon: PostTrainDecontaminator | None,
     rng: random.Random,
-) -> tuple[list[tuple[list[int], list[bool]]], dict[str, Any]]:
-    """Render one source to (input_ids, loss_mask) pairs, applying decontam, the
+) -> tuple[list[tuple[list[int], list[float]]], dict[str, Any]]:
+    """Render one source to (input_ids, weights) pairs, applying decontam, the
     overlong drop, the max_examples cap, and repeats. Returns (examples, accounting)."""
     records = list(_read_message_records(src.path))
     read = len(records)
@@ -223,23 +230,23 @@ def _render_source(
         rng.shuffle(records)  # seeded random subset, not just the file head
         records = records[: src.max_examples]
 
-    unique: list[tuple[list[int], list[bool]]] = []
+    unique: list[tuple[list[int], list[float]]] = []
     dropped_overlong = 0
     dropped_no_target = 0
     for rec in records:
         rendered = render_conversation(rec["messages"], tokenizer, add_bos=add_bos)
-        ids, mask = rendered.input_ids, rendered.loss_mask
+        ids, weights = rendered.input_ids, rendered.weights
         if len(ids) > seq_len:  # can't fit one context window; kept short until E10 raises seq_len
             dropped_overlong += 1
             continue
-        if not any(mask):  # no assistant tokens to learn
+        if not any(w > 0 for w in weights):  # no assistant tokens to learn
             dropped_no_target += 1
             continue
-        unique.append((ids, mask))
+        unique.append((ids, weights))
 
     examples = unique * src.repeats  # upsample the whole (deduped) set
     tokens = sum(len(i) for i, _ in examples)
-    loss_tokens = sum(sum(m) for _, m in examples)
+    loss_tokens = sum(sum(1 for w in ws if w > 0) for _, ws in examples)
     accounting = {
         "read": read,
         "kept_unique": len(unique),
@@ -268,9 +275,12 @@ def build_sft_corpus(
     Reservoir-sampling an *uncapped* giant source is the next scale-up step.
     """
     # Acquisition gate, before any work. It applies to the **assistant targets** — the
-    # only gradient-bearing spans — not to the prompts, which the loss mask zeroes. So a
+    # only gradient-bearing spans — not to the prompts, which the loss weights zero. So a
     # `restricted` textbook problem may be a prompt; it may not be a target. All sources
     # are checked up front so a bad blend fails before a single token is rendered.
+    # The weights stream IS the gradient gate made concrete (record.py): `weight > 0`
+    # ⇔ gradient-bearing ⇔ tier-gated — the shards carry, per token, exactly the
+    # spans the manifest attests to.
     if cfg.enforce_tiers:
         for src in cfg.sources:
             assert_trainable(
@@ -320,10 +330,10 @@ def build_sft_corpus(
         examples, accounting = _render_source(src, tokenizer, cfg.seq_len, cfg.add_bos, decon, rng)
         rng.shuffle(examples)  # shuffle within the source, so the val slice is unbiased
         split = int(len(examples) * cfg.val_fraction) if val_writer is not None else 0
-        for ids, mask in examples[:split]:
-            val_writer.add(ids, mask)  # type: ignore[union-attr]  # split==0 when val_writer is None
-        for ids, mask in examples[split:]:
-            train_writer.add(ids, mask)
+        for ids, weights in examples[:split]:
+            val_writer.add(ids, weights)  # type: ignore[union-attr]  # split==0 when val_writer is None
+        for ids, weights in examples[split:]:
+            train_writer.add(ids, weights)
         mixture[src.name] = accounting
         n_val += split
         n_train += len(examples) - split

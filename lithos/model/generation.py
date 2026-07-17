@@ -7,6 +7,8 @@ reference path the cache is tested against.
 
 from __future__ import annotations
 
+from typing import Literal, overload
+
 import torch
 
 from lithos.model.transformer import LithosForCausalLM
@@ -20,10 +22,18 @@ def _sample_next(
     top_p: float | None,
     greedy: bool,
     generator: torch.Generator | None,
-) -> torch.Tensor:
-    """logits: (B, vocab) -> next token ids (B, 1)."""
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """logits: (B, vocab) -> (next token ids (B, 1), sampler logprobs (B, 1)).
+
+    The logprob is of the sampled token under the distribution it was *actually
+    drawn from* — after temperature and top-k/top-p truncation + renormalization.
+    That is the ``q`` an importance-sampling correction needs (``record.py``); the
+    trainer's own forward pass gives ``p``. Greedy decoding is a delta
+    distribution, so its logprob is 0.
+    """
     if greedy or temperature == 0:
-        return logits.argmax(dim=-1, keepdim=True)
+        token = logits.argmax(dim=-1, keepdim=True)
+        return token, torch.zeros_like(token, dtype=logits.dtype)
 
     logits = logits / temperature
 
@@ -43,7 +53,44 @@ def _sample_next(
         logits = logits.masked_fill(remove, float("-inf"))
 
     probs = torch.softmax(logits, dim=-1)
-    return torch.multinomial(probs, num_samples=1, generator=generator)
+    token = torch.multinomial(probs, num_samples=1, generator=generator)
+    return token, torch.log(probs.gather(-1, token))
+
+
+@overload
+def generate(
+    model: LithosForCausalLM,
+    input_ids: torch.Tensor,
+    max_new_tokens: int,
+    *,
+    temperature: float = ...,
+    top_k: int | None = ...,
+    top_p: float | None = ...,
+    greedy: bool = ...,
+    eos_token_id: int | None = ...,
+    stop_token_ids: set[int] | None = ...,
+    use_cache: bool = ...,
+    generator: torch.Generator | None = ...,
+    return_logprobs: Literal[False] = ...,
+) -> torch.Tensor: ...
+
+
+@overload
+def generate(
+    model: LithosForCausalLM,
+    input_ids: torch.Tensor,
+    max_new_tokens: int,
+    *,
+    temperature: float = ...,
+    top_k: int | None = ...,
+    top_p: float | None = ...,
+    greedy: bool = ...,
+    eos_token_id: int | None = ...,
+    stop_token_ids: set[int] | None = ...,
+    use_cache: bool = ...,
+    generator: torch.Generator | None = ...,
+    return_logprobs: Literal[True],
+) -> tuple[torch.Tensor, torch.Tensor]: ...
 
 
 @torch.no_grad()
@@ -60,8 +107,16 @@ def generate(
     stop_token_ids: set[int] | None = None,
     use_cache: bool = True,
     generator: torch.Generator | None = None,
-) -> torch.Tensor:
+    return_logprobs: bool = False,
+) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
     """Generate up to ``max_new_tokens`` tokens; returns prompt + completion.
+
+    With ``return_logprobs=True`` returns ``(generated, logprobs)`` where
+    ``logprobs`` is (B, num_generated): the **sampler's** log-probability of each
+    generated token under the distribution it was drawn from (see ``_sample_next``)
+    — recorded so RLVR rollout records can carry ``q`` for a later off-policy
+    correction (``record.py``, docs/tinker-learnings.md T2). Positions where a
+    finished row was padded with ``eos_token_id`` get 0.0 (forced, not sampled).
 
     A sequence finishes when it emits ``eos_token_id`` **or** any id in
     ``stop_token_ids`` — the latter lets a TIR rollout stop at ``<|/tool|>`` (to
@@ -92,13 +147,14 @@ def generate(
             logits, _ = model(generated, kv_caches=kv_caches)
             next_logits = logits[:, -1, :]
 
+        logprob_cols: list[torch.Tensor] = []
         for _ in range(max_new_tokens):
             if not use_cache:
                 logits, _ = model(generated)
                 next_logits = logits[:, -1, :]
             assert next_logits is not None
 
-            next_token = _sample_next(
+            next_token, next_logprob = _sample_next(
                 next_logits,
                 temperature=temperature,
                 top_k=top_k,
@@ -109,8 +165,14 @@ def generate(
             if eos_token_id is not None:
                 keep_eos = torch.full_like(next_token, eos_token_id)
                 next_token = torch.where(finished.unsqueeze(1), keep_eos, next_token)
+                # a forced pad-eos was not sampled — its logprob is not the sampler's
+                next_logprob = torch.where(
+                    finished.unsqueeze(1), torch.zeros_like(next_logprob), next_logprob
+                )
 
             generated = torch.cat((generated, next_token), dim=1)
+            if return_logprobs:
+                logprob_cols.append(next_logprob)
 
             if stop_ids:
                 tok_col = next_token.squeeze(1)
@@ -125,6 +187,13 @@ def generate(
                 logits, _ = model(next_token, kv_caches=kv_caches)
                 next_logits = logits[:, -1, :]
 
+        if return_logprobs:
+            logprobs = (
+                torch.cat(logprob_cols, dim=1)
+                if logprob_cols
+                else input_ids.new_zeros((input_ids.shape[0], 0), dtype=torch.float32)
+            )
+            return generated, logprobs
         return generated
     finally:
         if was_training:

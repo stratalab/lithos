@@ -22,11 +22,19 @@ import torch
 from lithos.data.packing import get_sequence, num_sequences
 from lithos.data.shard import load_shard
 from lithos.posttrain.chat_template import TokenizerLike, render_conversation, special_ids
+from lithos.posttrain.record import IGNORE_INDEX, TrainingRecord
 from lithos.utils.io import read_json
 
-IGNORE_INDEX = -100  # matches F.cross_entropy(ignore_index=...) in the model
+__all__ = [
+    "IGNORE_INDEX",  # canonical home is record.py; re-exported for existing importers
+    "PackedSFTDataset",
+    "SFTDataset",
+    "SFTShardSpec",
+    "build_xy",
+    "load_sft_shard_specs",
+]
 
-# (tokens_path, mask_path, num_tokens, dtype) — for the packed dual-stream loader.
+# (tokens_path, weights_path, num_tokens, dtype) — for the packed dual-stream loader.
 SFTShardSpec = tuple[str, str, int, str]
 
 
@@ -44,15 +52,12 @@ def build_xy(
     right-truncated, since that loses the reply) or has no assistant tokens to
     learn. Shared by SFT and DPO (chosen/rejected) so masking is identical.
     """
-    r = render_conversation(messages, tokenizer, add_bos=add_bos)
-    ids, m = r.input_ids, r.loss_mask
-    if len(ids) < 2:
+    rec = TrainingRecord.from_rendered(render_conversation(messages, tokenizer, add_bos=add_bos))
+    if len(rec.tokens) < 2 or not rec.has_targets():
         return None
-    x = ids[:-1]
-    y = [ids[i + 1] if m[i + 1] else IGNORE_INDEX for i in range(len(ids) - 1)]
+    x = rec.tokens[:-1]
+    y = rec.labels()
     if len(x) > seq_len:
-        return None
-    if all(t == IGNORE_INDEX for t in y):
         return None
     if (pad := seq_len - len(x)) > 0:  # right-pad; causal attn + masked loss keep it safe
         x = x + [pad_id] * pad
@@ -121,43 +126,65 @@ def _read_messages(path: str | Path) -> Iterator[list[dict[str, str]]]:
 
 def load_sft_shard_specs(manifest_path: str | Path) -> list[SFTShardSpec]:
     """Read an SFT manifest, resolving both channel paths relative to its directory
-    (portable across moves), mirroring ``data.shard.read_shard_specs``."""
+    (portable across moves), mirroring ``data.shard.read_shard_specs``. Accepts both
+    the current ``weights_path`` (float32) and the legacy ``mask_path`` (uint8) key;
+    the loader tells the stream dtypes apart by file suffix."""
     manifest_path = Path(manifest_path)
     base = manifest_path.parent
     specs: list[SFTShardSpec] = []
     for s in read_json(manifest_path)["shards"]:
-        tp, mp = Path(s["tokens_path"]), Path(s["mask_path"])
+        tp = Path(s["tokens_path"])
+        wp = Path(s["weights_path"] if "weights_path" in s else s["mask_path"])
         tokens = str(tp if tp.is_absolute() else base / tp)
-        mask = str(mp if mp.is_absolute() else base / mp)
-        specs.append((tokens, mask, int(s["num_tokens"]), str(s["dtype"])))
+        weights = str(wp if wp.is_absolute() else base / wp)
+        specs.append((tokens, weights, int(s["num_tokens"]), str(s["dtype"])))
     return specs
 
 
 class PackedSFTDataset:
     """Indexable view over packed dual-stream SFT shards, mirroring ``PackedDataset``.
 
-    Memory-maps the token + mask streams of each shard and carves ``seq_len``
+    Memory-maps the token + loss-weight streams of each shard and carves ``seq_len``
     windows at load time: ``x`` is the token window, ``y`` is the shifted token
-    window with ``IGNORE_INDEX`` wherever the (shifted) mask is 0 — exactly the
+    window with ``IGNORE_INDEX`` wherever the (shifted) weight is 0 — exactly the
     ``(x, y)`` int64 contract the training loop already consumes, so it drops into
     ``PackedDataLoader`` and ``train()`` unchanged. Windows cross conversation
-    boundaries (bleed packing); the mask keeps loss on assistant tokens only.
+    boundaries (bleed packing); the weights keep loss on assistant tokens only.
+
+    The ``(x, y)`` contract is a **binary projection**: the model's loss is
+    ``F.cross_entropy(ignore_index=IGNORE_INDEX)``, which can drop a position but
+    not scale it. Until the loop grows a weighted-CE path, a shard with fractional
+    weights would be *silently trained at weight 1.0* — so this loader refuses it
+    loudly instead (fail-closed, same posture as the tier gate).
     """
 
     def __init__(self, shards: list[SFTShardSpec], seq_len: int) -> None:
         self.seq_len = seq_len
         self._tok: list[np.memmap] = []
-        self._mask: list[np.memmap] = []
+        self._weights: list[np.memmap] = []
         self._cumulative: list[int] = [0]
-        for tokens_path, mask_path, num_tokens, dtype in shards:
+        for tokens_path, weights_path, num_tokens, dtype in shards:
             tok = load_shard(tokens_path, dtype)
-            mask = load_shard(mask_path, "uint8")
-            if len(tok) != len(mask):  # streams must be lockstep; catch corruption early
+            # Legacy shards store a uint8 ``.mask.bin``; current ones float32
+            # ``.weights.bin``. Same semantics (> 0 = loss target), different dtype.
+            weights_dtype = "uint8" if weights_path.endswith(".mask.bin") else "float32"
+            weights = load_shard(weights_path, weights_dtype)
+            if len(tok) != len(weights):  # streams must be lockstep; catch corruption early
                 raise ValueError(
-                    f"token/mask stream length mismatch in {tokens_path}: {len(tok)} != {len(mask)}"
+                    f"token/weights stream length mismatch in {tokens_path}: "
+                    f"{len(tok)} != {len(weights)}"
+                )
+            if weights_dtype == "float32" and not bool(
+                ((weights == 0) | (weights == 1)).all()
+            ):
+                raise NotImplementedError(
+                    f"{weights_path} carries fractional loss weights; the (x, y) "
+                    "ignore-index contract can only drop tokens, not scale them — "
+                    "weighted cross-entropy in the train loop is the pending seam "
+                    "(docs/tinker-learnings.md T1)"
                 )
             self._tok.append(tok)
-            self._mask.append(mask)
+            self._weights.append(weights)
             self._cumulative.append(self._cumulative[-1] + num_sequences(num_tokens, seq_len))
         self.total = self._cumulative[-1]
 
@@ -170,8 +197,8 @@ class PackedSFTDataset:
         shard = bisect.bisect_right(self._cumulative, index) - 1
         local = index - self._cumulative[shard]
         tok_x, tok_y = get_sequence(self._tok[shard], local, self.seq_len)
-        _, mask_y = get_sequence(self._mask[shard], local, self.seq_len)
+        _, weights_y = get_sequence(self._weights[shard], local, self.seq_len)
         x = torch.from_numpy(tok_x.astype(np.int64))
         y = torch.from_numpy(tok_y.astype(np.int64))
-        y[torch.from_numpy(np.asarray(mask_y) == 0)] = IGNORE_INDEX
+        y[torch.from_numpy(np.asarray(weights_y) <= 0)] = IGNORE_INDEX
         return x, y
