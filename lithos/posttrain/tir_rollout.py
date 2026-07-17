@@ -19,6 +19,7 @@ import torch
 
 from lithos.model.generation import LogitsProcessor, generate
 from lithos.posttrain.chat_template import TOOL_CLOSE, TOOL_OPEN, TOOL_RESULT
+from lithos.posttrain.record import TrainingRecord
 from lithos.posttrain.sandbox import run_tool
 
 
@@ -40,6 +41,25 @@ class RolloutResult:
     #: Segments that closed with ``<|/tool|>`` but carried no runtime tag. The error is
     #: injected into the context, but it is not a *call*, so it pairs with nothing.
     num_malformed_calls: int = 0
+    #: Sampler logprob per token, aligned with ``token_ids``: the log-probability each
+    #: *action* token was sampled at (post decode-policy/temperature/top-p), 0.0 at
+    #: prompt + injected tool-result positions. Carried into the training record so an
+    #: off-policy (importance-sampling) correction stays a loss swap when rollout
+    #: generation moves off the trainer's forward pass (E5) — docs/tinker-learnings.md T2.
+    logprobs: list[float] = field(default_factory=list)
+
+    def to_record(self, advantage: float) -> TrainingRecord:
+        """Lift the episode into the canonical ``TrainingRecord``: action positions get
+        weight 1.0 and the (group-relative) scalar advantage broadcast per-token;
+        prompt + tool-result positions get 0.0 everywhere and drop out of every loss
+        term. One record shape across SFT/RLVR/DPO (docs/tinker-learnings.md T1)."""
+        weights = [1.0 if a else 0.0 for a in self.action_mask]
+        return TrainingRecord(
+            tokens=list(self.token_ids),
+            weights=weights,
+            logprobs=list(self.logprobs) if self.logprobs else None,
+            advantages=[advantage if a else 0.0 for a in self.action_mask],
+        )
 
 
 def parse_tool_call(
@@ -93,6 +113,7 @@ def tir_rollout(
 
     token_ids: list[int] = list(prompt_ids)
     action_mask: list[bool] = [False] * len(prompt_ids)
+    logprobs: list[float] = [0.0] * len(prompt_ids)  # sampler's q; 0.0 at non-actions
     tool_calls: list[tuple[str, str]] = []
     tool_outputs: list[str] = []
     num_malformed = 0
@@ -103,7 +124,7 @@ def tir_rollout(
     for _ in range(max_tool_calls + 1):
         if budget <= 0:
             break
-        out = generate(
+        out, seg_logprobs = generate(
             model,
             torch.tensor([token_ids], device=device),
             budget,
@@ -113,11 +134,13 @@ def tir_rollout(
             generator=generator,
             use_cache=use_cache,
             logits_processor=logits_processor,
+            return_logprobs=True,
         )
         new = out[0].tolist()[len(token_ids) :]
         budget -= len(new)
         token_ids.extend(new)
         action_mask.extend([True] * len(new))  # model-generated policy actions
+        logprobs.extend(seg_logprobs[0].tolist())  # single row: len == len(new)
         if not new:
             break
         last = new[-1]
@@ -142,6 +165,7 @@ def tir_rollout(
         result_ids = [result_open_id, *tok.encode(output).ids[:result_token_cap], end_id]
         token_ids.extend(result_ids)
         action_mask.extend([False] * len(result_ids))
+        logprobs.extend([0.0] * len(result_ids))  # the environment's move was not sampled
 
     completion_text = tok.decode(token_ids[len(prompt_ids) :], skip_special_tokens=True)
     truncated = not completed
@@ -154,4 +178,5 @@ def tir_rollout(
         truncated=truncated,
         tool_outputs=tool_outputs,
         num_malformed_calls=num_malformed,
+        logprobs=logprobs,
     )

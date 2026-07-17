@@ -33,18 +33,35 @@ def _convo(u: str, a: str) -> dict:
 
 def test_shard_writer_dual_stream_roundtrip(tmp_path):
     w = SFTShardWriter(tmp_path, tokens_per_shard=10, dtype="uint16", tokenizer_name="t")
-    w.add([1, 2, 3, 4], [False, False, True, True])
+    w.add([1, 2, 3, 4], [False, False, True, True])  # bools coerce (the binary case)
     w.add([5, 6, 7], [True, True, False])
     shards = w.close()
     assert len(shards) == 1
     s = shards[0]
     assert s["num_tokens"] == 7
-    assert s["tokens_path"].endswith(".tokens.bin") and s["mask_path"].endswith(".mask.bin")
+    assert s["tokens_path"].endswith(".tokens.bin") and s["weights_path"].endswith(".weights.bin")
     toks = np.fromfile(tmp_path / Path(s["tokens_path"]).name, dtype="uint16")
-    mask = np.fromfile(tmp_path / Path(s["mask_path"]).name, dtype="uint8")
+    weights = np.fromfile(tmp_path / Path(s["weights_path"]).name, dtype="float32")
     assert toks.tolist() == [1, 2, 3, 4, 5, 6, 7]
-    assert mask.tolist() == [0, 0, 1, 1, 1, 1, 0]
+    assert weights.tolist() == [0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0]
     assert w.total_loss_tokens == 4
+
+
+def test_shard_writer_fractional_weights_roundtrip(tmp_path):
+    # The float generalization (docs/tinker-learnings.md T1): curriculum-style
+    # fractional weights survive the round-trip; loss-token count is weight > 0.
+    w = SFTShardWriter(tmp_path, tokens_per_shard=10, dtype="uint16", tokenizer_name="t")
+    w.add([1, 2, 3], [0.0, 0.5, 1.0])
+    s = w.close()[0]
+    weights = np.fromfile(tmp_path / Path(s["weights_path"]).name, dtype="float32")
+    assert weights.tolist() == [0.0, 0.5, 1.0]
+    assert w.total_loss_tokens == 2
+
+
+def test_shard_writer_negative_weight_raises(tmp_path):
+    w = SFTShardWriter(tmp_path, tokens_per_shard=10, dtype="uint16", tokenizer_name="t")
+    with pytest.raises(ValueError, match=">= 0"):
+        w.add([1, 2], [1.0, -0.5])
 
 
 def test_shard_writer_flushes_full_shards(tmp_path):
@@ -90,7 +107,7 @@ def test_build_writes_manifest_and_shards(tmp_path):
     assert (out / "sft_manifest.json").exists()
     for s in manifest["shards"]:
         assert (out / s["tokens_path"]).exists()
-        assert (out / s["mask_path"]).exists()
+        assert (out / s["weights_path"]).exists()
 
 
 def test_mixer_cap_and_repeats(tmp_path):

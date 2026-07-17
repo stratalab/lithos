@@ -165,3 +165,47 @@ def test_rollout_truncates_without_stop():
     roll, plen = _rollout([*tok.encode("aaaaaaaa").ids], tok, tir, sids, max_new=5)
     assert roll.truncated
     assert len(roll.token_ids) - plen <= 5
+
+
+def test_rollout_logprobs_align_with_actions():
+    # T2: the episode carries the sampler's per-token logprob, strictly parallel to
+    # token_ids, and exactly 0.0 wherever the token was not the policy's move
+    # (prompt + injected tool results).
+    tok, tir, sids = _ctx()
+    j = _ids(tok, tir, sids)
+    script = [
+        j["py"], *tok.encode("print(2+2)").ids, j["close"],
+        *tok.encode("The answer is 4.").ids, j["end"],
+    ]
+    roll, _ = _rollout(script, tok, tir, sids)
+    assert len(roll.logprobs) == len(roll.token_ids)
+    for lp, is_action in zip(roll.logprobs, roll.action_mask, strict=True):
+        if not is_action:
+            assert lp == 0.0
+        else:
+            assert lp <= 0.0  # a real log-probability
+
+
+def test_rollout_to_record():
+    # T1: the episode lifts into the canonical record — weights mirror the action
+    # mask, the scalar advantage broadcasts over action positions only, and the
+    # injected tool-result span drops out of labels().
+    from lithos.posttrain.record import IGNORE_INDEX
+
+    tok, tir, sids = _ctx()
+    j = _ids(tok, tir, sids)
+    script = [
+        j["py"], *tok.encode("print(2+2)").ids, j["close"],
+        *tok.encode("ok").ids, j["end"],
+    ]
+    roll, _ = _rollout(script, tok, tir, sids)
+    rec = roll.to_record(advantage=0.5)
+    assert rec.tokens == roll.token_ids
+    assert rec.weights == [1.0 if a else 0.0 for a in roll.action_mask]
+    assert rec.advantages == [0.5 if a else 0.0 for a in roll.action_mask]
+    assert rec.logprobs == roll.logprobs
+    # the injected tool-result span produces only IGNORE_INDEX labels
+    r_open = roll.token_ids.index(j["result"])
+    r_end = roll.token_ids.index(j["end"], r_open)
+    labels = rec.labels()
+    assert all(labels[i - 1] == IGNORE_INDEX for i in range(r_open, r_end + 1))

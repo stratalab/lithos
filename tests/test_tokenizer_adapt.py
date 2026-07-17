@@ -274,11 +274,11 @@ def test_sft_build_retokenizes_correctly_on_the_augmented_tokenizer(tmp_path):
 
     shard = manifest["shards"][0]
     toks = np.fromfile(tmp_path / "sftout" / shard["tokens_path"], dtype=shard["dtype"])
-    mask = np.fromfile(
-        tmp_path / "sftout" / shard["mask_path"], dtype="uint8"
+    weights = np.fromfile(
+        tmp_path / "sftout" / shard["weights_path"], dtype="float32"
     )
     # the augmented <|end|> id actually appears, and it is a valid id for this tokenizer
     assert end_id in toks.tolist()
     assert int(toks.max()) < res.vocab_size
-    # exactly the assistant content + its closing <|end|> is a loss target (mask has 1s)
-    assert mask.sum() > 0 and mask.sum() < len(mask)
+    # exactly the assistant content + its closing <|end|> is a loss target (weights > 0)
+    assert (weights > 0).sum() > 0 and (weights > 0).sum() < len(weights)
