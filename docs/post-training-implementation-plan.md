@@ -250,6 +250,28 @@ here because it fell out of this review chain.
   (SwiGLU is the settled consensus; the ablation is already run in the
   literature). The boring core is the architecture; novelty budget goes to
   data/RLVR/R1+R2.
+- **BANKED (2026-07-17, on the Kimi K3 launch): a KDA:MLA 3:1 hybrid arm for a
+  future 100M sweep.** Kimi Linear (arXiv 2510.26692; kernels upstreamed to
+  `flash-linear-attention`, 48B-A3B checkpoints open) claims a 3:1
+  linear:full-attention hybrid (Kimi Delta Attention = gated DeltaNet with
+  finer-grained gating, fixed-size recurrent state) **beats** full MLA across
+  short-context, long-context, *and RL scaling*, with ~75% KV-cache reduction
+  and up to 6× decode throughput at long context — validated at exactly our
+  flagship ladder's activated scale (3B). If it holds at small scale, it is the
+  strongest candidate at this decision point — strictly better-shaped than SWA
+  (fixed-size state vs lossy windowing), and it de-risks the same
+  long-context-on-edge problem. Arm design: KDA:MLA 3:1 vs the current
+  full-attention baseline on the 100M rig, decided on **per-domain bpb + peak
+  inference memory** (capability-per-GB, the edge metric); independently verify
+  the RL-parity claim at small scale before trusting it (the thinnest part of
+  the paper — and RLVR is our whole post-training thesis). Costs to weigh: it
+  leaves the Qwen3 export envelope (breaks `hf_import` parity / shared
+  tooling), so it is **from-scratch-line only → v2-gated under the v1-on-Qwen
+  pivot**; plus a new kernel dependency. Interacts with R2 (see the
+  hybrid-linear-attention note in `implementation-plan.md`'s R2 section): a
+  hybrid shrinks R2's offload target to the interleaved full-attention layers
+  only. This is a sweep arm, **not** a pivot — it does not reopen the settled
+  full-attention-through-500M/1B decision above.
 
 ### Wave 4 — Feed the machine (from review 2; all CPU-local, unblocked now)
 
