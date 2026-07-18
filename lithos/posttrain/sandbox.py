@@ -220,12 +220,90 @@ def run_octave(
         )
 
 
+# ---------------------------------------------------------------------------
+# Assay runtime (v0 shim). The real executor is the embedded Assay engine
+# (assay-vision.md); until it ships, this shim covers the symbolic-calculus
+# template families so the wire format, training data, and rollouts can run end
+# to end. The IR payload is JSON: {"task": <template_id>, "inputs": {...},
+# "missing_inputs": [...]}. The shim COMPILES the IR into a deterministic sympy
+# program — the template owns the method, the model never writes it — and runs
+# it through the same subprocess sandbox as `python` (timeout/rlimits/isolation
+# for free). Everything outside the registry fails loud with the known-template
+# list, which is exactly the feedback an out-of-coverage rollout should see.
+
+_ASSAY_V0_PROGRAMS: dict[str, str] = {
+    # each entry: sympy statements binding `result` from validated `inputs`
+    "differentiate.univariate": "result = {'derivative': str(sp.diff(expr, var))}",
+    "integrate.univariate": "result = {'antiderivative': str(sp.integrate(expr, var))}",
+    "limit.of_function": "result = {'limit_value': str(sp.limit(expr, var, point))}",
+    "derivative.at_point": "result = {'derivative_value': str(sp.limit(expr, var, point))}",
+    "solve_equation.univariate": "result = {'roots': [str(r) for r in sp.solve(expr, var)]}",
+}
+
+_ASSAY_PRELUDE = """\
+import json, sympy as sp
+from sympy.parsing.sympy_parser import parse_expr
+inputs = json.loads({inputs_json!r})
+var = sp.Symbol(inputs["variable"])
+expr = parse_expr(inputs["expression"], local_dict={{inputs["variable"]: var}})
+_p = inputs.get("point")
+point = sp.oo if _p in ("oo", "inf") else (-sp.oo if _p == "-oo" else sp.sympify(_p) if _p is not None else None)
+{program}
+print(json.dumps(result))
+"""
+
+
+def run_assay(
+    code: str, *, timeout_s: float = DEFAULT_TIMEOUT_S, memory_mb: int | None = DEFAULT_MEMORY_MB
+) -> ExecutionResult:
+    """Execute an Assay IR (JSON in ``code``) against the v0 template registry.
+
+    Malformed IR / unknown template / missing inputs return ``ok=False`` with an
+    explanatory message rather than raising — the model reads the injected error
+    and can retry or fall back to the ``python`` runtime (the head/tail doctrine).
+    """
+
+    def refuse(msg: str) -> ExecutionResult:
+        return ExecutionResult(
+            ok=False, stdout="", stderr=msg, returncode=None, timed_out=False, duration_s=0.0
+        )
+
+    try:
+        ir = json.loads(code)
+    except json.JSONDecodeError as e:
+        return refuse(f"assay: IR is not valid JSON ({e})")
+    if not isinstance(ir, dict) or not isinstance(ir.get("task"), str):
+        return refuse("assay: IR must be an object with a string 'task' field")
+    if ir.get("missing_inputs"):
+        return refuse(
+            f"assay: cannot execute with missing_inputs={ir['missing_inputs']} — "
+            "resolve or ask for them; never invent values"
+        )
+    program = _ASSAY_V0_PROGRAMS.get(ir["task"])
+    if program is None:
+        return refuse(
+            f"assay: template {ir['task']!r} not in the v0 registry "
+            f"{sorted(_ASSAY_V0_PROGRAMS)}; use the python runtime for uncovered tasks"
+        )
+    inputs = ir.get("inputs")
+    if not isinstance(inputs, dict) or not all(
+        isinstance(inputs.get(k), str) for k in ("expression", "variable")
+    ):
+        return refuse("assay: 'inputs' must carry string 'expression' and 'variable'")
+    script = _ASSAY_PRELUDE.format(inputs_json=json.dumps(inputs), program=program)
+    return run_python(script, timeout_s=timeout_s, memory_mb=memory_mb)
+
+
 # Runtime dispatch by the tool-call open-token name (see docs/tir-format.md §2).
-RUNTIMES: dict[str, Callable[..., ExecutionResult]] = {"python": run_python, "octave": run_octave}
+RUNTIMES: dict[str, Callable[..., ExecutionResult]] = {
+    "python": run_python,
+    "octave": run_octave,
+    "assay": run_assay,
+}
 
 
 def run_tool(runtime: str, code: str, **kw: object) -> ExecutionResult:
-    """Route a tool call to its runtime by name (``python``/``octave``)."""
+    """Route a tool call to its runtime by name (``python``/``octave``/``assay``)."""
     if runtime not in RUNTIMES:
         raise ValueError(f"unknown runtime {runtime!r}; have {sorted(RUNTIMES)}")
     return RUNTIMES[runtime](code, **kw)

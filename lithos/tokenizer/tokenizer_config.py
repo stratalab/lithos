@@ -23,6 +23,26 @@ DEFAULT_SPECIAL_TOKENS = [
     "<|end|>",
 ]
 
+# The STEM tokenizer's reserved block, IDs 7-15 (docs/tir-format.md §2). Order IS
+# the ID assignment; the list must stay in lockstep with the renderer's token
+# names (`lithos/posttrain/chat_template.py` — guarded by test_tokenizer_specials).
+# <|assay|> claimed at ID 13 (2026-07-19); 14-15 are genuine spares, named so the
+# IDs exist in the vocab from day one (adding tokens post-freeze is a migration).
+TIR_SPECIAL_TOKENS = [
+    "<think>",  # 7
+    "</think>",  # 8
+    "<|python|>",  # 9
+    "<|octave|>",  # 10
+    "<|/tool|>",  # 11
+    "<|tool_result|>",  # 12
+    "<|assay|>",  # 13
+    "<|reserved_14|>",  # 14
+    "<|reserved_15|>",  # 15
+]
+
+# What a STEM/TIR-capable tokenizer trains with: chat block + reserved block.
+STEM_SPECIAL_TOKENS = [*DEFAULT_SPECIAL_TOKENS, *TIR_SPECIAL_TOKENS]
+
 
 class TokenizerConfig(BaseModel):
     """Byte-level BPE tokenizer definition."""

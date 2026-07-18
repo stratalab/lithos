@@ -38,13 +38,19 @@ _SPECIALS = ("<bos>", "<eos>", "<pad>", "<|end|>", *ROLE_TOKEN.values())
 # always-required core specials above.
 THINK_OPEN, THINK_CLOSE = "<think>", "</think>"
 TOOL_CLOSE, TOOL_RESULT = "<|/tool|>", "<|tool_result|>"
-TOOL_OPEN = {"python": "<|python|>", "octave": "<|octave|>"}  # runtime identity in the open tag
+# Runtime identity lives in the open tag. `python`/`octave` carry raw source;
+# `assay` carries the Assay IR as JSON (task + inputs — the template owns the
+# method, the model only routes and fills slots). <|assay|> claims reserved ID 13
+# (docs/tir-format.md §2).
+TOOL_OPEN = {"python": "<|python|>", "octave": "<|octave|>", "assay": "<|assay|>"}
 TIR_TOKENS = (THINK_OPEN, THINK_CLOSE, *TOOL_OPEN.values(), TOOL_CLOSE, TOOL_RESULT)
 
-# Every special token an SFT/TIR-capable tokenizer must resolve, core + TIR, in a stable
-# order. THE single source of truth: a from-scratch STEM tokenizer reserves these, and a
-# Qwen base is *augmented* with whichever it lacks (`lithos/serve/tokenizer_adapt.py`), so
-# the tokenizer and this renderer can never drift on what must exist.
+# Every special token an SFT/TIR-capable tokenizer must resolve, core + TIR, in a
+# stable order — the renderer side of the tokenizer contract. A from-scratch STEM
+# tokenizer reserves these (`tokenizer_config.STEM_SPECIAL_TOKENS`, lockstep-tested
+# by tests/test_assay_runtime.py) and a Qwen base is *augmented* with whichever it
+# lacks (`lithos/serve/tokenizer_adapt.py`), so the tokenizer and this renderer can
+# never drift on what must exist.
 REQUIRED_SPECIAL_TOKENS: tuple[str, ...] = (*_SPECIALS, *TIR_TOKENS)
 
 

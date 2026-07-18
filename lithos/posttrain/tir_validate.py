@@ -15,8 +15,12 @@ Schema (authoritative; renders to the wire format in docs/tir-format.md §2-§4)
              | {"role": "assistant", "segments": [segment, ...]}  # exactly one of content|segments
     segment  = {"type": "think",       "text": str}                # learned
              | {"type": "text",        "text": str}                # learned
-             | {"type": "tool",        "runtime": "python"|"octave", "code": str}  # learned
+             | {"type": "tool",        "runtime": "python"|"octave"|"assay", "code": str}  # learned
              | {"type": "tool_result", "output": str}              # MASKED from the loss
+
+For ``runtime="assay"`` the ``code`` payload is the Assay IR as JSON text (task +
+inputs + missing_inputs) rather than source code — the template owns the method;
+the model only names the task and fills the slots (docs/tir-format.md §2).
 
 ``chat_template.render_conversation`` renders a validated record to (input_ids, loss_mask);
 it calls the same validators, so the two paths cannot drift (guarded by test_tir_validate).
@@ -28,7 +32,7 @@ from typing import Any
 
 VALID_ROLES = ("system", "user", "assistant")
 SEGMENT_TYPES = ("think", "text", "tool", "tool_result")
-TOOL_RUNTIMES = ("python", "octave")
+TOOL_RUNTIMES = ("python", "octave", "assay")
 # required string field(s) per segment type ("runtime" is whitelist-checked separately)
 _SEGMENT_FIELDS: dict[str, tuple[str, ...]] = {
     "think": ("text",),
