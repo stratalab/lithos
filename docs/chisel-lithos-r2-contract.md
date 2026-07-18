@@ -63,9 +63,16 @@ lithos-models/      <name>-<version>/  {hf_export,eval,run}/    # exported final
 ### 3.1 Canonical pretraining record (`.jsonl.zst`, one per line)
 ```jsonc
 { "id": "str", "text": "str (required, non-empty)", "source": "str", "subset": "str|null",
-  "language": "en", "license": "str", "metadata": { "source_id": "<canon row>", "domain": "physics" },
+  "language": "en", "license": "str", "tier": "open|lawful|restricted|synthetic-verified",
+  "metadata": { "source_id": "<canon row>", "domain": "physics" },
   "quality_score": 0.0 }          // quality_score optional
 ```
+`tier` is **required per record** (`lithos.data.tiers`; undeclared → `unknown` →
+barred from the weights, fail-closed). `license` is what the rightsholder granted;
+`tier` is how the bytes reached us — independent axes, and the second one has teeth.
+`tier=synthetic-verified` additionally requires `metadata.grounded_on`.
+*(Example fixed 2026-07-18 — the executable schema `documents.py` always required
+`tier`; this example predated the tier gate and omitted it.)*
 
 ### 3.2 Corpus catalog (`_catalog.json`) — the mix bill-of-materials
 ```jsonc
