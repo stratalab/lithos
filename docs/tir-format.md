@@ -71,16 +71,19 @@ pinned. IDs 0–6 (chat + control) are unchanged.
 | 10 | `<\|octave\|>` | open Octave tool call | **learned** |
 | 11 | `<\|/tool\|>` | close tool call → **pause, execute** | **learned** |
 | 12 | `<\|tool_result\|>` | open injected result (closed by the existing `<\|end\|>`, ID 6) | **masked** |
-| 13–15 | reserved | FIM prefix/middle/suffix *or* future tool/control | — |
+| 13 | `<\|assay\|>` | open **Assay** tool call — payload is the **IR as JSON** (`{"task", "inputs", "missing_inputs"}`); the template owns the method, the model routes + fills slots. *Claimed 2026-07-19.* | **learned** |
+| 14–15 | reserved | FIM prefix/middle/suffix *or* future tool/control | — |
 
-Six new tokens carry all of TIR + thinking. Design notes:
+Seven new tokens carry all of TIR + thinking + Assay. Design notes:
 
-- **Runtime identity is in the open tag** (`<|python|>` vs `<|octave|>`), so the
-  harness routes by ID with no payload parsing; a **shared close** `<|/tool|>`
-  keeps it to three tool tokens, not four.
-- **Payload is raw source**, not JSON-wrapped — the tool's "argument" *is* code,
-  and JSON-escaping multiline code with quotes/backslashes (regex, LaTeX) is a
-  reliability sink. R1/Qwen TIR emit raw source between delimiters; so do we.
+- **Runtime identity is in the open tag** (`<|python|>` / `<|octave|>` / `<|assay|>`),
+  so the harness routes by ID with no payload parsing; a **shared close** `<|/tool|>`
+  keeps the tool-token count down.
+- **Payload is raw source** for the code runtimes, not JSON-wrapped — the tool's
+  "argument" *is* code, and JSON-escaping multiline code with quotes/backslashes
+  (regex, LaTeX) is a reliability sink. R1/Qwen TIR emit raw source between
+  delimiters; so do we. The **assay payload is JSON by design** — its argument is
+  structured data (an IR), not code, so the code-escaping rationale doesn't apply.
 - **The result reuses `<|end|>` as its closer**, matching how every turn closes;
   no separate result-close token needed.
 - **Recommendation to feed back into `docs/tokenizer.md`:** either commit

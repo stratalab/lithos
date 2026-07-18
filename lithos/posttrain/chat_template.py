@@ -38,8 +38,19 @@ _SPECIALS = ("<bos>", "<eos>", "<pad>", "<|end|>", *ROLE_TOKEN.values())
 # always-required core specials above.
 THINK_OPEN, THINK_CLOSE = "<think>", "</think>"
 TOOL_CLOSE, TOOL_RESULT = "<|/tool|>", "<|tool_result|>"
-TOOL_OPEN = {"python": "<|python|>", "octave": "<|octave|>"}  # runtime identity in the open tag
+# Runtime identity lives in the open tag. `python`/`octave` carry raw source;
+# `assay` carries the Assay IR as JSON (task + inputs — the template owns the
+# method, the model only routes and fills slots). <|assay|> claims reserved ID 13
+# (docs/tir-format.md §2).
+TOOL_OPEN = {"python": "<|python|>", "octave": "<|octave|>", "assay": "<|assay|>"}
 TIR_TOKENS = (THINK_OPEN, THINK_CLOSE, *TOOL_OPEN.values(), TOOL_CLOSE, TOOL_RESULT)
+
+# Every special token an SFT/TIR-capable tokenizer must resolve, core + TIR, in a
+# stable order — the renderer side of the contract that the tokenizer's
+# STEM_SPECIAL_TOKENS block (`lithos/tokenizer/tokenizer_config.py`) must cover
+# (guarded by tests/test_assay_runtime.py). Mirrors the same constant on the
+# composite branch (tokenizer_adapt uses it to augment a Qwen base).
+REQUIRED_SPECIAL_TOKENS: tuple[str, ...] = (*_SPECIALS, *TIR_TOKENS)
 
 
 class _Encoding(Protocol):
